@@ -1,0 +1,26 @@
+{
+  "stage": "research",
+  "date": "2026-08-17 13:36 UTC+8",
+  "ambiguity_questions": [
+    {
+      "id": "Q-RES-01",
+      "question": "OPENAI_MODEL and workspace soft quota for demo?",
+      "tz_default": "env OPENAI_MODEL; soft quota in Brand/Workspace nullable",
+      "blocks_planning": false
+    },
+    {
+      "id": "Q-RES-02",
+      "question": "Implement Instagram Reels in MVP or keep TZ: Reels = phase 3, photo publish = phase 2?",
+      "tz_default": "Reels out of MVP",
+      "blocks_planning": false
+    },
+    {
+      "id": "Q-RES-03",
+      "question": "Apply portfolio-architecture-guardrails (Next.js/Prisma) or TZ stack only?",
+      "tz_default": "FastAPI + React Vite + PostgreSQL/SQLAlchemy",
+      "blocks_planning": false
+    }
+  ],
+  "gate": "all_facts_sourced_and_ambiguities_logged",
+  "status": "done"
+}

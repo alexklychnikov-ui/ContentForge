@@ -1,0 +1,947 @@
+{
+  "version": "1.1.0",
+  "stage": "coding",
+  "product": "ContentForge",
+  "phase": "CF-8",
+  "review_level": "middle_plus",
+  "participants": [
+    "coder",
+    "qa",
+    "security_expert",
+    "code_simplify_assessor",
+    "efficiency_assessor",
+    "compliance_officer",
+    "teamlead"
+  ],
+  "leftover_mockup": {
+    "note": "Inherited from MockupCreate bootstrap. Not current ContentForge findings. Do not treat as open CF work.",
+    "participants": [
+      "coder",
+      "qa",
+      "devops",
+      "security_expert",
+      "code_simplify_assessor",
+      "efficiency_assessor",
+      "compliance_officer"
+    ],
+    "findings": [
+      {
+        "id": "QA-C1",
+        "severity": "critical",
+        "status": "resolved",
+        "description": "Tkinter UI update from worker thread and reference selection race"
+      },
+      {
+        "id": "QA-H1",
+        "severity": "high",
+        "status": "resolved",
+        "description": "OPENAI_MODEL fixed contract validation was missing"
+      },
+      {
+        "id": "SEC-H1",
+        "severity": "high",
+        "status": "resolved",
+        "description": "PROXY_BASE_URL strict safety validation"
+      }
+    ],
+    "residual_risks": [
+      "No automated regression tests in MVP scope",
+      "Very large image sets can still impact responsiveness",
+      "Pillow decompression-bomb hardening can be improved later"
+    ],
+    "decision": {
+      "go_no_go": "go",
+      "rationale": "MockupCreate leftover: all middle+ blockers resolved for that product. Not CF-1/CF-2 scope."
+    }
+  },
+  "gates": [
+    {
+      "id": "RG-CF-N",
+      "trigger_after_phase": "CF-1",
+      "result": "pass",
+      "pass_conditions": {
+        "qa_must_pass": "passed",
+        "coder_report_result": "done",
+        "no_open_findings_middle_plus": true,
+        "security_expert_required": true,
+        "security_expert_pass": "passed",
+        "simplify_gate": "passed"
+      }
+    },
+    {
+      "id": "RG-CF-N",
+      "trigger_after_phase": "CF-2",
+      "result": "pass",
+      "pass_conditions": {
+        "qa_must_pass": "passed",
+        "coder_report_result": "done",
+        "no_open_findings_middle_plus": true,
+        "security_expert_required": true,
+        "security_expert_pass": "passed",
+        "simplify_gate": "passed"
+      }
+    },
+    {
+      "id": "RG-CF-N",
+      "trigger_after_phase": "CF-3",
+      "result": "pass",
+      "pass_conditions": {
+        "qa_must_pass": "passed",
+        "coder_report_result": "done",
+        "no_open_findings_middle_plus": true,
+        "security_expert_required": false,
+        "security_expert_pass": "not_required",
+        "simplify_gate": "passed",
+        "efficiency_gate": "passed"
+      }
+    },
+    {
+      "id": "RG-CF-N",
+      "trigger_after_phase": "CF-4",
+      "result": "pass",
+      "pass_conditions": {
+        "qa_must_pass": "passed",
+        "coder_report_result": "done",
+        "no_open_findings_middle_plus": true,
+        "security_expert_required": true,
+        "security_expert_pass": "passed",
+        "simplify_gate": "passed"
+      }
+    },
+    {
+      "id": "RG-CF-N",
+      "trigger_after_phase": "CF-5",
+      "result": "pass",
+      "pass_conditions": {
+        "qa_must_pass": "passed",
+        "coder_report_result": "done",
+        "no_open_findings_middle_plus": true,
+        "security_expert_required": true,
+        "security_expert_pass": "passed",
+        "simplify_gate": "passed",
+        "efficiency_gate": "passed"
+      }
+    },
+    {
+      "id": "RG-CF-N",
+      "trigger_after_phase": "CF-6",
+      "result": "pass",
+      "pass_conditions": {
+        "qa_must_pass": "passed",
+        "coder_report_result": "done",
+        "no_open_findings_middle_plus": true,
+        "security_expert_required": true,
+        "security_expert_pass": "passed",
+        "simplify_gate": "passed"
+      }
+    },
+    {
+      "id": "RG-CF-N",
+      "trigger_after_phase": "CF-7",
+      "result": "pass",
+      "pass_conditions": {
+        "qa_must_pass": "passed",
+        "coder_report_result": "done",
+        "no_open_findings_middle_plus": true,
+        "security_expert_required": true,
+        "security_expert_pass": "passed",
+        "simplify_gate": "passed"
+      }
+    },
+    {
+      "id": "RG-CF-N",
+      "trigger_after_phase": "CF-8",
+      "result": "pass",
+      "pass_conditions": {
+        "qa_must_pass": "passed",
+        "coder_report_result": "done",
+        "no_open_findings_middle_plus": true,
+        "security_expert_required": true,
+        "security_expert_pass": "passed",
+        "simplify_gate": "passed",
+        "efficiency_gate": "passed",
+        "compliance_officer": "passed"
+      }
+    },
+    {
+      "id": "RG-A",
+      "trigger_after_phase": "CF-5",
+      "result": "pass",
+      "pass_conditions": {
+        "publication_sm_tests": "passed",
+        "no_unresolved_security_high_on_tokens": true,
+        "telegram_adapter_contract_tests": "passed"
+      }
+    },
+    {
+      "id": "RG-B",
+      "trigger_after_phase": "CF-8",
+      "result": "pass",
+      "pass_conditions": {
+        "tz_18_ac_mvp": "passed_with_waivers",
+        "no_blocker_critical": true,
+        "all_mandatory_role_reports_pass": true,
+        "compliance_stage_gate_cf1_cf8": "followed_no_pass_no_next"
+      },
+      "waivers": [
+        "live compose not run (Docker Hub python:3.12-slim / node:22-alpine)",
+        "Playwright E2E not run (same compose blocker); logs/cf8-manual-e2e.txt WARNING not fail",
+        "TELEGRAM_SMOKE live AC-11 not run (no live accounts); mocked pytest covers AC-11",
+        "TZ §18 live TG/WP/Gmail compose run waived; backend pytest AC-01..23 is AC source of truth"
+      ]
+    }
+  ],
+  "findings": [
+    {
+      "id": "QA-CF1-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "compose image pull warning: python:3.12-slim / node:22-alpine not local; full stack up skipped"
+    },
+    {
+      "id": "QA-CF1-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "local JWT_SECRET placeholder (dev-insecure-change-me) in compose/config"
+    },
+    {
+      "id": "QA-CF1-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "local postgres credentials hardcoded in compose (contentforge/contentforge)"
+    },
+    {
+      "id": "SIM-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "duplicate GET /health and GET /api/v1/health on the same handler"
+    },
+    {
+      "id": "SIM-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "pytest/httpx in runtime API/worker image"
+    },
+    {
+      "id": "QA-CF2-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "test_ac01_duplicate_email_taken assertion is tautological; product dump still has empty details and no email in body"
+    },
+    {
+      "id": "QA-CF2-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "Starlette TestClient deprecation warning (httpx vs httpx2); does not fail tests"
+    },
+    {
+      "id": "SEC-CF2-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "Login rate limiter is in-process memory; multi-worker API does not share fail counts"
+    },
+    {
+      "id": "SEC-CF2-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "JWT_SECRET compose/config placeholder remains; not a committed production key"
+    },
+    {
+      "id": "SEC-CF2-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "CORS origins locked to PUBLIC_WEB_URL; allow_methods=* allow_headers=* remain; Bearer tokens, no cookie session"
+    },
+    {
+      "id": "SEC-CF2-L4",
+      "severity": "low",
+      "status": "resolved",
+      "description": "PATCH /trends/{id} foreign vs missing 404 message oracle; unified envelope + test_catalogs regression"
+    },
+    {
+      "id": "SEC-CF2-L5",
+      "severity": "low",
+      "status": "open",
+      "description": "Logout revokes refresh JTIs only; access JWT stays valid until 15min TTL"
+    },
+    {
+      "id": "SIM-CF2-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "Owner-first membership pick duplicated in auth_service and brand_service"
+    },
+    {
+      "id": "SIM-CF2-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "TrendUpdate has both archived:bool and status:TrendStatus for the same field"
+    },
+    {
+      "id": "SIM-CF2-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "Duplicate _error helpers in AC tests; duplicate email strip/lower validators on RegisterRequest and LoginRequest"
+    },
+    {
+      "id": "SIM-CF2-L4",
+      "severity": "low",
+      "status": "resolved",
+      "description": "Dead logout per-jti branch after revoke-all removed; brand_to_public typed BrandProfile"
+    },
+    {
+      "id": "QA-CF3-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "pytest AC-08 covers only social_post; extra dump confirmed article/email generate+edit variant A"
+    },
+    {
+      "id": "QA-CF3-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "TESTING=1 runs AI jobs inline in HTTP session (conftest); AC-20 still 202; prod dispatch is Celery .delay"
+    },
+    {
+      "id": "QA-CF3-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "confirm/create_revision archives active plan before the new job; AI fail leaves no active ContentPlan"
+    },
+    {
+      "id": "QA-CF3-L4",
+      "severity": "low",
+      "status": "open",
+      "description": "Starlette TestClient deprecation warning (httpx vs httpx2); does not fail tests"
+    },
+    {
+      "id": "QA-CF3-L5",
+      "severity": "low",
+      "status": "open",
+      "description": "pytest uses SQLite create_all, not Alembic upgrade against Postgres; 0003 is head"
+    },
+    {
+      "id": "SIM-CF3-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "Brand context dict duplicated in execute_generate_plan and execute_generate_content"
+    },
+    {
+      "id": "SIM-CF3-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "PlanStatus.generating is in enum/index/409 branch but never written; inflight uses Job queued/running"
+    },
+    {
+      "id": "SIM-CF3-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "create_job + skip-if-not-queued + dispatch_job copied in three enqueue_*; rewrite checks duplicated"
+    },
+    {
+      "id": "SIM-CF3-L4",
+      "severity": "low",
+      "status": "resolved",
+      "description": "Unused Locale import in ai_jobs.py and unused JobAccepted import in api/plans.py removed"
+    },
+    {
+      "id": "EFF-CF3-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "inflight_generate_plan SELECTs all queued/running generate_plan jobs then filters brand/year/month in Python"
+    },
+    {
+      "id": "EFF-CF3-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "trends_for_plan loads all active TrendSignal then date-filters in Python; holidays are SQL month-scoped"
+    },
+    {
+      "id": "EFF-CF3-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "GeneratePlanRequest.targets has no max; huge sum still 202s then worker holds AI JSON"
+    },
+    {
+      "id": "EFF-CF3-L4",
+      "severity": "low",
+      "status": "open",
+      "description": "dispatch_job .delay() before get_db commit; worker miss logs ai_job_missing and returns (no retry)"
+    },
+    {
+      "id": "QA-CF4-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "pytest AC-18 covers telegram GET only; extra dump confirmed wordpress/gmail/vk/instagram also have no token fields"
+    },
+    {
+      "id": "QA-CF4-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "Starlette TestClient deprecation warning (httpx vs httpx2); does not fail tests"
+    },
+    {
+      "id": "QA-CF4-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "pytest uses SQLite create_all, not Alembic upgrade against Postgres; 0004 is head"
+    },
+    {
+      "id": "QA-CF4-L4",
+      "severity": "low",
+      "status": "open",
+      "description": "ChannelPublic.meta is untyped dict; password_hash in test SECRET_KEYS/sanitizer but not META_SECRET_KEYS; save path does not put secrets in meta"
+    },
+    {
+      "id": "SEC-CF4-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "Health stub is ciphertext-presence, not live token/scopes; live check is CF-5/FR-CHN-02"
+    },
+    {
+      "id": "SEC-CF4-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "Compose named volume media_data may be root-owned vs Dockerfile USER appuser"
+    },
+    {
+      "id": "SEC-CF4-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "EmailRecipient emails stored plaintext (FR-CHN-05 list/query); not channel tokens; brand-scoped"
+    },
+    {
+      "id": "SEC-CF4-L4",
+      "severity": "low",
+      "status": "resolved",
+      "description": "media_file_path confined to media_root via resolve + is_relative_to; 404 otherwise"
+    },
+    {
+      "id": "SEC-CF4-L5",
+      "severity": "low",
+      "status": "resolved",
+      "description": "GET /media/{id}/file sends X-Content-Type-Options: nosniff"
+    },
+    {
+      "id": "SEC-CF4-L6",
+      "severity": "low",
+      "status": "open",
+      "description": "TESTING=1 skips Fernet fail-fast at app import (pytest conftest); compose does not set TESTING"
+    },
+    {
+      "id": "SIM-CF4-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "ChannelCredentialsRequest is one optional-field bag for all 5 types; unused fields can drift"
+    },
+    {
+      "id": "SIM-CF4-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "WordPress meta stores both blog_url and site_url with the same value"
+    },
+    {
+      "id": "SIM-CF4-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "Foreign 404 remap copied in require_channel, require_recipient, get_media"
+    },
+    {
+      "id": "SIM-CF4-L4",
+      "severity": "low",
+      "status": "resolved",
+      "description": "media_service.save_upload duplicate except unlink blocks merged"
+    },
+    {
+      "id": "QA-CF5-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "TZ AC-13 says failed then 3 retry then dead; product keeps scheduled+unauthorized until attempt 3 -> dead"
+    },
+    {
+      "id": "QA-CF5-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "RETRY_DELAYS 15m unused; MAX_ATTEMPTS=3 dead after 3rd fail uses 1m then 5m"
+    },
+    {
+      "id": "QA-CF5-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "pytest AC-19 covers future scheduled only; extra dump confirmed published stays published"
+    },
+    {
+      "id": "QA-CF5-L4",
+      "severity": "low",
+      "status": "open",
+      "description": "Starlette TestClient deprecation warning (httpx vs httpx2); does not fail tests"
+    },
+    {
+      "id": "QA-CF5-L5",
+      "severity": "low",
+      "status": "open",
+      "description": "pytest uses SQLite create_all, not Alembic upgrade against Postgres; 0005 is head"
+    },
+    {
+      "id": "EFF-CF5-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "Due scan has no LIMIT; one tick loads all due ids and holds one DB txn across Telegram HTTP"
+    },
+    {
+      "id": "EFF-CF5-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "supports_autopost=false manuals re-claimed every minute until mark-manual; indexed scheduled filter"
+    },
+    {
+      "id": "EFF-CF5-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "POST /channels/{id}/health TelegramAdapter.health does sync getMe in API thread (timeout 30s)"
+    },
+    {
+      "id": "EFF-CF5-L4",
+      "severity": "low",
+      "status": "open",
+      "description": "GET /brands/{id}/publications has no pagination; optional status/from/to filters"
+    },
+    {
+      "id": "SIM-CF5-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "stub_health still named stub; TelegramAdapter.health does live getMe"
+    },
+    {
+      "id": "SIM-CF5-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "PublicationStatus.draft is in enum, never written"
+    },
+    {
+      "id": "SIM-CF5-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "fetch_metrics TZ 10.4 stub unused until CF-7; ManualCopyAdapter.limits/requires_media unread by worker"
+    },
+    {
+      "id": "SIM-CF5-L4",
+      "severity": "low",
+      "status": "open",
+      "description": "supports_autopost=false short-circuit means ManualCopyAdapter.publish is never called by worker"
+    },
+    {
+      "id": "SIM-CF5-L5",
+      "severity": "low",
+      "status": "open",
+      "description": "ScheduleRequest.channel_account_id still optional then 400 in service; Telegram _send_photo duplicates sendMessage fallback"
+    },
+    {
+      "id": "SEC-CF5-L1",
+      "severity": "low",
+      "status": "resolved",
+      "description": "Telegram HTTP pin: method allowlist, path-safe token, follow_redirects=False, trust_env=False, HTTPError not chained"
+    },
+    {
+      "id": "SEC-CF5-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "Revoke cancels scheduled only; in-flight publishing may still send with session-cached ciphertext (TOCTOU)"
+    },
+    {
+      "id": "SEC-CF5-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "Bot token is in outbound Telegram URL by Bot API design; we do not log the URL; DEBUG httpx could print it"
+    },
+    {
+      "id": "SEC-CF5-L4",
+      "severity": "low",
+      "status": "open",
+      "description": "Idempotency_key globally unique: other brand gets 409 idempotency_conflict (cross-tenant existence oracle)"
+    },
+    {
+      "id": "SEC-CF5-L5",
+      "severity": "low",
+      "status": "open",
+      "description": "Compose Redis has no password and publishes 6379; enqueue of publish_due is infra, not unauthenticated HTTP publish"
+    },
+    {
+      "id": "QA-CF6-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "Starlette TestClient deprecation warning (httpx vs httpx2); does not fail tests"
+    },
+    {
+      "id": "QA-CF6-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "pytest uses SQLite create_all, not Alembic upgrade against Postgres; no 0006, Publication.meta already in 0005"
+    },
+    {
+      "id": "QA-CF6-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "Live WP REST and Gmail SMTP untested in CI by design (mocks patch wordpress_create_post / smtp_send_one)"
+    },
+    {
+      "id": "QA-CF6-L4",
+      "severity": "low",
+      "status": "open",
+      "description": "pytest AC-14 asserts wp-app-pass absent from GET publications only; extra dump confirmed GET /channels also clean"
+    },
+    {
+      "id": "QA-CF6-L5",
+      "severity": "low",
+      "status": "open",
+      "description": "WP adapter always POST status=publish at scheduler T, never WordPress future+date (chosen MVP path)"
+    },
+    {
+      "id": "QA-CF6-L6",
+      "severity": "low",
+      "status": "open",
+      "description": "publish_worker logger.exception(publish_due_failed) can still include secrets in traceback locals on unexpected crash"
+    },
+    {
+      "id": "SIM-CF6-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "escape_html copied in telegram/wordpress/gmail; WP markdown_to_html and Gmail HTML alt are the same naive split"
+    },
+    {
+      "id": "SIM-CF6-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "_app_password duplicated in wordpress.py and gmail.py (telegram has _bot_token)"
+    },
+    {
+      "id": "SIM-CF6-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "GmailAdapter.publish writes publication.meta then worker merges AdapterResult.meta again; raise before first_id can leave counts on a failed row"
+    },
+    {
+      "id": "SIM-CF6-L4",
+      "severity": "low",
+      "status": "open",
+      "description": "channel_service still stores smtp_host/smtp_port and both site_url+blog_url; adapter pins Gmail SMTP and reads site_url or blog_url"
+    },
+    {
+      "id": "SIM-CF6-L5",
+      "severity": "low",
+      "status": "open",
+      "description": "AdapterCapabilityError still never hit by worker (supports_autopost=false returns scheduled); same as SIM-CF5-L4"
+    },
+    {
+      "id": "SEC-CF6-L1",
+      "severity": "low",
+      "status": "resolved",
+      "description": "Unexpected SMTP/HTTP -> AdapterError from None, log type only; redact_secret covers space-stripped passwords"
+    },
+    {
+      "id": "SEC-CF6-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "site_url is owner-controlled; scheme pin allows http(s) to RFC1918/loopback/metadata; file:// rejected"
+    },
+    {
+      "id": "SEC-CF6-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "WP/Gmail health remains ciphertext-presence stub; live REST/SMTP untested in CI"
+    },
+    {
+      "id": "SEC-CF6-L4",
+      "severity": "low",
+      "status": "open",
+      "description": "In-flight publishing after revoke can still send once with session-cached ciphertext (same TOCTOU as SEC-CF5-L2)"
+    },
+    {
+      "id": "QA-CF7-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "Starlette TestClient deprecation warning (httpx vs httpx2); does not fail tests"
+    },
+    {
+      "id": "QA-CF7-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "pytest uses SQLite create_all, not Alembic upgrade against Postgres; 0006 is head"
+    },
+    {
+      "id": "QA-CF7-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "Telegram/WP insights stay unavailable stub (empty metrics, not zeros); CF-7 design, not AC-16 fail"
+    },
+    {
+      "id": "QA-CF7-L4",
+      "severity": "low",
+      "status": "open",
+      "description": "POST /stop leaves Experiment.status=running and mutates window_end to now (no stopped_at)"
+    },
+    {
+      "id": "QA-CF7-L5",
+      "severity": "low",
+      "status": "open",
+      "description": "brand_summary emits unavailable if no metrics else always partial — never available"
+    },
+    {
+      "id": "QA-CF7-L6",
+      "severity": "low",
+      "status": "open",
+      "description": "empty_unavailable lists ALL_METRIC_KEYS including gmail sent/opened on TG/WP snapshots"
+    },
+    {
+      "id": "QA-CF7-L7",
+      "severity": "low",
+      "status": "open",
+      "description": "pytest AC-16 metrics.get('impressions') != 0 would pass if impressions were a dict with sum=0; key-absent assert is the real check"
+    },
+    {
+      "id": "SIM-CF7-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "Experiment.schedule_a/schedule_b extra vs TZ 11.15 so draft→start can create T1/T2 without a second payload"
+    },
+    {
+      "id": "SIM-CF7-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "pack_available and split_adapter_payload both decide availability/metrics/unavailable; adapters pack, capture_publication re-filters"
+    },
+    {
+      "id": "SIM-CF7-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "experiment_metrics.side() writes availability three times then collapses to unavailable if value is None"
+    },
+    {
+      "id": "SIM-CF7-L4",
+      "severity": "low",
+      "status": "open",
+      "description": "brand_summary joins ChannelAccount then db.get(ChannelAccount) per publication (N+1 leftover)"
+    },
+    {
+      "id": "SIM-CF7-L5",
+      "severity": "low",
+      "status": "open",
+      "description": "ExperimentMode.gmail_split_list/wordpress_title and ExperimentStatus.tie/cancelled are TZ enum surface; create 409s unsupported_mode"
+    },
+    {
+      "id": "SEC-CF7-L1",
+      "severity": "low",
+      "status": "resolved",
+      "description": "Celery worker/beat now calls configure_app_logging so SecretRedactFilter is on worker/beat too"
+    },
+    {
+      "id": "SEC-CF7-L2",
+      "severity": "low",
+      "status": "resolved",
+      "description": "Audit scrub now redacts string values via redact_log_text; GET publication analytics raw also scrubbed"
+    },
+    {
+      "id": "SEC-CF7-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "Unlabeled secret values (JWT/bot token with no password/token/Bearer/botURL marker) still survive redact"
+    },
+    {
+      "id": "SEC-CF7-L4",
+      "severity": "low",
+      "status": "open",
+      "description": "run_analytics_sync iterates all published rows across workspaces (worker, no user); not an HTTP IDOR"
+    },
+    {
+      "id": "QA-CF8-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "Playwright/compose E2E not executed; manual checklist unchecked. WARNING not fail (CF-1 docker pull class). Waiver documented."
+    },
+    {
+      "id": "QA-CF8-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "/onboarding routed but not in Layout header LINKS. Reachable from register and EmptyState CTAs."
+    },
+    {
+      "id": "QA-CF8-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "Starlette TestClient deprecation warning (httpx vs httpx2); does not fail tests"
+    },
+    {
+      "id": "QA-CF8-L4",
+      "severity": "low",
+      "status": "open",
+      "description": "Vitest covers key behaviors, not mount of every screen. Crash check is source+tsc; live UI still the unchecked manual list."
+    },
+    {
+      "id": "SIM-CF8-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "type Shell duplicated in 10 screens. Copy, not a context/provider framework."
+    },
+    {
+      "id": "SIM-CF8-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "cf.ts has unused methods (health, refresh, getBrand, patchPlanItem, deletePlanItem, addTrend, getExperiment, patchRecipient, deleteRecipient). Fat facade, not a second client."
+    },
+    {
+      "id": "SIM-CF8-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "Calendar legend chips (черновик/очередь/опубликован) are decorative; MonthGrid shows channel chips only."
+    },
+    {
+      "id": "EFF-CF8-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "Dashboard/Analytics/Queue GET publications without from/to though API supports them. Dashboard then client-filters 7 days."
+    },
+    {
+      "id": "EFF-CF8-L2",
+      "severity": "low",
+      "status": "open",
+      "description": "Dashboard recent-jobs refetchInterval 2000 never stops after terminal status (max 8 ids via session slice)."
+    },
+    {
+      "id": "EFF-CF8-L3",
+      "severity": "low",
+      "status": "open",
+      "description": "Calendar/Plan year number input is in queryKey; each digit refetches month-filtered plans."
+    },
+    {
+      "id": "SEC-CF8-L1",
+      "severity": "low",
+      "status": "open",
+      "description": "JWT access+refresh in localStorage (cf_session). XSS can steal session. Allowed MVP. Not httpOnly cookies."
+    },
+    {
+      "id": "SEC-CF8-L2",
+      "severity": "low",
+      "status": "resolved",
+      "description": "Empty access_token counted as session; getSession() now requires access_token; Layout tests cover it."
+    },
+    {
+      "id": "SEC-CF8-L3",
+      "severity": "low",
+      "status": "resolved",
+      "description": "Logout now queryClient.clear() and drops cf_recent_jobs so next SPA user cannot flash cached workspace data."
+    },
+    {
+      "id": "SEC-CF8-L4",
+      "severity": "low",
+      "status": "open",
+      "description": "npm scripts vite --host 0.0.0.0 plus proxy /api /health. LAN clients can reach local API through the Vite origin. Dev-only."
+    },
+    {
+      "id": "SEC-CF8-L5",
+      "severity": "low",
+      "status": "open",
+      "description": "No CSP. Markdown/HTML in variant payload is textarea/text, not executed. Residual if a future preview uses innerHTML."
+    }
+  ],
+  "findings_middle_plus": [],
+  "residual_risks": [
+    "Full compose up --build blocked until python:3.12-slim and node:22-alpine can be pulled",
+    "Local postgres/jwt placeholders are scaffold-only, not production",
+    "Duplicate /health aliases may freeze a second public contract",
+    "pytest in runtime image is extra image weight",
+    "Process-local login rate limit can be split across workers",
+    "Access JWT remains valid until TTL after logout",
+    "pytest uses SQLite create_all, not Alembic upgrade against Postgres",
+    "Live OpenAI path untested in CI by design",
+    "TESTING=1 on API would inline OpenAI in the HTTP thread; compose does not set this",
+    "dispatch_job .delay() before commit can miss the job (ai_job_missing, no retry)",
+    "confirm/create_revision archives active plan before AI; fail leaves no active plan",
+    "Named media volume permissions vs non-root USER on first compose up",
+    "Recipient emails are PDN at rest unencrypted by mailing-list design",
+    "TESTING=1 skips Fernet fail-fast at import; compose does not set TESTING",
+    "Non-Telegram channel health still ciphertext-presence stub; Telegram health does live getMe",
+    "Telegram live smoke untested in CI (TELEGRAM_SMOKE=1)",
+    "VK/IG stay ManualCopy; due manuals re-claimed each minute",
+    "Live WP REST / Gmail SMTP untested in CI (mocks only)",
+    "Authenticated site_url can still hit RFC1918/loopback over http(s)",
+    "Partial Gmail send published leftover recipients not retried",
+    "Worker crash after Telegram accept before DB commit can duplicate send",
+    "In-flight publishing after revoke can still hit Telegram once (TOCTOU)",
+    "Overlapping publish_due ticks can wait on row locks during Telegram HTTP",
+    "POST /channels/{id}/health getMe can block API worker up to 30s",
+    "Compose Redis has no password; 6379 published",
+    "Bot token in Telegram URL by Bot API design; keep httpx debug off",
+    "Telegram/WP insights stay unavailable stub (honest empty, not zeros)",
+    "gmail_split_list / wordpress_title 409 unsupported_mode",
+    "Stop early mutates window_end; Experiment.status stays running",
+    "Celery sync-analytics beat untested against live Redis",
+    "Unlabeled secrets without password/token/Bearer markers can survive redact",
+    "JWT in localStorage (accepted MVP XSS surface)",
+    "Playwright vs compose E2E not run; TZ §18 live compose/TG/WP/Gmail waived",
+    "Live generate/publish still needs worker + OPENAI_API_KEY / channel creds",
+    "Vite --host 0.0.0.0 LAN can reach API via proxy (dev-only)",
+    "No CSP on the Vite app",
+    "Queue 4s poll of unpaginated brand publications can grow with history",
+    "No GET /jobs list; dashboard alerts from client recent-job ids only"
+  ],
+  "prior_decisions": [
+    {
+      "go_no_go": "go",
+      "gate": "RG-CF-N",
+      "phase": "CF-1",
+      "rationale": "qa GATE_PASS, security GATE_PASS, simplify GATE_PASS, coder/devops result=done, findings_middle_plus empty. Lows recorded, do not block."
+    },
+    {
+      "go_no_go": "go",
+      "gate": "RG-CF-N",
+      "phase": "CF-2",
+      "rationale": "qa GATE_PASS, security GATE_PASS, simplify GATE_PASS, coder result=done, findings_middle_plus empty. Tiny security PATCH trends 404 oracle + simplify logout/brand_to_public. Lows recorded, do not block."
+    },
+    {
+      "go_no_go": "go",
+      "gate": "RG-CF-N",
+      "phase": "CF-3",
+      "rationale": "qa GATE_PASS, simplify GATE_PASS, efficiency GATE_PASS, coder result=done, findings_middle_plus empty. security_review false — not required. Tiny simplify unused-import cleanup. Lows recorded, do not block. CF-4 waits on user command."
+    },
+    {
+      "go_no_go": "go",
+      "gate": "RG-CF-N",
+      "phase": "CF-4",
+      "rationale": "qa GATE_PASS AC-18, security GATE_PASS, simplify GATE_PASS, coder result=done pytest 41 then 43 after security tiny fix, findings_middle_plus empty. Tiny security media path+nosniff + simplify media except merge. Lows recorded, do not block. CF-5 waits on user command."
+    },
+    {
+      "go_no_go": "go",
+      "gate": "RG-CF-N",
+      "phase": "CF-5",
+      "rg_a": "pass",
+      "rationale": "qa GATE_PASS AC-11/12/13/15/19, security GATE_PASS telegram HTTP pin, simplify GATE_PASS, efficiency GATE_PASS, coder result=done pytest 51 then 56 after security tiny fix +1 skip, findings_middle_plus empty. RG-A: Publication SM tests green, no security high on tokens, Telegram adapter contract tests green. Lows recorded, do not block. CF-6 waits on user command."
+    },
+    {
+      "go_no_go": "go",
+      "gate": "RG-CF-N",
+      "phase": "CF-6",
+      "rg_a": "pass",
+      "rationale": "qa GATE_PASS AC-14/22/23, security GATE_PASS WP URL pin + SMTP redact, simplify GATE_PASS, coder 9cde904a result=done pytest 62 then 66 after security tiny fix +1 skip, findings_middle_plus empty. RG-A kept pass from CF-5. VK/IG stay ManualCopy. Lows recorded, do not block. CF-7 waits on user command."
+    },
+    {
+      "go_no_go": "go",
+      "gate": "RG-CF-N",
+      "phase": "CF-7",
+      "rg_a": "pass",
+      "rationale": "qa d7c0c224 GATE_PASS AC-16/17/21 pytest 73+1 skip, security 2e9f4734 GATE_PASS redact filter, simplify 37980855 GATE_PASS, coder d47a657b result=done pytest 71 then 73 after security tiny +1 skip, findings_middle_plus empty. RG-A kept pass from CF-5. efficiency_review false. Lows recorded, do not block. CF-8 in progress (user asked continue)."
+    }
+  ],
+  "decision": {
+    "go_no_go": "go",
+    "gate": "RG-CF-N+RG-B",
+    "phase": "CF-8",
+    "rg_a": "pass",
+    "rg_b": "pass",
+    "coding_mvp": "done",
+    "rationale": "coder 46db1027 done React UI vitest 4 tsc pytest 73+1 skip. qa 1a241150 GATE_PASS Playwright WARNING not fail. simplify b94da8dd GATE_PASS. efficiency b3854693 GATE_PASS. security d0998609 GATE_PASS JWT empty logout + password remount vitest 11 findings_middle_plus none. compliance_officer: CF-1..CF-8 no_pass_no_next followed; TZ §18 AC-01..23 via pytest; live compose/Playwright/TELEGRAM_SMOKE waived (Docker Hub / live accounts). No blocker/critical. RG-CF-N pass CF-8. RG-B pass with waivers. RG-A kept pass from CF-5. Lows recorded, do not block. Coding stage done for MVP. Next: MVP demo, no new product phase.",
+    "waivers": [
+      "live compose not run (Docker Hub)",
+      "Playwright E2E not run",
+      "TELEGRAM_SMOKE live AC-11 not run",
+      "backend pytest covers TZ §18 AC for MVP"
+    ]
+  }
+}

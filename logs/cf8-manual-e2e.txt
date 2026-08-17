@@ -1,0 +1,62 @@
+ContentForge CF-8 manual E2E checklist (compose images may not pull; use local uvicorn + vite)
+
+Prereq:
+- backend: cd backend && .venv\Scripts\python -m uvicorn app.main:app --reload --port 8000
+- worker optional for live AI/publish: celery -A app.celery_app worker -l info
+- frontend: cd frontend && npm run dev  (http://localhost:5173, proxy /health and /api -> :8000)
+- UI language: Russian
+
+SCR-AUTH
+- [ ] Register creates session, lands on onboarding
+- [ ] Duplicate email shows API error, not stack
+- [ ] Wrong password and unknown email: same "Неверный email или пароль" / invalid_credentials
+
+SCR-ONB
+- [ ] Steps: бренд -> ЦА/голос -> офферы -> эталоны -> каналы
+- [ ] Save without offers keeps generate plan blocked
+- [ ] Complete kit (name/niche/audience/voice/timezone/locale + offer) -> dashboard
+- [ ] Skip channels warns, still navigates
+
+SCR-DASH
+- [ ] KPI slots/published/failed/drafts
+- [ ] CTA Сгенерировать план / Открыть очередь
+- [ ] Brand switcher in header changes data
+
+SCR-CAL
+- [ ] Month grid RU week start Monday
+- [ ] Click day opens side panel; no drag-and-drop
+- [ ] Create slot on draft plan; open editor from slot
+
+SCR-PLAN
+- [ ] Without kit: empty CTA to onboarding
+- [ ] Generate returns 202, UI polls job queued/running/succeeded|failed
+- [ ] Holidays list or empty; "тренды не заданы" if none
+- [ ] Approve draft; regenerate confirm
+
+SCR-EDT
+- [ ] Create piece, generate variant A (job poll), edit+save
+- [ ] Rewrite selection does not require dragging calendar
+- [ ] Variant B; schedule to connected channel
+
+SCR-CHN
+- [ ] Connect Telegram / WP / Gmail with PDN checkbox
+- [ ] GET cards have no bot_token/app_password
+- [ ] Health + Revoke; Gmail recipients CRUD
+- [ ] No IG App Review / Reels / Mailchimp UI
+
+SCR-QUE
+- [ ] Table filters; Cancel scheduled; Retry failed; mark-manual
+
+SCR-ANL
+- [ ] Period change; unavailable channel shows "недоступны (не 0)"
+
+SCR-AB
+- [ ] Sequential TG create/start/stop/winner
+- [ ] Unsupported mode not offered
+
+SCR-SET
+- [ ] Profile email/workspace; brand tz/locale; delete brand
+- [ ] No Viewer invite
+
+AC-01..AC-23: backend pytest remains source of truth; this UI wires the same API.
+Playwright vs live compose: SKIPPED if docker pull python:3.12-slim / node:22-alpine still fails.

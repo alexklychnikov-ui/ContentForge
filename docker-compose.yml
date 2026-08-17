@@ -1,0 +1,130 @@
+# Local-dev only. Postgres contentforge/contentforge and JWT_SECRET default
+# are placeholders — not for production.
+name: contentforge
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: contentforge
+      POSTGRES_PASSWORD: contentforge
+      POSTGRES_DB: contentforge
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contentforge -d contentforge"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      # Host 5432 is often a native Windows Postgres; map compose DB elsewhere for local uvicorn.
+      - "15432:5432"
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    ports:
+      - "6379:6379"
+
+  api:
+    build:
+      context: ./backend
+    command: >
+      sh -c "alembic upgrade head &&
+      uvicorn app.main:app --host 0.0.0.0 --port 8000"
+    environment:
+      DATABASE_URL: postgresql+psycopg://contentforge:contentforge@postgres:5432/contentforge
+      REDIS_URL: redis://redis:6379/0
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-dev-insecure-change-me-not-for-production}
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:8000}
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-http://localhost:5173}
+      TELEGRAM_HTTPS_PROXY: ${TELEGRAM_HTTPS_PROXY:-}
+      MEDIA_ROOT: /app/data/media
+    volumes:
+      - media_data:/app/data/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+
+  worker:
+    build:
+      context: ./backend
+    command: celery -A app.celery_app:celery_app worker -Q celery,ai --loglevel=info
+    environment:
+      DATABASE_URL: postgresql+psycopg://contentforge:contentforge@postgres:5432/contentforge
+      REDIS_URL: redis://redis:6379/0
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-dev-insecure-change-me-not-for-production}
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:8000}
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-http://localhost:5173}
+      TELEGRAM_HTTPS_PROXY: ${TELEGRAM_HTTPS_PROXY:-}
+      MEDIA_ROOT: /app/data/media
+    volumes:
+      - media_data:/app/data/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  beat:
+    build:
+      context: ./backend
+    command: celery -A app.celery_app:celery_app beat --loglevel=info
+    environment:
+      DATABASE_URL: postgresql+psycopg://contentforge:contentforge@postgres:5432/contentforge
+      REDIS_URL: redis://redis:6379/0
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      TOKEN_ENCRYPTION_KEY: ${TOKEN_ENCRYPTION_KEY:-}
+      JWT_SECRET: ${JWT_SECRET:-dev-insecure-change-me-not-for-production}
+      PUBLIC_API_URL: ${PUBLIC_API_URL:-http://localhost:8000}
+      PUBLIC_WEB_URL: ${PUBLIC_WEB_URL:-http://localhost:5173}
+      TELEGRAM_HTTPS_PROXY: ${TELEGRAM_HTTPS_PROXY:-}
+      MEDIA_ROOT: /app/data/media
+    volumes:
+      - media_data:/app/data/media
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      VITE_API_PROXY_TARGET: http://api:8000
+    depends_on:
+      - api
+    ports:
+      - "5173:5173"
+
+volumes:
+  postgres_data:
+  media_data:

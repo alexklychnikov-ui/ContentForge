@@ -1,0 +1,55 @@
+{
+  "stage": "research",
+  "topic": "ContentForge implementation from TZTech.md",
+  "date": "2026-08-17 13:36 UTC+8",
+  "sources": {
+    "primary": ["TZTech.md v1.1"],
+    "repo_scan": [
+      "empty application tree: no backend/, no frontend/, no docker-compose.yml",
+      "ai/workflow/* currently holds leftover MockupCreate/Kwork cover artifacts",
+      ".cursor/rules/portfolio-architecture-guardrails.mdc describes Next.js/Prisma/public/data JSON — not present in TZTech.md"
+    ],
+    "user_statements": [
+      "Frontend: React (not Streamlit)",
+      "TZ depth: full developer spec",
+      "Testing from own accounts only",
+      "Mailchimp replaced by Gmail (RU block / KYC)",
+      "Requested Instagram Reels Meta setup for future posting; TZ §17.1 lists Reels as out of MVP"
+    ]
+  },
+  "confirmed_facts_tz": [
+    "Product name: ContentForge. TZ version 1.1 dated 2026-08-17.",
+    "Stack: Python, FastAPI, React Vite+TypeScript, PostgreSQL, SQLAlchemy 2.x, Alembic, Celery, Redis, OpenAI API.",
+    "Channels in scope: instagram, vk, telegram, wordpress, gmail. Mailchimp is out of scope (TZ v1.1).",
+    "MVP autopost: Telegram + WordPress. Gmail: SMTP App Password + own recipients, fallback manual_copy. VK: card + manual_copy. Instagram: review/manual_copy, not critical path.",
+    "Content types: social_post, article, email.",
+    "PostgreSQL is source of truth for slots and Publication. Redis is broker/cache only. Beat scans DB every minute.",
+    "AI generate and publish must not run in request thread. Generate plan returns HTTP 202.",
+    "Channel tokens encrypted at rest (TOKEN_ENCRYPTION_KEY). Never returned to client.",
+    "Gmail is transport not ESP: recipients in EmailRecipient; metrics sent/failed only; cap 50 per publication; ~500/day Google consumer limit.",
+    "A/B social: sequential. Gmail: gmail_split_list if >=2 recipients.",
+    "Acceptance IDs AC-01..AC-23 exist in TZ §18.",
+    "Default TZ §19: manual trends, local media, IG single image later, Viewer in phase 2, erid reminder only, one WP site per ChannelAccount, Gmail SMTP+App Password.",
+    "UI language Russian. Content locale ru|en on brand and piece.",
+    "Roles: Owner, Editor, Analyst, Viewer. MVP may collapse to Owner+Editor.",
+    "Publication statuses: draft|scheduled|publishing|published|published_manual|failed|dead|cancelled.",
+    "Plan statuses: generating|draft|approved|archived. Failed AI job must not persist a partial plan.",
+    "Repo layout in TZ appendix C: backend/, frontend/, docker-compose.yml, .env.example."
+  ],
+  "confirmed_facts_repo": [
+    "No FastAPI/React application code exists in this workspace.",
+    "Canonical files ai/workflow/design/*.json and ai/workflow/planning/*.json describe a tkinter mockup generator, not ContentForge.",
+    "ai/workflow/coding/stage_checkpoint.json status=done refers to src/mockup_gui.py which is not in this repo."
+  ],
+  "hypotheses": [
+    "HYPOTHESIS: leftover Mockup/Kwork workflow JSON will be treated as stale for ContentForge once design/planning artifacts are replaced.",
+    "HYPOTHESIS: portfolio-architecture-guardrails.mdc is a copied rule from another product and conflicts with TZTech.md stack."
+  ],
+  "ambiguities": [
+    "OPENAI_MODEL and token soft quota not chosen (TZ §19 q6).",
+    "WordPress: one vs many sites per brand — default one ChannelAccount (TZ §19 q7).",
+    "Instagram Reels requested by user vs TZ MVP out of scope for video/Reels.",
+    "Whether to keep or ignore portfolio-architecture-guardrails.mdc during coding.",
+    "Gmail SMTP from this Windows/dev host vs future VPS (TZ R13)."
+  ]
+}

@@ -1,0 +1,164 @@
+{
+  "version": "1.0.0",
+  "name": "Kwork Cover Intelligence → Unified Style Generation",
+  "goal": "По ключевой фразе собрать топ-обложки Kwork, вытащить визуальные паттерны, собрать промпт и сгенерировать оригинальную обложку в едином brand-style автора.",
+  "brand_style_kit": {
+    "purpose": "Один визуальный язык для ВСЕХ будущих кворков (узнаваемость в выдаче).",
+    "scope": "all_niches",
+    "cover_size": {
+      "min_upload": "660x440",
+      "master_generate": "1320x880",
+      "ratio": "3:2",
+      "formats": ["png", "jpg", "jpeg"],
+      "max_mb": 4
+    },
+    "brand_mark": {
+      "placement": "top-left or top-right corner, small CAPS wordmark",
+      "default_candidate": "NODEX",
+      "candidates": ["NODEX", "SYNTRA", "LUMEX", "AXORA", "KLYV"],
+      "wordmark_style": {
+        "text": "NODEX",
+        "fill": "linear gradient #2F6BFF → #00E5A8 (accent to highlight)",
+        "effects": "soft glow matching mint/blue",
+        "not": "solid white"
+      }
+    },
+    "locked_tokens": {
+      "palette": {
+        "bg_primary": "#0B1220",
+        "bg_secondary": "#152238",
+        "accent": "#2F6BFF",
+        "accent_soft": "#5B8CFF",
+        "highlight": "#00E5A8",
+        "text_primary": "#FFFFFF",
+        "text_secondary": "#C9D4E8"
+      },
+      "typography": {
+        "display": "Bold geometric sans (Impact/Montserrat Black style), CAPS for main claim",
+        "secondary": "Medium sans, short benefit chips",
+        "rules": "Максимум 2 шрифтовых роли; без декоративных шрифтов; RU текст крупный и читаемый в thumbnail 414×276"
+      },
+      "composition": {
+        "layout": "Dense split: claim+chips left/top; multi-layer hero right (device + flow + icons). Fill >=80% frame.",
+        "hero": "1 focal object + 2-4 supporting props (screen/chat/table + result icons + flow arrows)",
+        "benefits": "2–4 short chips or icon-bullets",
+        "density": "HIGH — minimal empty void; layered depth, glow trails, motion/drive",
+        "forbidden_layouts": [
+          "large empty navy negative space",
+          "text-left + lonely single orb/molecule on empty right"
+        ]
+      },
+      "motifs": {
+        "allowed": [
+          "3D device + chat/table mock",
+          "data-flow arrows / node trails",
+          "HUD/grid particles as background texture",
+          "result icons (Excel, check, notify)",
+          "subtle overlapping layers for drive"
+        ],
+        "liked_energy_reference": "dense covers with laptop+phone+feature icons+HUD (energy/fill), keep NODEX palette",
+        "avoid_cliches_unless_differentiated": [
+          "белый 3D-робот + Telegram-plane на синем",
+          "лицо продавца",
+          "хаотичный circuit wallpaper без фокуса",
+          "WB/Ozon logo spam"
+        ]
+      },
+      "quality_bar": [
+        "Считывается за 2–3 сек в сетке 4 колонок",
+        "Кадр плотный (≥80%), есть драйв/слои — не пустой минимализм",
+        "Заголовок на обложке ≠ копипаст конкурента",
+        "Маленький wordmark NODEX в углу",
+        "Без стокового шума и без нечитаемой мелочи"
+      ]
+    },
+    "note": "Один kit на все ниши. После feedback 2026-08-07: density HIGH + drive; не возвращаться к пустому минимализму."
+  },
+  "algorithm": {
+    "steps": [
+      {
+        "id": "A1",
+        "name": "Input",
+        "actions": [
+          "Ключевая фраза поиска (например «разработка бота»)",
+          "УТП / оффер автора (1 предложение)",
+          "2–4 преимущества для chips",
+          "Опционально: README/описание услуги"
+        ]
+      },
+      {
+        "id": "A2",
+        "name": "Search scrape",
+        "actions": [
+          "Открыть https://kwork.ru/search?query=<encoded>",
+          "Взять TOP-N карточек (N=8..12)",
+          "Собрать: title, price, rating, cover_url, seller_level badges"
+        ],
+        "tools": ["BrowserMCP / cursor-ide-browser"]
+      },
+      {
+        "id": "A3",
+        "name": "Visual pattern extract",
+        "actions": [
+          "По cover_url / screenshot описать: palette, hero object, typography placement, density, cliché score",
+          "Свести частотный профиль ниши (что повторяется ≥40%)",
+          "Отметить gaps: что почти никто не делает (место для дифференциации)"
+        ]
+      },
+      {
+        "id": "A4",
+        "name": "Competitive insight → differentiation",
+        "actions": [
+          "Не копировать #1 визуально 1:1",
+          "Взять рабочие сигналы ниши (контраст, крупный RU текст, 3:2, короткий claim)",
+          "Добавить brand_style_kit + уникальный hook (объект/метафора/композиция)"
+        ]
+      },
+      {
+        "id": "A5",
+        "name": "Prompt assemble",
+        "template": "KWORK COVER, aspect 3:2, marketplace thumbnail readable at 414x276. Brand style locked: dark navy bg #0B1220 to #152238, accent blue #2F6BFF, mint highlight #00E5A8, white bold geometric sans CAPS. Composition: [layout]. Hero: [unique_object]. On-image text EXACTLY: «[MAIN_CLAIM]». Benefit chips (2-4): [chips]. Style cues from niche (do not copy): [compressed_patterns]. Differentiator: [gap]. Constraints from Kwork packing: readable in 2-3s, no tiny text, no stock clutter, max 2 type roles, sharp RU glyphs, high contrast. Output: single polished cover mockup, not a UI dashboard collage."
+      },
+      {
+        "id": "A6",
+        "name": "Generate",
+        "actions": [
+          "Сформировать промпт (chat/vision по референсам топа опционально)",
+          "Сгенерировать 2 варианта через image API (как в MockupCreate)",
+          "Человек выбирает / регенерирует с тем же style kit"
+        ]
+      },
+      {
+        "id": "A7",
+        "name": "QA gate",
+        "checks": [
+          "Текст на превью читается",
+          "2–4 преимущества видны",
+          "Стиль совпадает с brand_style_kit предыдущих кворков",
+          "Не клон топ-1 конкурента",
+          "Соответствует правилам LightRAG (без перегруза/стока/пустых обещаний на обложке)"
+        ]
+      }
+    ]
+  },
+  "example_for_query_razrabotka_bota": {
+    "niche_signals": [
+      "Telegram blue / robot / phone chat / dark tech glow / CAPS claim"
+    ],
+    "differentiation_idea": "Не ещё один белый робот: тёмный brand-kit + hero = stylized chat-flow / AI node + mint accent chips «под ключ / CRM / оплата»",
+    "sample_main_claim": "СОЗДАМ TELEGRAM-БОТА ПОД БИЗНЕС",
+    "sample_chips": ["логика", "оплата", "CRM", "поддержка"]
+  },
+  "integration_with_mockupcreate": {
+    "reuse": [
+      "Сформировать промпт (README + refs)",
+      "/images/edits при референсах топа",
+      "единый prompt prefix из brand_style_kit"
+    ],
+    "new_needed_later": [
+      "Browser scrape шаг A2",
+      "Хранение brand_style_kit.json",
+      "Пресет размера 3:2 под обложку Kwork"
+    ]
+  }
+}

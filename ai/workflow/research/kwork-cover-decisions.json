@@ -1,0 +1,50 @@
+{
+  "date": "2026-08-07 15:12 UTC+8",
+  "decisions": {
+    "cover_size": {
+      "platform_min": {"w": 660, "h": 440, "ratio": "3:2", "formats": ["jpg", "jpeg", "png"], "max_mb": 4},
+      "evidence": [
+        "proudalenku.ru/oblozhka-kvorka: min 660*440, jpg/jpeg/png, <=4MB",
+        "CDN kwork t3 variant serves exactly 660x440 for cards",
+        "CDN t5 search grid 414x276 (same 3:2)",
+        "TOP originals mostly 3:2 (660x440, 1320x880, 1264x843, 1400x933); outliers 16:9 and 1:1 also accepted then cropped"
+      ],
+      "lightrag_note": "Презентация даёт 800x500 — рабочая рекомендация курса, не жёсткий min платформы. Соотношение близко к landscape; для пайплайна берём канон платформы 3:2.",
+      "generate_master": {"w": 1320, "h": 880, "why": "2x min, встречается у топа (orig-7), чёткий thumbnail"},
+      "export_upload": {"w": 1320, "h": 880, "also_ok": "660x440 если нужен лёгкий файл"}
+    },
+    "brand_on_cover": "yes_small_mark",
+    "brand_locked": {
+      "name": "NODEX",
+      "wordmark": "NODEX",
+      "wordmark_gradient": ["#2F6BFF", "#00E5A8"],
+      "wordmark_note": "gradient fill accent→highlight + soft glow; claim text stays white",
+      "line": "NODEX — связки и автоматизация под задачу",
+      "handle_candidates": ["nodex", "nodex_dev"]
+    },
+    "style_kit_scope": "one_kit_all_niches",
+    "composition_revision": {
+      "date": "2026-08-07",
+      "feedback": "previous covers too empty/simple; liked dense layered refs (laptop+phone+icons+HUD)",
+      "rule": "density HIGH, fill>=80%, multi-layer hero, drive/motion; forbid lonely orb + void",
+      "artifacts": [
+        ".cursor/rules/nodex-kwork-covers.mdc",
+        ".cursor/commands/createKwork.md",
+        "ai/workflow/research/kwork-cover-strategy.json"
+      ]
+    },
+    "chat_ops_mode": {
+      "input": "user writes keyword/phrase in chat",
+      "steps": [
+        "optionally scrape top kworks for phrase",
+        "build final image prompt (NODEX style kit, 1320x880 / 3:2)",
+        "show prompt in chat as separate fenced block",
+        "generate image",
+        "save to Docs/"
+      ],
+      "output_dir": "Docs"
+    }
+  },
+  "brand_locked_at": "2026-08-07 15:33 UTC+8",
+  "recommendation": "NODEX locked. Chat ops: phrase → prompt block → generate → Docs/."
+}

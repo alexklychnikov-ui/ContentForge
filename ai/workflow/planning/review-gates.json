@@ -1,0 +1,57 @@
+{
+  "version": "1.1.0",
+  "product": "ContentForge",
+  "mandatory_roles_per_phase": [
+    "coder",
+    "qa"
+  ],
+  "conditional_roles": {
+    "security_expert": "phase.security_review == true",
+    "devops": "phase id CF-1 or compose/infra diff",
+    "code_simplify_assessor": "every phase",
+    "efficiency_assessor": "phase.efficiency_review == true",
+    "compliance_officer": "CF-8 only"
+  },
+  "finding_policy": {
+    "low": "record, do not block",
+    "middle": "return to implementer, block next phase",
+    "high": "return to implementer, block next phase",
+    "critical": "return to implementer, freeze related secrets/publish paths"
+  },
+  "gates": [
+    {
+      "id": "RG-CF-N",
+      "trigger_after_phase": "EACH",
+      "purpose": "No-pass-no-next: tests + review after every CF phase",
+      "pass_conditions": [
+        "qa must_pass for this phase all green",
+        "coder report result=done",
+        "no open findings middle+",
+        "security_expert pass if required"
+      ],
+      "fail_action": "Return to phase owner (coder/devops). Rerun same phase tests. Do not start next CF-*"
+    },
+    {
+      "id": "RG-A",
+      "trigger_after_phase": "CF-5",
+      "purpose": "Publish engine ready before WP/Gmail",
+      "pass_conditions": [
+        "Publication state machine tests green",
+        "No unresolved security high on tokens",
+        "Telegram adapter contract tests green"
+      ],
+      "fail_action": "Return to CF-5 coder"
+    },
+    {
+      "id": "RG-B",
+      "trigger_after_phase": "CF-8",
+      "purpose": "MVP release readiness",
+      "pass_conditions": [
+        "TZ §18 AC for MVP pass or documented waiver",
+        "No blocker/critical defects",
+        "All mandatory role reports pass"
+      ],
+      "fail_action": "Return to source CF phase of failed AC and repeat RG-B"
+    }
+  ]
+}

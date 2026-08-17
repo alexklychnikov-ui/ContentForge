@@ -1,0 +1,96 @@
+{
+  "version": "1.1.0",
+  "stage": "coding",
+  "phase": "CF-8",
+  "status": "done",
+  "verified_by": "teamlead",
+  "product": "ContentForge",
+  "coding_mvp": "done",
+  "artifacts": [
+    "frontend/src/App.tsx",
+    "frontend/src/main.tsx",
+    "frontend/src/api/client.ts",
+    "frontend/src/api/cf.ts",
+    "frontend/src/api/types.ts",
+    "frontend/src/auth/session.ts",
+    "frontend/src/components/Layout.tsx",
+    "frontend/src/components/MonthGrid.tsx",
+    "frontend/src/screens/AuthPage.tsx",
+    "frontend/src/screens/OnboardingPage.tsx",
+    "frontend/src/screens/DashboardPage.tsx",
+    "frontend/src/screens/CalendarPage.tsx",
+    "frontend/src/screens/PlanPage.tsx",
+    "frontend/src/screens/EditorPage.tsx",
+    "frontend/src/screens/ChannelsPage.tsx",
+    "frontend/src/screens/QueuePage.tsx",
+    "frontend/src/screens/AnalyticsPage.tsx",
+    "frontend/src/screens/AbPage.tsx",
+    "frontend/src/screens/SettingsPage.tsx",
+    "frontend/vite.config.ts",
+    "backend/app/main.py",
+    "logs/cf8-manual-e2e.txt",
+    "ai/workflow/coding/subagent_reports.json",
+    "ai/workflow/coding/stage_checkpoint.json",
+    "ai/workflow/coding/team_review.json"
+  ],
+  "checks": {
+    "vitest": "11 passed (security rerun after JWT logout + password remount)",
+    "tsc": "pass",
+    "pytest": "73 passed, 1 skipped (TELEGRAM_SMOKE), 1 warning",
+    "playwright_compose": "WAIVED not fail; checklist logs/cf8-manual-e2e.txt",
+    "scr_routes": "pass source spot-check App.tsx",
+    "ac_matrix": "pass AC-01..23 backend pytest; AC-11 live skip waived",
+    "rg_cf_n": "pass",
+    "rg_a": "pass (kept from CF-5)",
+    "rg_b": "pass with documented waivers",
+    "compliance_stage_gate": "CF-1..CF-8 no_pass_no_next followed"
+  },
+  "who": {
+    "implement": "coder 46db1027 CF-8 React Router Query RHF Zod RU screens JWT proxy tests",
+    "qa": "1a241150 GATE_PASS findings_middle_plus [] vitest 4 / tsc / pytest 73+1 skip Playwright WARNING not fail",
+    "simplify": "b94da8dd GATE_PASS",
+    "efficiency": "b3854693 GATE_PASS",
+    "security": "d0998609 GATE_PASS JWT empty logout + password remount vitest 11 findings_middle_plus none",
+    "compliance": "teamlead+compliance_officer RG-B pass waivers recorded",
+    "cf7": "teamlead closed GATE_PASS before CF-8"
+  },
+  "waivers": [
+    {
+      "id": "W-CF8-COMPOSE",
+      "item": "live docker-compose stack",
+      "reason": "Docker Hub pull blocked (python:3.12-slim / node:22-alpine, CF-1 class)",
+      "coverage": "local uvicorn + npm run dev is the demo path"
+    },
+    {
+      "id": "W-CF8-PLAYWRIGHT",
+      "item": "Playwright UI E2E vs compose",
+      "reason": "same compose blocker; live accounts not used",
+      "coverage": "QA WARNING not fail; manual checklist logs/cf8-manual-e2e.txt; vitest 11 + tsc; backend pytest AC source of truth"
+    },
+    {
+      "id": "W-CF8-TELEGRAM-SMOKE",
+      "item": "TELEGRAM_SMOKE live AC-11",
+      "reason": "no live Telegram account in CI",
+      "coverage": "mocked AC-11 pytest pass; skip by design"
+    },
+    {
+      "id": "W-CF8-TZ18-LIVE",
+      "item": "TZ §18 manual AC against compose + live TG/WP/Gmail",
+      "reason": "Docker Hub / live accounts unavailable",
+      "coverage": "backend pytest AC-01..23 mocked green; owner signoff via this RG-B waiver"
+    }
+  ],
+  "checks_pass_and_findings_resolved": true,
+  "rg_a": "pass",
+  "rg_b": "pass",
+  "rg_cf_n": "pass",
+  "risks": [
+    "JWT in localStorage (accepted MVP)",
+    "Playwright E2E vs compose not run (waived)",
+    "Live AI/publish needs worker + OPENAI_API_KEY / channel creds",
+    "No jobs list API; dashboard uses client recent-job ids",
+    "Vite --host 0.0.0.0 LAN can reach API via proxy (dev-only)",
+    "Compose images still not pulled"
+  ],
+  "next_step": "MVP demo (uvicorn + npm run dev)"
+}

@@ -1,0 +1,13 @@
+{
+  "version": "1.1.0",
+  "product": "ContentForge",
+  "source": "TZTech.md §9 NFR-SEC NFR-COMP R4 R10",
+  "notes": [
+    "Passwords argon2/bcrypt. Login rate limit 5/10min IP+email.",
+    "Channel secrets encrypted at rest. Not in logs, not in API responses.",
+    "PDN disclaimer checkbox on channel connect.",
+    "Own accounts only. AuditLog on publish, revoke, stopword override.",
+    "Gmail: only active recipients; no purchased lists."
+  ],
+  "open_questions": []
+}

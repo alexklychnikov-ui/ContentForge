@@ -1,0 +1,38 @@
+{
+  "version": "1.1.0",
+  "product": "ContentForge",
+  "source": "TZTech.md UC + §11",
+  "assumptions": ["All persistent domain data in PostgreSQL D1."],
+  "open_questions": [],
+  "entities": ["User", "OpenAI", "Telegram", "WordPress", "GmailSMTP", "VK", "Instagram"],
+  "processes": [
+    { "id": "P1", "name": "Register/login and authorize workspace" },
+    { "id": "P2", "name": "Maintain Brand Kit" },
+    { "id": "P3", "name": "Generate and approve monthly plan" },
+    { "id": "P4", "name": "Generate and edit content variants" },
+    { "id": "P5", "name": "Connect channels and recipients" },
+    { "id": "P6", "name": "Schedule publication" },
+    { "id": "P7", "name": "Publish via adapter with retry/idempotency" },
+    { "id": "P8", "name": "Sync analytics snapshots" },
+    { "id": "P9", "name": "Run A/B experiment" },
+    { "id": "P10", "name": "Write AuditLog" }
+  ],
+  "data_stores": [
+    { "id": "D1", "name": "PostgreSQL (users, brands, plans, content, publications, recipients, experiments, audit)" },
+    { "id": "D2", "name": "Redis broker" },
+    { "id": "D3", "name": "Media volume" },
+    { "id": "D4", "name": "Encrypted channel secrets inside D1" }
+  ],
+  "flows": [
+    "User -> P1 -> D1",
+    "User -> P2 -> D1",
+    "User -> P3 -> D2 -> Workers -> OpenAI -> D1",
+    "User -> P4 -> D2 -> Workers -> OpenAI -> D1",
+    "User -> P5 -> D1 (D4)",
+    "User -> P6 -> D1",
+    "Beat -> P7 -> D1; P7 -> Telegram|WordPress|GmailSMTP",
+    "Beat -> P8 -> channels -> D1",
+    "User -> P9 -> D1 -> P7",
+    "P1..P7 -> P10 -> D1"
+  ]
+}

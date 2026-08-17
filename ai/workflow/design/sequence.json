@@ -1,0 +1,59 @@
+{
+  "version": "1.1.0",
+  "product": "ContentForge",
+  "source": "TZTech.md UC-03 UC-06 UC-09 AC-*",
+  "assumptions": [
+    "OpenAI and channel calls happen in workers.",
+    "Publication source of truth is PostgreSQL."
+  ],
+  "open_questions": [],
+  "participants": [
+    "User",
+    "WebApp",
+    "API",
+    "DB",
+    "Redis",
+    "WorkerAI",
+    "WorkerPublish",
+    "Beat",
+    "OpenAI",
+    "ChannelAdapter"
+  ],
+  "flows": {
+    "uc03_generate_plan": [
+      "User submits month/targets/channels on SCR-PLAN",
+      "API rejects if Brand Kit incomplete (AC-04)",
+      "API creates Job queued, HTTP 202 job_id (AC-20)",
+      "WorkerAI loads brand + holidays + trends",
+      "WorkerAI calls OpenAI structured JSON",
+      "Invalid JSON or count mismatch: Job failed, no ContentPlan persisted (AC-06)",
+      "Valid: ContentPlan draft + PlanItems, Job succeeded",
+      "WebApp polls GET /jobs/{id}",
+      "User edits items, PATCH approve (AC-07)"
+    ],
+    "uc06_autopost": [
+      "User POST /publications schedule with idempotency_key",
+      "API inserts Publication scheduled",
+      "Beat every 1 min selects due rows WHERE status=scheduled FOR UPDATE",
+      "WorkerPublish sets publishing, calls adapter.publish",
+      "Success: published + external_id (AC-11, AC-14, AC-23)",
+      "Same idempotency_key or existing external_id: no duplicate (AC-12)",
+      "Adapter error: failed, retry 1m/5m/15m then dead (AC-13)",
+      "Cancel scheduled: cancelled, not published (AC-15)"
+    ],
+    "uc09_ab_sequential_telegram": [
+      "User creates variant B and experiment mode sequential",
+      "Start creates two Publications T1 and T2",
+      "After window user declare winner (AC-17)"
+    ],
+    "error_paths": [
+      "Wrong password -> invalid_credentials no enumeration (AC-02)",
+      "Foreign brand_id -> 403/404 (AC-03)",
+      "Stopword on publish -> 409 unless Owner override + audit (AC-09)",
+      "Gmail no active recipients -> 409 no_recipients (AC-22)",
+      "Channel GET never includes token (AC-18)",
+      "Revoke channel cancels future publications (AC-19)",
+      "Metrics unavailable -> not zeros (AC-16)"
+    ]
+  }
+}

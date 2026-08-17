@@ -1,0 +1,88 @@
+{
+  "version": "1.1.0",
+  "stage": "planning",
+  "product": "ContentForge",
+  "test_domains": [
+    "unit",
+    "api_integration",
+    "worker_jobs",
+    "adapter_contract",
+    "security",
+    "e2e_ui"
+  ],
+  "ci_policy": {
+    "openai": "always mocked in CI",
+    "telegram_wordpress_gmail": "mocked in CI; optional live smoke env flags",
+    "fail_phase_if": "any must_pass failed or coverage of new module missing tests"
+  },
+  "phase_checks": [
+    {
+      "phase_id": "CF-1",
+      "must_pass": [
+        "docker compose config valid",
+        "GET /health 200 in compose",
+        ".env.example has no real secrets"
+      ]
+    },
+    {
+      "phase_id": "CF-2",
+      "must_pass": [
+        "AC-01 register and duplicate email",
+        "AC-02 invalid_credentials no user enumeration",
+        "AC-03 foreign brand_id 403/404"
+      ]
+    },
+    {
+      "phase_id": "CF-3",
+      "must_pass": [
+        "AC-04 no kit no generate",
+        "AC-05 slot count equals targets; holidays injected or listed",
+        "AC-06 invalid model JSON does not persist plan",
+        "AC-07 approve and month conflict 409/revision",
+        "AC-08 generate and edit variant A",
+        "AC-09 stopword blocks schedule",
+        "AC-10 rewrite selection isolation",
+        "AC-20 generate returns 202"
+      ]
+    },
+    {
+      "phase_id": "CF-4",
+      "must_pass": [
+        "AC-18 GET channels has no token fields"
+      ]
+    },
+    {
+      "phase_id": "CF-5",
+      "must_pass": [
+        "AC-12 idempotency no duplicate",
+        "AC-15 cancel scheduled not published",
+        "AC-19 revoke cancels future",
+        "AC-11 AC-13 mocked adapter; live optional"
+      ]
+    },
+    {
+      "phase_id": "CF-6",
+      "must_pass": [
+        "AC-14 WP mocked publish",
+        "AC-22 no_recipients 409",
+        "AC-23 mocked SMTP sent_count>=1 and secret not in GET/logs"
+      ]
+    },
+    {
+      "phase_id": "CF-7",
+      "must_pass": [
+        "AC-16 unavailable not zeros",
+        "AC-17 sequential experiment two publications",
+        "AC-21 logs have no password/token plaintext"
+      ]
+    },
+    {
+      "phase_id": "CF-8",
+      "must_pass": [
+        "All SCR routes render without crash",
+        "Full AC matrix green or waived with owner signoff",
+        "RG-B pass"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "version": "1.1.0",
+  "status": "derived_from_TZTech_v1.1",
+  "product": "ContentForge",
+  "assumptions": [
+    "TZ §19 defaults apply unless user overrides.",
+    "MVP = TZ §17.1. Reels/video out of MVP.",
+    "Stack from TZ, not portfolio-architecture-guardrails.mdc (Next.js/Prisma).",
+    "Tests use mocked OpenAI and fake channel adapters except optional live smoke behind env flags.",
+    "After every coding phase: qa tests + review; findings middle+ return to coder; no skip."
+  ],
+  "resolved_decisions": {
+    "frontend": "React Vite TypeScript",
+    "backend": "FastAPI",
+    "db": "PostgreSQL + SQLAlchemy 2.x + Alembic",
+    "queue": "Celery + Redis",
+    "ai": "OpenAI API structured JSON",
+    "email_channel": "gmail SMTP app password",
+    "mvp_autopost": ["telegram", "wordpress"],
+    "mvp_email": "gmail_or_manual_copy",
+    "mvp_vk": "manual_copy",
+    "mvp_instagram": "manual_copy",
+    "media": "local ./data/media",
+    "trends": "manual",
+    "roles_mvp": ["owner", "editor"],
+    "ui_locale": "ru"
+  },
+  "env_contract": {
+    "DATABASE_URL": "required",
+    "REDIS_URL": "required",
+    "OPENAI_API_KEY": "required for live AI; tests may mock",
+    "OPENAI_MODEL": "required name, value TBD env",
+    "TOKEN_ENCRYPTION_KEY": "required",
+    "JWT_SECRET": "required",
+    "PUBLIC_API_URL": "required",
+    "PUBLIC_WEB_URL": "required"
+  },
+  "open_questions_non_blocking": [
+    "Q-RES-01 OPENAI_MODEL",
+    "Q-RES-02 Reels later",
+    "Q-RES-03 ignore Next.js guardrail for this product"
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "version": "1.1.0",
+  "product": "ContentForge",
+  "source": "TZTech.md §10",
+  "assumptions": [
+    "Single workspace per registered user at MVP; multi-brand inside workspace.",
+    "External channel APIs called only from Celery workers."
+  ],
+  "open_questions": [],
+  "context": {
+    "system": "ContentForge",
+    "actors": ["Owner", "Editor", "Analyst", "Viewer"],
+    "external_systems": [
+      "OpenAI API",
+      "Telegram Bot API",
+      "WordPress REST",
+      "Gmail SMTP",
+      "VK API",
+      "Instagram Graph API"
+    ],
+    "scope": [
+      "Monthly AI content plan with RU holidays and manual trends",
+      "Generate and edit social posts, articles, emails",
+      "Schedule and autopost Telegram and WordPress in MVP",
+      "Gmail send to own recipient list or manual_copy",
+      "Unified analytics with honest unavailable",
+      "Sequential A/B on Telegram"
+    ]
+  },
+  "containers": [
+    {
+      "name": "WebApp",
+      "tech": "React Vite TypeScript",
+      "responsibility": [
+        "Screens SCR-AUTH..SCR-SET",
+        "Job polling",
+        "No channel tokens in client"
+      ]
+    },
+    {
+      "name": "API",
+      "tech": "FastAPI",
+      "responsibility": [
+        "REST /api/v1",
+        "Auth JWT",
+        "Pydantic validation",
+        "Enqueue Celery jobs",
+        "Never publish in request thread"
+      ]
+    },
+    {
+      "name": "Workers",
+      "tech": "Celery",
+      "responsibility": [
+        "ai queue: generate_plan, generate_content, rewrite",
+        "publish queue: publish_due, retry_publish",
+        "sync queue: metrics, channel health",
+        "beat: scan due publications every 1 min"
+      ]
+    },
+    {
+      "name": "Database",
+      "tech": "PostgreSQL",
+      "responsibility": ["Source of truth for plans, content, publications, audit"]
+    },
+    {
+      "name": "Broker",
+      "tech": "Redis",
+      "responsibility": ["Celery broker/result backend; not schedule source of truth"]
+    },
+    {
+      "name": "MediaStore",
+      "tech": "local volume ./data/media",
+      "responsibility": ["Image blobs for posts"]
+    }
+  ],
+  "components": [
+    "api",
+    "domain",
+    "ai",
+    "adapters.telegram",
+    "adapters.wordpress",
+    "adapters.gmail",
+    "adapters.vk",
+    "adapters.instagram",
+    "workers",
+    "crypto"
+  ],
+  "relationships": [
+    "WebApp -> API",
+    "API -> Database",
+    "API -> Broker",
+    "API -> OpenAI (orchestration enqueue; worker calls OpenAI)",
+    "Workers -> Database",
+    "Workers -> Broker",
+    "Workers -> OpenAI",
+    "Workers -> Telegram|WordPress|Gmail|VK|Instagram",
+    "Workers -> MediaStore"
+  ]
+}

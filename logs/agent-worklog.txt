@@ -1,0 +1,564 @@
+﻿[2026-08-17 13:33] Bootstrap
+Source: C:\Python\Projects\MockupCreate
+Orchestrator template copied. Chat: /team-workflow — этапы research -> design -> planning -> coding.
+
+[2026-08-17 13:36] v0.1 research ContentForge
+Prompt: составь план реализации проекта; после каждого этапа проверка кода и тесты в субагенте; team-orchestrator + TZTech.md
+Done: fact log + ambiguities from TZTech.md v1.1 and repo scan. No code. No new product decisions.
+Artifacts: ai/workflow/research/contentforge-fact-log.json, contentforge-ambiguities.json
+status: done | verified_by: teamlead
+next_step: design
+
+[2026-08-17 13:36] v0.2 design ContentForge
+Prompt: same
+Done: replaced leftover Mockup C4/DFD/Sequence/API with ContentForge from TZ §10-12. Assumptions: TZ §19 defaults; ignore Next.js portfolio guardrail for this product; Reels out of MVP.
+Artifacts: ai/workflow/design/{c4,dfd,sequence,api-contract,design-inputs,security-notes}.json
+status: done | verified_by: teamlead
+next_step: planning
+
+[2026-08-17 13:36] v0.3 planning ContentForge
+Prompt: same
+Done: 8 coding phases CF-1..CF-8 with after-every-phase loop coder->qa->(security)->simplify; middle+ returns to coder. QA map to AC-*. RG-A after CF-5, RG-B after CF-8.
+Artifacts: ai/workflow/planning/{implementation-plan,qa-test-plan,review-gates}.json
+Coding not started.
+status: done | verified_by: teamlead
+next_step: user starts coding CF-1
+
+[2026-08-17 13:48] CF-1 coding ContentForge
+Prompt: CF-1 implementer (devops+coder): runnable skeleton FastAPI+Vite+compose+Alembic+pytest; not CF-2+.
+Done: backend FastAPI GET /health + /api/v1/health, Celery ping, Alembic baseline (migrations/), frontend Vite React TS shell, docker-compose (api/worker/postgres/redis/frontend), .env.example names only, .gitignore, pytest 4 passed. Live uvicorn GET /health 200. compose config valid. compose up blocked: cannot pull python:3.12-slim/node:22-alpine.
+Artifacts: backend/, frontend/, docker-compose.yml, .env.example, .gitignore
+status: pending_qa | verified_by: coder/devops
+next_step: qa then security_expert
+
+[2026-08-17 13:50] CF-1 code_simplify_assessor
+Prompt: Review NEW scaffold only (backend/, frontend/, compose, Alembic, tests). Ignore leftover kwork JSON. No CF-2. No large-refactor. Look for overengineering, inline imports, duplicate health, extra frameworks. Merge subagent_reports.json. GATE_PASS|GATE_FAIL.
+Done: Reviewed scaffold. No inline imports. Stack matches TZ appendix C. Dual /health + /api/v1/health is low (same handler). pytest/httpx in image low. Empty workers/ placeholder low. No middle+.
+Artifacts: ai/workflow/coding/subagent_reports.json
+verdict: GATE_PASS | findings_middle_plus: none | handoff: teamlead
+
+[2026-08-17 13:49] CF-1 QA ContentForge
+Prompt: QA CF-1 only; must_pass compose config + GET /health (compose OR pytest) + .env.example no secrets; also pytest /health, worker import, alembic history; compose up hang = WARNING if config+pytest pass.
+Done: compose config pass (5 services). pytest 4 passed (/health + worker import). alembic <base>->0001_baseline. .env.example empty keys, .env gitignored, no .env file. postgres/redis compose up healthy. python:3.12-slim/node:22-alpine missing locally — full stack WARNING not fail.
+Artifacts: ai/workflow/coding/subagent_reports.json (qa CF-1 merged; coder/devops kept)
+result: done | verdict: GATE_PASS | findings_middle_plus: none
+next_step: security_expert; do not start CF-2
+
+[2026-08-17 13:50] CF-1 security_expert ContentForge
+Prompt: CF-1 secrets/docker; no CF-2; tiny fixes ok (gitignore, example env, Dockerfile user). GATE fail only middle+ (real secret committed, key in source). Trivial compose DB password = low.
+Done: no real secrets in tree; .env.example names only; health {status:ok}; no secret logging. Tiny fixes: gitignore .env.*, dockerignore .env, non-root USER in Dockerfiles, local-dev comments on compose/.env.example. Lows: postgres contentforge/contentforge, JWT placeholder, redis no AUTH, CORS/docs.
+Artifacts: ai/workflow/coding/subagent_reports.json (security_expert CF-1 merged)
+result: done | GATE_PASS | findings_middle_plus: none
+next_step: teamlead / code_simplify_assessor; do not start CF-2
+
+[2026-08-17 13:51] CF-1 closed ContentForge
+Prompt: teamlead CF-1 gate close; no app code; do not start CF-2. Merge RG-CF-N into team_review; mockup leftovers archived not current.
+Done: CF-1 closed. coder/devops 7730df9e scaffold done. qa 8d19c45e GATE_PASS findings_middle_plus []. security 8d9b5923 GATE_PASS findings_middle_plus [] tiny docker/gitignore. simplify 167a1ace GATE_PASS findings_middle_plus none. Lows only: compose image pull warning, local postgres/jwt placeholders, duplicate /health, pytest in runtime image.
+Artifacts: ai/workflow/coding/stage_checkpoint.json, ai/workflow/coding/team_review.json, logs/agent-worklog.txt
+stage: coding
+status: done
+verified_by: teamlead
+artifacts: backend/, frontend/, docker-compose.yml, .env.example, .gitignore, stage_checkpoint.json, team_review.json
+risks: compose pull python:3.12-slim/node:22-alpine; local postgres/jwt placeholders; duplicate /health; pytest in runtime image
+next_step: wait user to start CF-2
+checks: qa_gate passed, security_gate passed, simplify_gate passed
+checks_pass_and_findings_resolved: true
+result: GATE_PASS | findings_middle_plus: none | phase CF-1 done | RG-CF-N pass
+
+[2026-08-17 14:09] CF-2 coding ContentForge
+Prompt: CF-2 implementer (coder): Identity, Brand Kit, isolation, catalogs. FastAPI+SQLAlchemy+Alembic. AC-01 AC-02 AC-03. Do not start CF-3+.
+Done: User/Workspace/Membership(owner|editor + analyst/viewer enum)/BrandProfile/Holiday/TrendSignal + Alembic 0002_identity. Auth register/login/refresh/logout JWT argon2, login rate limit 5/10min IP+email. Register creates workspace owner; duplicate email_taken. Login invalid_credentials no enumeration. Brands CRUD, DELETE owner-only, onboarding_completed_at. Membership isolation: foreign brand_id 404. GET /holidays seed RU 2026-2027; optional POST brand holidays. Trends CRUD + PATCH archive. generate-plan stub blocks without kit (409), 501 if complete (no OpenAI/Celery). pytest 16 passed. Envelope {error:{code,message,details}}.
+Artifacts: backend/app/{models,security,errors,deps,schemas,api/auth,api/brands,api/catalogs,services/*}, backend/migrations/versions/0002_identity.py, backend/tests/test_ac_*.py
+status: pending_qa | verified_by: coder
+next_step: qa CF-2; do not start CF-3
+
+[2026-08-17 14:11] CF-2 QA ContentForge
+Prompt: QA CF-2 only; must_pass AC-01/AC-02/AC-03; pytest backend; alembic 0002; error envelope; no password/token in GET brands. Do not implement CF-3. Keep CF-1 and coder reports.
+Done: pytest 16 passed (0.71s/0.73s). AC-01 register 201 owner + duplicate 409 email_taken. AC-02 wrong/unknown login 401 identical invalid_credentials envelope. AC-03 foreign brand 404 not_found same as missing UUID, list empty, no kit leak. alembic 0001_baseline -> 0002_identity (head). GET /brands keys have no password/token. Envelope {error:{code,message,details}} on 409/401/404/422. Lows only: tautological duplicate-email test assert; TestClient deprecation warning. No middle+.
+Artifacts: ai/workflow/coding/subagent_reports.json (qa CF-2 merged; CF-1 + coder kept)
+result: done | verdict: GATE_PASS | findings_middle_plus: none
+next_step: security_expert; do not start CF-3
+
+[2026-08-17 14:12] CF-2 security_expert ContentForge
+Prompt: CF-2 auth isolation; JWT/argon2/rate-limit/brand isolation; no secrets in GET/logs; tiny auth fixes ok; GATE fail only middle+ (enumeration, hash leak, broken isolation). Merge subagent_reports.json.
+Done: AC-02 same invalid_credentials envelope + dummy argon2. AC-03 foreign brand 404 no payload. argon2id. JWT placeholder not a prod key. Login 5/10min IP+email. GET brands/UserPublic have no password_hash/tokens. CORS origins already PUBLIC_WEB_URL (methods/headers * = low, no token theft). Tiny fix: PATCH /trends/{id} foreign vs missing now same 404. pytest 16 passed.
+Artifacts: backend/app/services/brand_service.py, backend/tests/test_catalogs.py, ai/workflow/coding/subagent_reports.json
+result: done | GATE_PASS | findings_middle_plus: none
+next_step: teamlead; do not start CF-3
+
+[2026-08-17 14:12] CF-2 code_simplify_assessor
+Prompt: Review NEW CF-2 code: auth, brands, catalogs, models, services, tests. No CF-3. No large refactor. Tiny slop cleanup ok. Overengineering, inline imports, duplication, unused layers. middle+ blocks gate. Merge subagent_reports.json. handoff teamlead.
+Done: Reviewed CF-2 surface. No unused layers, no extra frameworks, no inline imports in app. generate-plan 409/501 stub is in-plan not CF-3. Tiny cleanup: dead logout per-jti branch after revoke-all; brand_to_public typed BrandProfile. pytest 12 passed on AC/catalog tests. Lows: duplicated owner-first membership pick; TrendUpdate archived+status dual field; duplicate test _error + email validators. No middle+.
+Artifacts: ai/workflow/coding/subagent_reports.json (code_simplify_assessor CF-2 merged)
+result: done | verdict: GATE_PASS | findings_middle_plus: none
+handoff: teamlead
+
+[2026-08-17 14:13] CF-2 closed ContentForge
+Prompt: teamlead CF-2 gate close; no app code; do not start CF-3. Merge RG-CF-N into team_review; keep CF-1.
+Done: CF-2 closed GATE_PASS. coder 10ec7208 done pytest 16 AC-01/02/03. qa b5d613a2 GATE_PASS findings_middle_plus []. security 7d4ce85d GATE_PASS tiny PATCH trends 404 oracle fix, findings_middle_plus []. simplify 34426201 GATE_PASS tiny logout/brand_to_public cleanup. Lows only: tautological duplicate-email assert, TestClient deprecation, in-process rate limit, JWT placeholder, CORS methods/headers *, access JWT TTL after logout, duplicated owner-first pick, TrendUpdate dual field, duplicate test helpers.
+Artifacts: ai/workflow/coding/stage_checkpoint.json, ai/workflow/coding/team_review.json, logs/agent-worklog.txt
+stage: coding
+status: done
+verified_by: teamlead
+artifacts: backend/app/{models,api/auth,api/brands,api/catalogs,services,schemas}, backend/migrations/versions/0002_identity.py, backend/tests/test_ac_*.py, stage_checkpoint.json, team_review.json
+risks: process-local login rate limit; JWT placeholder; access JWT TTL after logout; compose pull; duplicate /health; pytest SQLite vs Alembic; generate-plan CF-3 stub
+next_step: wait user to start CF-3
+checks: qa_gate passed, security_gate passed, simplify_gate passed
+checks_pass_and_findings_resolved: true
+result: GATE_PASS | findings_middle_plus: none | phase CF-2 done | RG-CF-N pass
+
+
+[2026-08-17 14:29] CF-3 coding ContentForge
+Prompt: CF-3 implementer (coder): async AI plan + content variants, JSON schema, Celery ai queue, HTTP 202 jobs. Not CF-4+ (no channel tokens, no Telegram publish, no Gmail).
+Done: Job/ContentPlan/PlanItem/ContentPiece/ContentVariant/AuditLog + Alembic 0003. Celery queue ai: generate_plan, generate_content, rewrite. OpenAI structured JSON + one repair; count mismatch schema_count_mismatch; failed job does not persist ContentPlan. Brand kit required. Unique active plan 409 plan_active_exists; draft confirm; approved create_revision. Variant A generate/PATCH/rewrite selection isolation. Stopwords on schedule stub + Owner override AuditLog. pytest 29 passed with mocked OpenAI (AC-04..10, AC-20). TESTING=1 runs jobs inline.
+Artifacts: backend/app/models.py, migrations/0003_plans_content.py, api/{plans,content,jobs,publish}.py, services/{ai_*,job_*,plan_*,content_*,stopwords,audit,publish_service}.py, tests/test_ac_plans.py test_ac_content.py
+status: pending_qa | verified_by: coder
+next_step: qa; do not start CF-4
+
+[2026-08-17 14:35] CF-3 efficiency_assessor ContentForge
+Prompt: efficiency_assessor CF-3 async AI jobs. Check HTTP 202 not blocking OpenAI off TESTING; no N+1; generate not in request thread except TESTING=1 documented; prompt/token logs not huge payloads. middle+= request-thread OpenAI / unbounded retries / load entire DB for month plan. Tiny fixes only if bug. Do not start CF-4. Merge subagent_reports.json. handoff teamlead.
+Done: GATE_PASS. Production 202 -> Celery .delay; OpenAI only in job_runner/ai_jobs. TESTING=1 inline only in pytest conftest (documented; compose unset). selectinload on plan/content lists; plan items batched add. 1 repair + no Celery autoretry. Logs model+token counts only. Lows: inflight job scan, trends date-filter in Python, unbounded targets, enqueue-before-commit miss. No middle+. No app code change.
+stage: coding
+status: pending_teamlead
+verified_by: efficiency_assessor
+artifacts: ai/workflow/coding/subagent_reports.json
+risks: TESTING=1 on API would inline OpenAI; delay() before commit can miss job
+next_step: teamlead; do not start CF-4
+result: GATE_PASS | findings_middle_plus: none
+
+[2026-08-17 14:36] CF-3 code_simplify_assessor
+Prompt: Review NEW AI plan/content/job code only. No CF-4. No large refactor. Tiny slop ok. Overengineering, inline imports, duplicate OpenAI wrappers, unused abstractions. middle+ blocks gate. Merge subagent_reports.json role code_simplify_assessor CF-3. verdict GATE_PASS or GATE_FAIL. handoff teamlead.
+Done: Reviewed CF-3 AI/jobs/plan/content. One OpenAI wrapper (ai_client.complete_json + 1 repair). No inline imports, no ABC/repo, no second client. Celery 3 named tasks all call run_job_in_worker. Tiny cleanup: unused Locale import, unused JobAccepted in plans.py. pytest 29 passed. Lows: duplicated brand context; PlanStatus.generating never written; enqueue/rewrite checks copied 3x. No middle+.
+Artifacts: ai/workflow/coding/subagent_reports.json (code_simplify_assessor CF-3 merged)
+result: done | verdict: GATE_PASS | findings_middle_plus: none
+handoff: teamlead
+
+[2026-08-17 14:33] CF-3 QA ContentForge
+Prompt: QA CF-3 only; must_pass AC-04..10 AC-20; pytest backend; OpenAI mocked no live key; failed JSON does not leave ContentPlan. Do not implement. Do not start CF-4. Merge subagent_reports.json role qa CF-3. GATE_PASS or GATE_FAIL. findings_middle_plus. handoff code_simplify_assessor and efficiency_assessor (security_review false).
+Done: GATE_PASS. pytest 29 passed with OPENAI_API_KEY unset (1.38s, re-run 1.26s). Isolated dump: AC-06 invalid/mismatch -> job failed, ContentPlan=0 PlanItem=0; AC-05 4 slots + Новый год in themes and panel; AC-09 409 stopword then Owner 501+AuditLog; AC-08 article/email also generate+edit; AC-10 AAA NEW:BBB CCC; AC-20 202 then succeeded. _call_openai patched to AssertionError. alembic 0003 head. findings_middle_plus empty. Lows: AC-08 test only social_post; TESTING=1 inline; confirm archives before AI; TestClient warning; SQLite vs Alembic.
+stage: coding
+status: pending_assessors
+verified_by: qa
+artifacts: ai/workflow/coding/subagent_reports.json
+risks: live OpenAI untested; publications 501 stub; TESTING=1 not Celery
+next_step: code_simplify_assessor and efficiency_assessor; do not start CF-4
+result: GATE_PASS | findings_middle_plus: none
+
+[2026-08-17 14:33] CF-3 closed ContentForge
+Prompt: teamlead CF-3 gate close; no app code; do not start CF-4. Merge RG-CF-N into team_review; keep CF-1, CF-2. security_review false.
+Done: CF-3 closed GATE_PASS. coder 9b6b3707 done pytest 29 AC-04..10 AC-20. qa 0efae415 GATE_PASS findings_middle_plus []. simplify 26dc36f2 GATE_PASS unused import cleanup. efficiency 48fef1d2 GATE_PASS prod 202+Celery findings_middle_plus []. security_review false — not required.
+Artifacts: ai/workflow/coding/stage_checkpoint.json, ai/workflow/coding/team_review.json, logs/agent-worklog.txt
+stage: coding
+status: done
+verified_by: teamlead
+artifacts: backend/app/{models,api/plans,api/content,api/jobs,api/publish,services/ai_*,job_*,plan_*,content_*,stopwords}, backend/migrations/versions/0003_plans_content.py, backend/tests/test_ac_plans.py test_ac_content.py, stage_checkpoint.json, team_review.json
+risks: live OpenAI untested; TESTING=1 would inline OpenAI; delay() before commit can miss job; confirm archives before AI; publications 501 stub; pytest SQLite vs Alembic
+next_step: wait user to start CF-4
+checks: qa_gate passed, simplify_gate passed, efficiency_gate passed
+checks_pass_and_findings_resolved: true
+result: GATE_PASS | findings_middle_plus: none | phase CF-3 done | RG-CF-N pass
+
+[2026-08-17 14:43] CF-4 coding ContentForge
+Prompt: CF-4 implementer (coder): encrypted channel credentials, media upload, Gmail recipients. Not CF-5+ (no Telegram/WP/Gmail live publish). Health stubs OK. AC-18, no_recipients in publish stub, PDN consent, Fernet TOKEN_ENCRYPTION_KEY.
+Done: ChannelAccount/EmailRecipient/MediaAsset + Alembic 0004. Fernet at rest; GET /channels without token fields (AC-18). Credentials POST telegram/wordpress/gmail/vk/instagram + pdn_consent required. Health stub by ciphertext. DELETE revoke wipes secrets. Media POST 10MB jpeg/png/webp ./data/media checksum. Recipients CRUD unique lowercase 409 recipient_exists. Gmail/email schedule without active recipients 409 no_recipients then 501 stub. pytest 41 passed. conftest generates test Fernet key; missing key fails fast.
+Artifacts: backend/app/models.py, migrations/0004_channels_media_recipients.py, api/{channels,recipients,media}.py, services/{token_crypto,channel_service,recipient_service,media_service,publish_service}.py, tests/test_ac_channels.py test_ac_recipients.py test_ac_media.py, stage_checkpoint.json, subagent_reports.json
+status: pending_qa | verified_by: coder
+next_step: qa and security_expert; do not start CF-5+
+
+[2026-08-17 14:45] CF-4 code_simplify_assessor
+Prompt: Review NEW channels/media/recipients/crypto code. No CF-5. Tiny slop ok. middle+ blocks. Merge subagent_reports.json code_simplify_assessor CF-4. verdict GATE_PASS or GATE_FAIL. handoff teamlead.
+Done: Reviewed CF-4 crypto/channels/media/recipients. One Fernet wrapper. No ChannelAdapter/ABC/repo. No inline imports. Tiny cleanup: merged duplicate except unlink in media_service. pytest 41 passed. Lows: god credentials request, WP blog_url+site_url, 404 remap x3. No middle+.
+Artifacts: ai/workflow/coding/subagent_reports.json (code_simplify_assessor CF-4 merged)
+result: done | verdict: GATE_PASS | findings_middle_plus: none
+handoff: teamlead
+
+[2026-08-17 14:46] CF-4 security_expert ContentForge
+Prompt: security_expert CF-4: Fernet channel secrets, GET never leaks tokens, logs, media upload, pdn consent. Tiny security fixes OK. GATE fail middle+: plaintext tokens in API/DB without encrypt, secret in GET /channels, TOKEN_ENCRYPTION_KEY hardcoded prod key in repo. Do not start CF-5. Merge subagent_reports.json. handoff teamlead or coder.
+Done: GATE_PASS. Fernet at rest on token_ciphertext/refresh_ciphertext; GET /channels + credentials 201 have no token fields (AC-18). No prod Fernet key in repo (.env.example empty, compose interpolates). pdn_consent required 400. No secret logs/audit. Tiny fix: media_file_path confined to media_root + FileResponse nosniff. pytest 43 passed. Lows: health stub, media volume perms, recipient emails plaintext, TESTING skip fail-fast.
+Artifacts: backend/app/services/media_service.py, backend/app/api/media.py, backend/tests/test_ac_media.py, ai/workflow/coding/subagent_reports.json
+result: done | GATE_PASS | findings_middle_plus: none
+next_step: teamlead; do not start CF-5
+
+[2026-08-17 14:47] CF-4 QA ContentForge
+Prompt: QA CF-4 only; must_pass AC-18 GET channels has no token fields. Also verify recipient unique 409, media size/mime reject, encrypt roundtrip, pdn consent required, gmail no_recipients 409 on publish stub, secrets not in GET. Run pytest. Do not start CF-5. Merge subagent_reports.json role qa CF-4. GATE_PASS or GATE_FAIL. findings_middle_plus. handoff security_expert.
+Done: GATE_PASS. pytest 43 passed OPENAI_API_KEY unset (1.88s; first run 41 then 43 after security media tests). Independent dump: GET /channels 5 types, SECRET_KEY_HIT [] SECRET_VALUE_HIT []. Recipient Owner@Example.com -> 201 lowercase then 409 recipient_exists. Media PNG 201 / txt 415 / >10MB 413. Fernet roundtrip True. pdn omit/false 400 pdn_consent_required. Gmail schedule no recipients 409 then with recipient 501 stub. alembic 0004 head. findings_middle_plus empty. Lows: AC-18 test telegram-only; TestClient warning; SQLite vs Alembic; meta dict filter vs password_hash.
+stage: coding
+status: pending_security
+verified_by: qa
+artifacts: ai/workflow/coding/subagent_reports.json
+risks: health stub; publications 501; revoke != AC-19; pytest SQLite
+next_step: security_expert; do not start CF-5
+result: GATE_PASS | findings_middle_plus: none
+
+[2026-08-17 14:48] CF-4 closed ContentForge
+Prompt: teamlead CF-4 gate close; no app code; do not start CF-5. Merge RG-CF-N into team_review; keep CF-1, CF-2, CF-3.
+Done: CF-4 closed GATE_PASS. coder 9a5e3318 done pytest 41 then 43 after security tiny fix. qa a33455be GATE_PASS AC-18 findings_middle_plus []. security 3a289be7 GATE_PASS media path+nosniff. simplify 611f1e20 GATE_PASS media except merge.
+Artifacts: ai/workflow/coding/stage_checkpoint.json, ai/workflow/coding/team_review.json, logs/agent-worklog.txt
+stage: coding
+status: done
+verified_by: teamlead
+artifacts: backend/app/{models,api/channels,api/recipients,api/media,services/token_crypto,channel_service,recipient_service,media_service,publish_service}, backend/migrations/versions/0004_channels_media_recipients.py, backend/tests/test_ac_channels.py test_ac_recipients.py test_ac_media.py, stage_checkpoint.json, team_review.json
+risks: health stub ciphertext-presence; publications 501 after no_recipients; revoke != AC-19; media volume perms; recipient emails plaintext; pytest SQLite vs Alembic
+next_step: wait user to start CF-5
+checks: qa_gate passed, security_gate passed, simplify_gate passed
+checks_pass_and_findings_resolved: true
+result: GATE_PASS | findings_middle_plus: none | phase CF-4 done | RG-CF-N pass
+
+[2026-08-17 15:01] CF-5 coding ContentForge
+Prompt: CF-5 implementer (coder): Publication state machine + Telegram adapter (live optional). Do NOT implement WordPress/Gmail live send (CF-6). VK/IG stay manual_copy. TZ FR-PUB §13.4 AC-11/12/13/15/19. Atomic scheduled→publishing, Beat scan DB every 1 min, retry 1/5/15 then dead, watchdog ~10m, idempotency, cancel, revoke cancels future. pytest mocked Telegram HTTP. TELEGRAM_SMOKE=1 optional. Don't commit.
+Done: Publication model+Alembic 0005; ChannelAdapter; Telegram sendMessage/sendPhoto HTML escape; parse 400 no retry storm; POST schedule 201/200 idempotency; cancel/retry/mark-manual; revoke AC-19; Celery beat publish_due crontab minute=*; compose beat service. pytest 51 passed, 1 skipped (live smoke). AC-09 override 201; gmail with recipients 201 scheduled (no SMTP). No WP/Gmail live send.
+Artifacts: backend/app/{models,services/adapters/*,services/publish_service,services/publish_worker,api/publish,celery_app}, backend/migrations/versions/0005_publications.py, backend/tests/test_ac_publish.py, docker-compose.yml beat, stage_checkpoint.json, subagent_reports.json
+status: pending_qa | verified_by: coder
+next_step: qa + security_expert + efficiency_assessor; do not start CF-6
+
+[2026-08-17 15:04] CF-5 efficiency_assessor ContentForge
+Prompt: efficiency_assessor CF-5. Check Beat scan not full-table disaster, claim atomic, retry bounded, no request-thread live Telegram in prod. Do not start CF-6. Tiny comments only unless real bug (unbounded scan all publications every minute without index/filter). middle+= scanning all rows without scheduled filter, or infinite retry. Merge subagent_reports.json. verdict GATE_PASS or GATE_FAIL. handoff teamlead.
+Done: no code. Beat SELECT id WHERE status=scheduled AND scheduled_at<=now + ix_publications_status_scheduled_at. Claim UPDATE status=publishing WHERE id+scheduled+due, rowcount==1. MAX_ATTEMPTS=3, parse_error no retry, celery no autoretry. sendMessage only in publish_worker via beat/worker, not API schedule/retry. Lows: no LIMIT on due tick; manual_copy re-claim every minute; POST health getMe in API thread; GET publications no pagination.
+stage: coding | status: open | verified_by: efficiency_assessor
+artifacts: ai/workflow/coding/subagent_reports.json, logs/agent-worklog.txt
+risks: overlapping ticks row-lock; poison non-AdapterError rollback batch; health getMe can block API 30s
+next_step: teamlead; do not start CF-6
+result: GATE_PASS | findings_middle_plus: none
+
+[2026-08-17 15:05] CF-5 code_simplify_assessor
+Prompt: Review NEW publish/adapter/worker code. No CF-6. Tiny slop ok. middle+ blocks. Merge subagent_reports.json code_simplify_assessor CF-5. verdict GATE_PASS or GATE_FAIL. handoff teamlead.
+Done: Reviewed adapters/publish_service/publish_worker/api/celery. ChannelAdapter ABC is TZ 10.4 not extra repo/usecase. One telegram_api wrapper. WP/Gmail=ManualCopy no live SMTP. No inline imports. No code change (tiny slop left). Lows: stub_health name, unused draft status, fetch_metrics unused until CF-7, supports_autopost vs publish() dual path, optional channel_account_id. No middle+.
+Artifacts: ai/workflow/coding/subagent_reports.json (code_simplify_assessor CF-5 merged)
+result: done | verdict: GATE_PASS | findings_middle_plus: none
+handoff: teamlead
+
+[2026-08-17 15:05] CF-5 QA ContentForge
+Prompt: QA CF-5 only; must_pass AC-12 idempotency no duplicate, AC-15 cancel scheduled not published, AC-19 revoke cancels future, AC-11 AC-13 mocked adapter live optional. Run pytest. Do not start CF-6. Merge subagent_reports.json role qa CF-5. GATE_PASS or GATE_FAIL. findings_middle_plus. handoff security_expert.
+Done: GATE_PASS. pytest 51 passed, 1 skipped (test_ac11_live_smoke TELEGRAM_SMOKE unset), 1 warning, 2.40s. Independent dump: AC-12 same key 201 then 200 same id, replay published 42, retry 409, sends=1 rows=1. AC-15 cancel 200 cancelled, worker sends=0. AC-19 revoke 204 future cancelled published stays published ext=42. AC-11 due -> published 42 one sendMessage, token not in GET. AC-13 unauthorized 3 attempts then dead, token not in error. alembic 0005 head. WP/Gmail ManualCopy stay scheduled. findings_middle_plus empty. Lows: AC-13 TZ failed vs scheduled-until-dead; 15m delay unused; AC-19 test gap on published history; TestClient warning; SQLite vs Alembic.
+stage: coding
+status: pending_security
+verified_by: qa
+artifacts: ai/workflow/coding/subagent_reports.json
+risks: live telegram untested in CI; WP/Gmail until CF-6; crash-after-send duplicate; pytest SQLite
+next_step: security_expert; do not start CF-6
+result: GATE_PASS | findings_middle_plus: none
+
+[2026-08-17 15:06] CF-5 security_expert ContentForge
+Prompt: security_expert CF-5: bot token not logged/returned, Telegram HTTP, publish authz, revoke. Tiny fixes OK. GATE fail middle+: token in logs/API, unauthenticated publish, SSRF via telegram API URL if user-controlled. Do not start CF-6. Merge subagent_reports.json. handoff teamlead or coder.
+Done: GATE_PASS. No middle+. Tiny fix: Telegram method allowlist, path-safe token, httpx follow_redirects=False trust_env=False, HTTPError not chained. Tests: 401/stranger 404/viewer 403, SSRF URL pin, description redact. pytest 56 passed, 1 skipped. Publish routes JWT; live send only in worker; revoke clears ciphertext + cancels scheduled. Lows: in-flight TOCTOU after revoke; token in Telegram URL by Bot API; idempotency 409 oracle; Redis no password.
+stage: coding | status: open | verified_by: security_expert
+artifacts: backend/app/services/adapters/telegram.py, backend/tests/test_ac_publish.py, ai/workflow/coding/subagent_reports.json, logs/agent-worklog.txt
+risks: in-flight send after revoke; httpx DEBUG would log bot URL; WP/Gmail CF-6
+next_step: teamlead; do not start CF-6
+result: GATE_PASS | findings_middle_plus: none
+
+[2026-08-17 15:07] CF-5 closed ContentForge
+Prompt: teamlead CF-5 gate close including RG-A; no app code; do not start CF-6. Merge RG-CF-N into team_review; keep CF-1..CF-4. RG-A pass.
+Done: CF-5 closed GATE_PASS RG-A pass. coder d910fefb done pytest 51+1 skip. qa b64dbc48 GATE_PASS AC-11/12/13/15/19. simplify 7755b322 GATE_PASS. efficiency 7aaf09d8 GATE_PASS. security 365ab13e GATE_PASS telegram HTTP pin pytest 56+1 skip findings_middle_plus none. RG-A: Publication SM tests green, no security high on tokens, Telegram adapter contract tests green.
+Artifacts: ai/workflow/coding/stage_checkpoint.json, ai/workflow/coding/team_review.json, logs/agent-worklog.txt
+stage: coding
+status: done
+verified_by: teamlead
+artifacts: backend/app/{models,api/publish,services/publish_service,services/publish_worker,services/adapters/*,services/channel_service,celery_app}, backend/migrations/versions/0005_publications.py, backend/tests/test_ac_publish.py, docker-compose.yml beat, stage_checkpoint.json, team_review.json
+risks: live telegram untested in CI; WP/Gmail until CF-6; crash-after-send duplicate; in-flight revoke TOCTOU; overlapping tick row-locks; pytest SQLite vs Alembic
+next_step: wait user to start CF-6
+checks: qa_gate passed, security_gate passed, simplify_gate passed, efficiency_gate passed, RG-A pass
+checks_pass_and_findings_resolved: true
+result: GATE_PASS | findings_middle_plus: none | phase CF-5 done | RG-CF-N pass | RG-A pass
+
+[2026-08-17 15:17] CF-6 coding ContentForge
+Prompt: CF-6 implementer (coder): WP REST + Gmail SMTP MVP autopost. AC-14 AC-22 AC-23. VK/IG stay ManualCopy/AdapterCapabilityError. No IG Graph / VK wall.post. No CF-7. Mocked pytest. Don't commit.
+Done: WordPressAdapter Application Password POST /wp-json/wp/v2/posts status=publish at scheduler T. GmailAdapter SMTP smtp.gmail.com:587 STARTTLS, From=account email, active recipients cap 50, Publication.meta sent_count/failed_count, 550 quota -> rate_limited failed no 3-retry. VK/IG ManualCopyAdapter AdapterCapabilityError. Health ciphertext stub. pytest 62 passed, 1 skipped.
+Artifacts: backend/app/services/adapters/{wordpress,gmail,base,manual,__init__}.py, publish_worker.py, recipient_service.py, schemas.py, tests/{wordpress_mock,gmail_mock,test_ac_publish,test_ac_channels}.py
+stage: coding
+status: pending_qa
+verified_by: coder
+next_step: qa then security_expert; do not start CF-7
+result: done | AC-14/22/23 mocked green | no commit
+
+[2026-08-17 15:19] CF-6 code_simplify_assessor
+Prompt: Review NEW wordpress.py gmail.py adapter wiring. No CF-7. Tiny slop ok. middle+ blocks. Merge subagent_reports.json code_simplify_assessor CF-6. verdict GATE_PASS or GATE_FAIL. handoff teamlead.
+Done: Reviewed WP REST + Gmail SMTP adapters and get_adapter wiring. No inline imports. Single send wrappers (wordpress_create_post, smtp_send_one) patched by mocks. VK/IG still ManualCopy. AdapterCapabilityError / AdapterResult.meta are TZ/AC-23, not extra layers. Duplicate escape_html/_app_password and double meta write are low. No middle+. No CF-7.
+Artifacts: ai/workflow/coding/subagent_reports.json (code_simplify_assessor CF-6 merged)
+verdict: GATE_PASS | findings_middle_plus: none | handoff: teamlead | do not start CF-7
+
+[2026-08-17 15:20] CF-6 coding ContentForge
+Prompt: QA CF-6 only; must_pass AC-14 WP mocked publish, AC-22 no_recipients 409, AC-23 mocked SMTP sent_count>=1 and secret not in GET/logs. Run pytest. Do not start CF-7. Merge subagent_reports.json role qa CF-6. GATE_PASS or GATE_FAIL. findings_middle_plus. handoff security_expert.
+Done: QA reran pytest: 62 passed, 1 skipped (TELEGRAM_SMOKE live), 1 warning in 3.13s. Must_pass -v: AC-14/AC-22/AC-23 all PASSED. Independent dump: WP due published external_id=99 status=publish, wp-app-pass not in GET publications/channels; Gmail empty+unsubscribed-only 409 no_recipients then 201 scheduled; SMTP published sent_count=1 From=me@gmail.com, app password not in GET/logs. VK/IG ManualCopy. No CF-7. No middle+.
+Artifacts: ai/workflow/coding/subagent_reports.json, logs/agent-worklog.txt
+stage: coding
+status: pending_security
+verified_by: qa
+artifacts: backend/tests/{test_ac_publish.py,test_ac_channels.py,wordpress_mock.py,gmail_mock.py}, backend/app/services/adapters/{wordpress.py,gmail.py}
+risks: live WP/SMTP untested in CI; partial Gmail send published leftover; pytest SQLite; logger.exception traceback locals
+next_step: security_expert; do not start CF-7
+checks: AC-14 pass, AC-22 pass, AC-23 pass, pytest 62+1 skip
+result: GATE_PASS | findings_middle_plus: none | handoff: security_expert | do not start CF-7
+
+[2026-08-17 15:21] CF-6 security_expert
+Prompt: security_expert CF-6: WP Application Password, Gmail app password, SMTP, logs, GET channels. Tiny fixes OK (redact SMTP exceptions). GATE fail middle+: password in GET/logs, unauthenticated publish, obvious SSRF file:// or internal without pin. Do not start CF-7. Merge subagent_reports.json. handoff teamlead or coder if middle+.
+Done: GATE_PASS no middle+. GET /channels and publications have no app_password. Publish still JWT+MUTATE; send only from worker. WP URL pin: http(s), no userinfo/query/fragment/control chars, no redirects; file:// rejected. Tiny fix: unexpected SMTP/HTTP -> AdapterError from None (log type only); redact_secret also covers space-stripped passwords. pytest 66 passed +1 skip.
+Artifacts: backend/app/services/adapters/{base,gmail,wordpress}.py, backend/tests/test_ac_publish.py, ai/workflow/coding/subagent_reports.json
+verdict: GATE_PASS | findings_middle_plus: none | handoff: teamlead | do not start CF-7
+risks: authenticated site_url can still hit RFC1918 over http(s); live WP/SMTP untested in CI
+next_step: teamlead; do not start CF-7
+
+[2026-08-17 15:22] CF-6 closed ContentForge
+Prompt: teamlead CF-6 gate close; no app code; do not start CF-7. Merge RG-CF-N into team_review; keep CF-1..CF-5 + RG-A. CF-6 status done, verified_by teamlead, next_step wait user to start CF-7.
+Done: CF-6 closed GATE_PASS. coder 9cde904a done pytest 62+1 skip AC-14/22/23. qa a5e8e8bc GATE_PASS. simplify 2896d2a9 GATE_PASS. security e0890dfe GATE_PASS WP URL pin + SMTP redact pytest 66+1 skip findings_middle_plus none. RG-CF-N pass CF-6. RG-A kept pass from CF-5. VK/IG stay ManualCopy. CF-7 waits on user command.
+Artifacts: ai/workflow/coding/stage_checkpoint.json, ai/workflow/coding/team_review.json, logs/agent-worklog.txt
+stage: coding
+status: done
+verified_by: teamlead
+artifacts: backend/app/services/adapters/{wordpress,gmail,base,manual,__init__}.py, publish_worker.py, recipient_service.py, schemas.py, tests/{wordpress_mock,gmail_mock,test_ac_publish,test_ac_channels}.py, stage_checkpoint.json, team_review.json
+risks: live WP/SMTP untested in CI; authenticated site_url can hit RFC1918 over http(s); partial Gmail send leftover; VK/IG manuals re-claimed; pytest SQLite vs Alembic
+next_step: wait user to start CF-7
+checks: qa_gate passed, security_gate passed, simplify_gate passed, RG-CF-N pass, RG-A pass
+checks_pass_and_findings_resolved: true
+result: GATE_PASS | findings_middle_plus: none | phase CF-6 done | RG-CF-N pass | RG-A pass
+
+[2026-08-17 15:59] CF-7 coding ContentForge
+Prompt: CF-7 implementer (coder): Honest metrics, sequential TG A/B, AuditLog, logs without secrets. AC-16 AC-17 AC-21. AnalyticsSnapshot sync job, GET summary/publication analytics, Experiment start/stop/winner, expand CF-3 AuditLog, structured logs no secrets. No CF-8 / IG live insights / Mailchimp / Reels. Mocked pytest. Don't commit.
+Done: AnalyticsSnapshot + Experiment + Alembic 0006. Celery sync-analytics 6h. TG/WP/VK/IG metrics unavailable (never zeros as success). Gmail sent/failed only; opens/clicks unavailable. Sequential TG creates two Publications T1/T2; stop then declare winner. AuditLog append-only + FR-AUD actions (login, brand CRUD, generate, schedule, publish, retry, revoke, stopword override, declare winner). request_id/job_id/publication_id logs + secret redact filter. pytest 71 passed, 1 skipped.
+Artifacts: backend/app/{models,logutil,main,celery_app,api/analytics,api/experiments,services/{metrics,analytics_service,experiment_service,audit},migrations/0006,tests/test_ac_analytics.py}
+stage: coding
+status: pending_qa
+verified_by: coder
+next_step: qa then security_expert; do not start CF-8
+result: done | AC-16/17/21 mocked green | no commit
+
+[2026-08-17 16:01] CF-7 code_simplify_assessor
+Prompt: Review NEW analytics/experiment/audit/metrics code. No CF-8. Tiny slop ok. middle+ blocks. Merge subagent_reports.json code_simplify_assessor CF-7. verdict GATE_PASS or GATE_FAIL. handoff teamlead.
+Done: Reviewed metrics.py, analytics_service, experiment_service, audit scrub, logutil, adapters fetch_metrics, Alembic 0006. No inline imports. Single fetch_metrics path via adapters; no InsightsClient/MetricsRegistry. Sequential TG A/B reuses schedule_publication; other modes 409. Single write_audit. logutil is AC-21 surface not a logging framework. Lows: schedule_a/b extra vs TZ 11.15, pack+split double-normalize, experiment_metrics availability thrash, summary N+1 channel get, unused TZ enums. No middle+. No CF-8.
+Artifacts: ai/workflow/coding/subagent_reports.json (code_simplify_assessor CF-7 merged)
+verdict: GATE_PASS | findings_middle_plus: none | handoff: teamlead | do not start CF-8
+
+[2026-08-17 16:03] CF-7 security_expert
+Prompt: security_expert CF-7: AuditLog no secrets, analytics authz, log redaction AC-21. Tiny fixes OK. GATE fail middle+: tokens/passwords in logs or audit metadata, analytics leak across workspaces. Do not start CF-8. Merge subagent_reports.json. handoff teamlead or coder.
+Done: Reviewed write_audit callers, scrub, SecretRedactFilter, analytics/experiments require_brand/require_publication/require_experiment. No HTTP cross-workspace leak. Tiny: scrub_secrets on values+api_key, Celery configure_app_logging, GET analytics raw scrubbed, tests AC-21 all AuditLog/JWT + stranger 401/404. pytest 73 passed, 1 skipped. Lows unlabeled secrets / worker traceback locals / global celery sync. No middle+. No CF-8.
+Artifacts: backend/app/services/audit.py, analytics_service.py, celery_app.py, tests/test_ac_analytics.py, ai/workflow/coding/subagent_reports.json
+stage: coding
+status: pending_teamlead
+verified_by: security_expert
+next_step: teamlead; do not start CF-8
+result: GATE_PASS | findings_middle_plus: none | handoff: teamlead | do not start CF-8
+
+[2026-08-17 16:08] CF-7 coding ContentForge
+Prompt: QA CF-7 only; must_pass AC-16 unavailable not zeros, AC-17 sequential experiment two publications, AC-21 logs have no password/token plaintext. Run pytest. Do not start CF-8. Merge subagent_reports.json role qa CF-7. GATE_PASS or GATE_FAIL. handoff security_expert.
+Done: QA reran pytest: first 71 passed 1 skipped in 3.72s (coder baseline); current tree 73 passed, 1 skipped (TELEGRAM_SMOKE live), 1 warning in 3.99s after security tiny tests. Must_pass -v: AC-16/AC-17/AC-21 all PASSED. Independent dump: TG/WP summary availability=unavailable metrics={} impressions not stored/shown as 0; Gmail sent/failed facts, opened/clicked absent. Sequential start creates 2 scheduled pubs distinct T; winner 409 window_open; stop then declare_winner completed + AuditLog. caplog+GET channels+audit: SECRET_VALUE_HIT [] AuthPass-SECRET-99 / 123:BOT-TOKEN-SECRET. Alembic head 0006. Frontend still health stub. No CF-8. No middle+.
+Artifacts: ai/workflow/coding/subagent_reports.json, ai/workflow/coding/stage_checkpoint.json, logs/agent-worklog.txt
+stage: coding
+status: pending_teamlead
+verified_by: qa
+next_step: security_expert (already GATE_PASS in reports); do not start CF-8
+checks: AC-16 pass, AC-17 pass, AC-21 pass, pytest 73+1 skip
+result: GATE_PASS | findings_middle_plus: none | handoff: security_expert | do not start CF-8
+
+[2026-08-17 16:05] CF-7 closed ContentForge
+Prompt: teamlead CF-7 gate close; no app code; CF-8 started by sibling coder. Merge RG-CF-N into team_review; keep CF-1..CF-6 + RG-A. CF-7 status done, verified_by teamlead, next_step CF-8 in progress (user asked continue).
+Done: CF-7 closed GATE_PASS. coder d47a657b done pytest 71+1 skip AC-16/17/21. qa d7c0c224 GATE_PASS pytest 73+1 skip. simplify 37980855 GATE_PASS. security 2e9f4734 GATE_PASS redact filter findings_middle_plus none. RG-CF-N pass CF-7. RG-A kept pass from CF-5. CF-8 in progress (user asked continue).
+Artifacts: ai/workflow/coding/stage_checkpoint.json, ai/workflow/coding/team_review.json, logs/agent-worklog.txt
+stage: coding
+status: done
+verified_by: teamlead
+artifacts: backend/app/{models,logutil,main,celery_app,api/analytics,api/experiments,services/{metrics,analytics_service,experiment_service,audit}}, migrations/0006, tests/test_ac_analytics.py, stage_checkpoint.json, team_review.json
+risks: Telegram insights unavailable stub; gmail_split_list/wordpress_title 409; stop mutates window_end; pytest SQLite vs Alembic; Celery beat untested live; unlabeled secrets can survive redact
+next_step: CF-8 in progress (user asked continue)
+checks: qa_gate passed, security_gate passed, simplify_gate passed, RG-CF-N pass, RG-A pass
+checks_pass_and_findings_resolved: true
+result: GATE_PASS | findings_middle_plus: none | phase CF-7 done | RG-CF-N pass | RG-A pass
+
+
+[2026-08-17 16:13] CF-8 coding ContentForge
+Prompt: CF-8 implementer (coder): React UI wired to existing FastAPI. Screens SCR-AUTH..SCR-SET, RU, Router+Query+RHF/Zod, JWT store, brand switcher, Vite proxy, Vitest if Playwright/compose blocked. No Reels/IG App Review/Mailchimp/Viewer invite. Don't commit. Handoff qa.
+Done: Navigable RU MVP UI for Auth, Onboarding/Brand Kit, Dashboard, Calendar (month click not drag), Plan wizard with 202 job poll, Content editor, Channels TG/WP/Gmail, Queue, Analytics (unavailable not zeros), A/B sequential, Settings minimal. Tiny CORS localhost+127.0.0.1. Vitest 4 passed. tsc pass. pytest 73 passed 1 skipped. Playwright compose skipped; checklist logs/cf8-manual-e2e.txt. CF-7 was already teamlead done.
+Artifacts: frontend/src/{api,auth,components,screens}, frontend/vite.config.ts, backend/app/main.py CORS, logs/cf8-manual-e2e.txt, ai/workflow/coding/{subagent_reports,stage_checkpoint}.json
+stage: coding
+status: pending_qa
+verified_by: coder
+next_step: qa (UI + backend pytest still green)
+checks: vitest 4 pass, tsc pass, pytest 73+1 skip
+result: done | handoff qa
+
+[2026-08-17 16:16] CF-8 coding ContentForge
+Prompt: Review NEW frontend/src screens. Tiny slop ok. Don't rewrite UI. middle+ = huge unused design system or duplicate API clients. Merge subagent_reports.json code_simplify_assessor CF-8. verdict GATE_PASS or GATE_FAIL. handoff teamlead.
+Done: Reviewed App + 11 screens + Layout/MonthGrid/Status + api/{client,cf,types} + session + labels + package.json. No unused DS (no MUI/shadcn/etc; one index.css). Single fetch client (apiRequest -> cf). Lows: duplicated Shell type, unused cf methods, calendar legend chips. No UI rewrite.
+Artifacts: ai/workflow/coding/subagent_reports.json, logs/agent-worklog.txt
+stage: coding
+status: simplify_done
+verified_by: code_simplify_assessor
+next_step: teamlead
+checks: findings_middle_plus empty
+result: GATE_PASS | findings_middle_plus: none | handoff: teamlead
+
+[2026-08-17 16:17] CF-8 efficiency_assessor ContentForge
+Prompt: efficiency_assessor CF-8. Check job polling not a tight infinite loop without interval, calendar not fetching unbounded lists without month filter if API supports it. Tiny comments only. middle+= polling every 0ms or fetching all publications every keystroke. Merge subagent_reports.json. verdict GATE_PASS or GATE_FAIL. handoff teamlead.
+Done: GATE_PASS. pollJob sleeps 400ms default / 700ms Plan+Editor, maxTicks 40/60, stops on succeeded|failed. Calendar GET plans?year&month (API filters). No publications fetch on keystroke. Lows: dashboard/queue/analytics pubs without from/to; dashboard jobs poll 2s after terminal; year input digit refetch. No app code change.
+Artifacts: ai/workflow/coding/subagent_reports.json, logs/agent-worklog.txt
+stage: coding
+status: open
+verified_by: efficiency_assessor
+next_step: teamlead
+checks: job_poll_not_tight_loop pass, calendar_month_filter pass, no_pubs_fetch_every_keystroke pass
+result: GATE_PASS | findings_middle_plus: none
+
+[2026-08-17 16:17] CF-8 QA ContentForge
+Prompt: QA CF-8; do not implement screens. Run frontend npm test (vitest), npx tsc --noEmit, backend pytest (~73+1 skip). must_pass: SCR routes no crash (spot-check source login/onboarding/dashboard/calendar/plan/content/channels/queue/analytics/ab/settings routed); full AC matrix backend AC-01..23; UI E2E logs/cf8-manual-e2e.txt WARNING not fail if Playwright/compose not run (CF-1 docker pull class); do not require live compose. Merge subagent_reports.json role qa CF-8. GATE_PASS or GATE_FAIL. handoff security_expert.
+Done: vitest 4 passed (2.69s). tsc --noEmit pass. pytest 73 passed, 1 skipped (test_ac11_live_smoke TELEGRAM_SMOKE), 1 warning in 4.04s. App.tsx routes all SCR screens; !brand EmptyState; no Reels/IG App Review/Mailchimp/Viewer invite. AC-01..23 named backend tests present; AC-11 live skip by design. Playwright/compose not run — WARNING not fail. Manual checklist exists, boxes unchecked. Lows only (onboarding not in header nav, 4 vitest cases not full mount, TestClient deprecation). No middle+.
+Artifacts: ai/workflow/coding/subagent_reports.json (qa CF-8 merged; coder/simplify/efficiency kept), ai/workflow/coding/stage_checkpoint.json, logs/agent-worklog.txt
+result: done | verdict: GATE_PASS | findings_middle_plus: none
+next_step: security_expert
+
+[2026-08-17 16:19] CF-8 security_expert ContentForge
+Prompt: security_expert CF-8: JWT in localStorage (MVP low ok), no channel tokens in frontend, CORS, XSS in rendered content. Tiny fixes OK. GATE fail middle+: channel bot token/app password rendered in UI, secrets in frontend bundle, unauthenticated API from UI without JWT on protected screens. Do not add Viewer invite. Merge subagent_reports.json security_expert CF-8. handoff teamlead or coder.
+Done: Reviewed session/client/Layout/screens + CORS in main.py. No dangerouslySetInnerHTML. Channel GET does not dump tokens; password inputs. CORS origins localhost+127.0.0.1+public_web_url, not *. Tiny: getSession requires access_token; logout queryClient.clear + drop recent jobs; channel form remount after save. vitest 11 passed, tsc pass. No Viewer invite. No middle+.
+Artifacts: frontend/src/auth/session.ts, Layout.tsx, DashboardPage.tsx, ChannelsPage.tsx, client.test.ts, channels-secrets.test.tsx, layout-auth.test.tsx, test/setup.ts, ai/workflow/coding/subagent_reports.json, logs/agent-worklog.txt
+stage: coding
+status: security_done
+verified_by: security_expert
+next_step: teamlead
+checks: jwt_protected_screens pass, channel_secrets_not_in_ui pass, secrets_not_in_frontend_bundle pass, cors_and_xss pass, vitest 11 + tsc
+result: GATE_PASS | findings_middle_plus: none | handoff: teamlead
+
+[2026-08-17 16:19] CF-8 closed ContentForge
+Prompt: teamlead+compliance_officer CF-8 phase loop complete. Do NOT write screens. Do NOT start new product phases. Close CF-8 GATE_PASS RG-B pass. Waivers: live compose/Playwright/TELEGRAM_SMOKE not run (Docker Hub / live accounts). Backend AC covered by pytest.
+Done: CF-8 closed GATE_PASS. coder 46db1027 React UI vitest 4 tsc pytest 73+1 skip. qa 1a241150 GATE_PASS Playwright WARNING not fail. simplify b94da8dd GATE_PASS. efficiency b3854693 GATE_PASS. security d0998609 GATE_PASS JWT empty logout + password remount vitest 11 findings_middle_plus none. RG-CF-N pass CF-8. RG-B pass with waivers. RG-A kept pass from CF-5. Compliance: CF-1..CF-8 no_pass_no_next followed. Coding stage done for MVP. Next: MVP demo (uvicorn + npm run dev). No new product phase.
+Artifacts: ai/workflow/coding/stage_checkpoint.json, ai/workflow/coding/team_review.json, logs/agent-worklog.txt
+stage: coding
+status: done
+verified_by: teamlead
+artifacts: frontend/src/{App,api,auth,components,screens}, vite.config.ts, backend/app/main.py CORS, logs/cf8-manual-e2e.txt, stage_checkpoint.json, team_review.json
+risks: JWT localStorage; Playwright/compose waived; live AI/publish needs worker+keys; Vite --host 0.0.0.0 LAN proxy
+next_step: MVP demo (uvicorn + npm run dev)
+checks: qa_gate passed, security_gate passed, simplify_gate passed, efficiency_gate passed, compliance_gate passed, RG-CF-N pass, RG-A pass, RG-B pass with waivers
+checks_pass_and_findings_resolved: true
+result: GATE_PASS | findings_middle_plus: none | phase CF-8 done | RG-CF-N pass | RG-B pass | coding MVP done
+
+
+[2026-08-17 16:32] WinError 10013 port 8000 diagnose+start
+Prompt: Diagnose WinError 10013 uvicorn bind 8000; pick free port if needed; update Vite proxy; start backend+frontend; verify /health.
+Done: 8000 already owned by this project's uvicorn PID 1248 (.venv python -m uvicorn app.main:app --host 127.0.0.1 --port 8000). /health 200 {"status":"ok"}. 8000 not in excluded TCP ranges. 8080 is Docker/WSL — left alone. Reused API on 8000 (no kill). Vite proxy already http://localhost:8000; CORS already localhost:5173. Started frontend npm run dev on 5173. Proxy /health via Vite also 200.
+stage: coding (ops)
+status: done
+verified_by: command_executor
+artifacts: frontend/vite.config.ts (unchanged), backend/app/main.py CORS (unchanged)
+next_step: user demo
+checks: GET 127.0.0.1:8000/health 200; GET 127.0.0.1:5173 200; GET 127.0.0.1:5173/health 200
+result: API 8000 reused | UI 5173 started | no code changes | no commit
+
+[2026-08-17 16:41] ContentForge register "Ошибка запроса" diagnose+fix
+Prompt: Diagnose/fix Russian UI "Ошибка запроса" on register (email alexandr_klychnikov@mail.ru, workspace Тест). Health 8000/5173, POST register, start uvicorn, postgres or sqlite, 409/CORS/422 UI.
+Done: Root cause — stale CF-1 uvicorn v0.1.0 PID 1248 on :8000 (only /health). Register 404 {"detail":"Not Found"} → UI generic "Ошибка запроса". Host :5432 is native Windows Postgres, not docker contentforge. Remapped compose postgres 15432, alembic upgrade head, started current app v0.7.0. UI now parses FastAPI detail/422/network; email_taken hints login.
+Evidence: POST /api/v1/auth/register 201 user 7a424fd5-... workspace Тест; repeat via Vite 409 email_taken; login 200; 422 validation_error.
+stage: coding
+status: done
+verified_by: command_executor
+artifacts: backend/.env (gitignored), docker-compose.yml :15432, backend/app/db.py sqlite connect_args, frontend/src/api/client.ts, frontend/src/screens/AuthPage.tsx
+next_step: user login with the password set at register, or register a new email
+result: register 201 then login 200 | no commit
+
+[2026-08-17 19:05] Telegram /channels "ошибка" diagnose+small fix
+Prompt: Diagnose WHY Telegram cards show "ошибка" after "Подключен". UI /channels, two cards, Channel id filled with email. Check adapter health vs UI mapping, CF-4 stub vs LIVE getMe, TOKEN_ENCRYPTION_KEY, channel_id email, getMe 401. Probe GET/POST health on 127.0.0.1:8000. Small UX/API fix OK. No secrets, no commit.
+Done: UI maps status error→"ошибка", connected→"подключён". Save writes connected without getMe; POST /channels/{id}/health runs LIVE getMe and persists error. Live brand NODEX: card1 telegram ciphertext decrypt_ok token_len=9 (not BotFather), channel_id=email, getMe adapter_error network ~21s; api.telegram.org unreachable ~20s. Card2 telegram revoked_at set, no ciphertext, channel_id=5477113632 (bot/user id). NOT encryption-key mismatch. Email does not affect getMe. Fixes: validate TG channel_id (@name or -100…) and bot token format → 422; health catches decrypt; ChannelHealth.reason + meta.health_reason; GET treats revoked_at as revoked; form placeholder/autocomplete. pytest test_ac_channels 15; related 34+1 skip; vitest channels-secrets 1.
+stage: coding (hotfix)
+status: done
+verified_by: command_executor
+artifacts: backend/app/services/{channel_service,adapters/telegram}.py, backend/app/schemas.py, backend/tests/test_ac_channels.py, frontend/src/screens/ChannelsPage.tsx, frontend/src/api/cf.ts
+next_step: user Revoke email-card, reconnect with BotFather token + @channel/-100…, need HTTPS to api.telegram.org
+checks: GET channels 2 rows; POST health error/revoked; decrypt_ok; getMe network fail; pytest 15; no tokens logged
+result: root=dummy token + Telegram network + email channel_id | revoke+reconnect yes (not for key) | no commit
+
+[2026-08-17 19:17] Local uvicorn restart scripts
+Prompt: Create scripts/restart-api.ps1 + .bat, optional restart-dev.ps1, .cursor/commands/restart-api.md. Kill only this project's uvicorn app.main:app. Start-Process cmd /k default, -Foreground in-window. Print http://127.0.0.1:8000/health. Hint excluded range / second instance. No secrets, no commit, do not touch telegram.py.
+Done: scripts/restart-api.ps1 (venv python, CIM CommandLine filter, Start-Process cmd /k, health probe), scripts/restart-api.bat, scripts/restart-dev.ps1 (npm run dev only if 5173 free), .cursor/commands/restart-api.md.
+stage: coding (ops)
+status: done
+verified_by: command_executor
+artifacts: scripts/restart-api.ps1, scripts/restart-api.bat, scripts/restart-dev.ps1, .cursor/commands/restart-api.md
+next_step: user runs restart-api.ps1 from repo root
+checks: parser 0 errors both ps1; telegram.py untouched
+result: local restart command ready | no commit
+
+[2026-08-17 19:20] Optional TELEGRAM_HTTPS_PROXY for Telegram adapter
+Prompt: Add optional TELEGRAM_HTTPS_PROXY for Telegram adapter only. Empty/unset → httpx direct to api.telegram.org, trust_env=False. Set → proxy for getMe/sendMessage/sendPhoto. Env only, no UI. .env.example commented. backend/.env no fake proxy. Health via=direct|via=proxy, redact proxy URL/creds. Tests mock httpx. Settings via config.py. Don't commit.
+Done: Settings.telegram_https_proxy; telegram_http_client omits proxy unless set; health reason via=; redact userinfo; socks ImportError → httpx[socks] without URL. Compose passes ${TELEGRAM_HTTPS_PROXY:-}. pytest 86 passed, 1 skipped.
+stage: coding
+status: done
+verified_by: command_executor
+artifacts: backend/app/config.py, backend/app/services/adapters/telegram.py, backend/tests/test_ac_publish.py, backend/tests/test_ac_channels.py, .env.example, docker-compose.yml, backend/requirements.txt (httpx>=0.28)
+next_step: user sets TELEGRAM_HTTPS_PROXY in backend/.env locally; omit on VPS
+checks: pytest 86 passed 1 skipped (TELEGRAM_SMOKE); no proxy URL in health/logs tests; backend/.env unchanged
+result: TG HTTP proxy env-only | HTTP/HTTPS stock httpx | socks5 needs httpx[socks] | no commit
+
+[2026-08-17 19:24] /reload slash command
+Prompt: User ran restart from C:\Users\User so relative .\scripts\restart-api.ps1 failed. Create Cursor chat command /reload for THIS project. Absolute paths only. Health + OpenAPI stale CF-1 check. restart-api.md alias. Optional comment on restart-api.ps1. Do not commit.
+Done: .cursor/commands/reload.md; restart-api.md → alias to /reload; one-line comment on scripts/restart-api.ps1.
+stage: coding
+status: done
+verified_by: command_executor
+artifacts: .cursor/commands/reload.md, .cursor/commands/restart-api.md, scripts/restart-api.ps1
+next_step: type /reload in this project's Cursor chat
+checks: no YAML frontmatter (matches other commands); no commit
+result: slash is /reload
+[2026-08-17 19:27:46] FORCE restart ContentForge uvicorn
+prompt: FORCE restart via scripts\restart-api.ps1; ignore skip-if-healthy; report health/OpenAPI/TELEGRAM_HTTPS_PROXY
+done: restart-api.ps1 ran (killed PID 28852, 33472; started cmd/uvicorn). health=200 {status:ok}. OpenAPI title=ContentForge version=0.7.0. TELEGRAM_HTTPS_PROXY in running settings=empty (process env missing, backend/.env missing; root .env has key set but pydantic env_file is cwd backend/.env).
+
+[2026-08-17 19:31:09] Copy TELEGRAM_HTTPS_PROXY into backend/.env and FORCE restart
+prompt: Copy TELEGRAM_HTTPS_PROXY from repo root .env into backend/.env if missing. FORCE restart scripts\restart-api.ps1. Health 200. Confirm process has TELEGRAM_HTTPS_PROXY (boolean only). No commit, no .env dump.
+done: copied=yes (backend/.env existed, key was missing, appended that one line). restart-api.ps1 ran. health=200 {status:ok}. TELEGRAM_HTTPS_PROXY set=yes (running Settings via backend/.env).
+stage: coding
+status: done
+checks: no commit; no secrets printed
+
+[2026-08-17 19:52] Fix revoked list + Telegram env proxy
+Prompt: GET /brands/{id}/channels must hide revoked; TELEGRAM_HTTPS_PROXY must be used by health/send; never via=direct if proxy set; abs backend/.env; tests; no commit.
+Done: list_channels filters revoked_at OR status=revoked. ChannelsPage hides dead cards/buttons. config.env_file = abs backend/.env (cwd-independent). Tests: list excludes revoked; via=proxy from TELEGRAM_HTTPS_PROXY env (mock); httpx Client proxy= from env. backend/.env has host 127.0.0.1 port 12335 (value not printed). Root cause via=direct: relative env_file + key only in repo-root .env while uvicorn cwd=backend; lru_cache; trust_env=False so Proxifier (Winsock) worked without our proxy=.
+stage: coding
+status: done
+verified_by: command_executor
+artifacts: backend/app/config.py, backend/app/services/channel_service.py, frontend/src/screens/ChannelsPage.tsx, backend/tests/test_ac_channels.py, backend/tests/test_ac_publish.py, backend/tests/conftest.py, frontend/src/screens/channels-secrets.test.tsx
+checks: pytest 24 passed (channels+proxy); vitest 2 passed
+next_step: restart uvicorn to pick up abs env_file (lru_cache)
+result: no commit
+
+[2026-08-17 19:55] Follow-up: FORCE restart after revoked+proxy fix
+Prompt: Subagent 704ce793 done; pick up lru_cache; answer why revoked stayed and why via=direct.
+Done: restart-api.ps1 (killed 25540/29464/30628). health=200 {status:ok}. OpenAPI ContentForge 0.7.0.
+stage: coding
+status: done
+verified_by: command_executor
+checks: no commit; no secrets printed
+result: API reloaded; F5 /channels hides revoked; Проверить should show via=proxy if Clash on :12335
+
+[2026-08-17 20:03] Channels Проверить feedback + health_reason overwrite
+Prompt: /channels Проверить no visible feedback (~20s Telegram timeout); card later Telegram·ошибка via=direct despite TELEGRAM_HTTPS_PROXY. Do not revert revoked filter. No commit. No new md. No secrets.
+Done (coder):
+- UI: per-card disable + «Проверка…»; after result «Проверено: ок/ошибка» + reason + «проверено HH:MM:SS»; invalidate channels; ErrorBanner + adapter ok=false banner; never swallow.
+- Persistence: stub_health no longer pops health_reason on ok; always overwrite meta.health_reason (success: getMe ok via=… / "ok"; fail: current reason); flag_modified(meta).
+- Proxy: telegram_proxy_url() reads TELEGRAM_HTTPS_PROXY at request time (os.environ first, then get_settings). NEVER via=direct if env/settings has URL. trust_env=False kept.
+- backend/.env already had key (copied_from_root=no); host 127.0.0.1 port 12335. Settings proxy_set=yes. FORCE restart-api.ps1. GET /health 200 {status:ok}.
+- lru_cache footgun: empty cache after worker spawn still possible for FILE-only values until first Settings(); env var now request-time. Restart still required after .env edit if var not in process env.
+checks: pytest test_ac_channels+test_ac_publish 50 passed 1 skipped; vitest channels-secrets 5 passed.
+stage: coding
+status: done
+verified_by: coder
+artifacts: frontend/src/screens/ChannelsPage.tsx, frontend/src/screens/channels-secrets.test.tsx, backend/app/services/channel_service.py, backend/app/services/adapters/telegram.py, backend/tests/test_ac_channels.py
+risks: Clash/Proxifier down => connection fail but via=proxy if key set; via=direct only if proxy empty in env AND Settings. Stale via=direct in DB overwritten on next Проверить.
+result: no commit
+
+[2026-08-17 20:08] API down: ECONNREFUSED /brands → generic «Ошибка запроса»
+Prompt: User screenshot localhost:5173 «Ошибка запроса» + «Нет брендов» / «Нет бренда».
+Done: uvicorn was dead (vite proxy ECONNREFUSED /api/v1/brands). restart-api.ps1 → health 200. Vite /api/v1/brands → 401 unauthorized (API alive). parseErrorEnvelope maps 502/503/504 and ECONNREFUSED/http proxy error → «Нет связи с API».
+stage: coding
+status: done
+verified_by: command_executor
+artifacts: frontend/src/api/client.ts, frontend/src/api/client.test.ts
+checks: health 200; brands via :8000 and :5173 = 401 envelope; vitest client.test.ts 7 passed
+next_step: user F5; if logout during outage — login again
+result: no commit
+
+[2026-08-17 20:16] TELEGRAM_HTTPS_PROXY http:// on SOCKS ssh -D :12335
+Prompt: via=proxy but «Нет связи с api.telegram.org». User insisted http://127.0.0.1:12335.
+Done: :12335 is ssh.exe SOCKS5 (ssh -D), not HTTP CONNECT. httpx http:// → RemoteProtocolError. socks5h:// + socksio → getMe 401 from Telegram (reachable). Installed httpx[socks]/socksio. .env → socks5h://127.0.0.1:12335. Loopback http:// retries as socks5h. FORCE restart. health 200.
+stage: coding
+status: done
+verified_by: command_executor
+artifacts: backend/app/services/adapters/telegram.py, backend/requirements.txt, .env.example, backend/.env, .env, backend/tests/test_ac_publish.py
+checks: pytest test_ac_channels+test_ac_publish 53 passed 1 skipped; live dummy getMe 401 via socks5h
+result: no commit

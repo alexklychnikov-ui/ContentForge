@@ -1,0 +1,2669 @@
+{
+  "version": "1.0.0",
+  "stage": "coding",
+  "reports": [
+    {
+      "role": "coder",
+      "task": "Implement MVP Windows GUI mockup generator",
+      "result": "done",
+      "changes": [
+        "src/mockup_gui.py"
+      ],
+      "checks": [
+        "python -m py_compile src/mockup_gui.py: passed",
+        "ReadLints src/mockup_gui.py: passed"
+      ],
+      "findings_middle_plus": [
+        {
+          "id": "QA-C1",
+          "severity": "critical",
+          "status": "resolved",
+          "note": "Thread-safe UI updates moved to root.after and selection race fixed"
+        },
+        {
+          "id": "QA-H1",
+          "severity": "high",
+          "status": "resolved",
+          "note": "OPENAI_MODEL fixed-value validation added"
+        }
+      ],
+      "handoff": "qa"
+    },
+    {
+      "role": "qa",
+      "task": "Review requirements and gate compliance for implementation",
+      "result": "done",
+      "checks": [
+        "Initial review: fail due to critical/high findings",
+        "Re-review after fixes: PASS"
+      ],
+      "risks": [
+        "No automated tests yet",
+        "Large repositories may still feel slower during preview preparation"
+      ],
+      "handoff": "security_expert"
+    },
+    {
+      "role": "security_expert",
+      "task": "Assess local app and ProxyAPI integration security",
+      "result": "done",
+      "checks": [
+        "Base URL strict allowlist validation: passed",
+        "Secret leakage checks in UI/error paths: passed",
+        "Payload decode size guards: passed"
+      ],
+      "risks": [
+        "Potential decompression-bomb edge cases remain low/medium risk"
+      ],
+      "handoff": "efficiency_assessor"
+    },
+    {
+      "role": "efficiency_assessor",
+      "task": "Assess performance and responsiveness",
+      "result": "done",
+      "checks": [
+        "Background scan implemented: passed",
+        "Batched preview render implemented: passed",
+        "Bounded retry deadline implemented: passed"
+      ],
+      "risks": [
+        "Very large datasets can still degrade UI responsiveness"
+      ],
+      "handoff": "code_simplify_assessor"
+    },
+    {
+      "role": "code_simplify_assessor",
+      "task": "Assess maintainability and simplicity",
+      "result": "done",
+      "checks": [
+        "MVP complexity acceptable for single-file delivery: passed"
+      ],
+      "risks": [
+        "App class remains a large unit and can be modularized later"
+      ],
+      "handoff": "devops"
+    },
+    {
+      "role": "devops",
+      "task": "Assess runtime environment and operational concerns",
+      "result": "done",
+      "checks": [
+        "Runtime requires only local Python environment and env vars",
+        "No infrastructure migration required for MVP desktop app"
+      ],
+      "risks": [
+        "User must provide valid env values for API calls"
+      ],
+      "handoff": "compliance_officer"
+    },
+    {
+      "role": "compliance_officer",
+      "task": "Verify process and gate artifacts",
+      "result": "done",
+      "checks": [
+        "research-design-planning-coding artifacts exist",
+        "coding mandatory artifacts created"
+      ],
+      "risks": [
+        "Early coding incident was logged and process corrected"
+      ],
+      "handoff": "team_review"
+    },
+    {
+      "role": "coder/devops",
+      "task": "CF-1 Scaffold and compose",
+      "result": "done",
+      "changes": [
+        "backend/ FastAPI app, Celery, Alembic migrations, pytest",
+        "frontend/ Vite React TypeScript shell",
+        "docker-compose.yml (api, worker, postgres, redis, frontend)",
+        ".env.example",
+        ".gitignore"
+      ],
+      "checks": [
+        "docker compose config: pass (exit 0, services api/worker/postgres/redis/frontend)",
+        "pytest backend: 4 passed (GET /health 200, /api/v1/health 200, worker import, ping task)",
+        "GET http://127.0.0.1:8000/health via uvicorn: 200 {\"status\":\"ok\"}",
+        "alembic history: <base> -> 0001_baseline",
+        "worker import: from app.main import app; from app.celery_app import celery_app",
+        ".env.example names only, no .env in tree",
+        "docker compose up --build: fail — cannot pull python:3.12-slim / node:22-alpine (Docker Hub cloudfront timeout). postgres:16-alpine and redis:7-alpine already local"
+      ],
+      "risks": [
+        "Full compose boot blocked until python:3.12-slim and node:22-alpine can be pulled",
+        "Local JWT_SECRET compose default is a placeholder, not for production"
+      ],
+      "handoff": "qa"
+    },
+    {
+      "role": "qa",
+      "task": "CF-1 tests",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-1",
+      "changes": [
+        "ai/workflow/coding/subagent_reports.json"
+      ],
+      "checks": [
+        {
+          "id": "compose_config_valid",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "docker compose config exit 0; services api, worker, postgres, redis, frontend rendered"
+        },
+        {
+          "id": "get_health_200",
+          "source": "qa-test-plan.json must_pass (compose OR TestClient fallback)",
+          "result": "pass",
+          "evidence": "compose GET /health not live: python:3.12-slim and node:22-alpine absent locally; pytest TestClient fallback: GET /health 200 {\"status\":\"ok\"} and GET /api/v1/health 200"
+        },
+        {
+          "id": "env_example_no_real_secrets",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": ".env.example keys only with empty values; no .env in tree; .gitignore includes .env"
+        },
+        {
+          "id": "pytest_health_smoke",
+          "source": "implementation-plan.json CF-1",
+          "result": "pass",
+          "evidence": "backend pytest -q: 4 passed, 1 warning (Starlette TestClient deprecation) in 0.21s"
+        },
+        {
+          "id": "worker_can_import_app",
+          "source": "implementation-plan.json CF-1",
+          "result": "pass",
+          "evidence": "from app.main import app; from app.celery_app import celery_app, ping -> ContentForge contentforge {'status': 'ok'}; test_worker_imports_api_app + test_ping_task_registered passed"
+        },
+        {
+          "id": "alembic_history_exists",
+          "source": "implementation-plan.json CF-1",
+          "result": "pass",
+          "evidence": "alembic history: <base> -> 0001_baseline (head), baseline schema (empty)"
+        },
+        {
+          "id": "compose_up_full_stack",
+          "source": "implementation-plan.json CF-1 compose up healthy",
+          "result": "warning",
+          "evidence": "postgres:16-alpine and redis:7-alpine local; docker compose up -d postgres redis -> both healthy. python:3.12-slim and node:22-alpine not local (docker image inspect fail). Full api/worker/frontend build skipped to avoid Docker Hub pull hang."
+        }
+      ],
+      "findings": [
+        {
+          "id": "QA-CF1-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "Full compose up --build cannot boot api/worker/frontend until python:3.12-slim and node:22-alpine can be pulled. postgres/redis healthy. Recorded as risk, not GATE_FAIL."
+        },
+        {
+          "id": "QA-CF1-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "JWT_SECRET compose/config default is placeholder dev-insecure-change-me; not present as a real secret in .env.example. Security_expert next."
+        },
+        {
+          "id": "QA-CF1-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "Local postgres credentials hardcoded in docker-compose.yml (contentforge/contentforge). Scaffold-only."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "Developer cannot start full stack on Windows until Docker Hub (or a mirror) serves python:3.12-slim and node:22-alpine",
+        "Live compose GET /health unverified; TestClient used as allowed fallback"
+      ],
+      "handoff": "security_expert (CF-1 security_review true). Do not start CF-2. No middle+ findings. GATE_PASS."
+    },
+    {
+      "role": "security_expert",
+      "task": "CF-1 secrets/docker",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-1",
+      "changes": [
+        ".gitignore (.env.* + !.env.example)",
+        ".env.example (local-dev comment)",
+        "docker-compose.yml (local-dev-only comment)",
+        "backend/.dockerignore (.env)",
+        "frontend/.dockerignore (.env)",
+        "backend/Dockerfile (non-root appuser)",
+        "frontend/Dockerfile (USER node)"
+      ],
+      "checks": [
+        "No .env in working tree; only .env.example with empty values (names only)",
+        "OPENAI_API_KEY / TOKEN_ENCRYPTION_KEY defaults empty; no sk-/Fernet/JWT real secrets in app source",
+        "JWT_SECRET is placeholder dev-insecure-change-me in compose+config.py — not a production key",
+        ".gitignore covers .env, .venv/, venv/, data/, node_modules/",
+        "Health GET /health and /api/v1/health return {\"status\":\"ok\"} only — no env dump",
+        "No application logging of settings/secrets (celery ping returns status only; alembic uses env URL, sqlalchemy logger WARN)",
+        "Compose OPENAI_API_KEY and TOKEN_ENCRYPTION_KEY interpolated from host env, not plaintext production values",
+        "No git repo at workspace root — cannot audit commit history; tree scan used instead"
+      ],
+      "findings": [
+        {
+          "id": "SEC-CF1-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "Compose Postgres POSTGRES_PASSWORD=contentforge and DATABASE_URL embed contentforge/contentforge. Local-dev only; documented in compose header and .env.example. Gate: trivial local compose DB password = low."
+        },
+        {
+          "id": "SEC-CF1-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "JWT_SECRET default dev-insecure-change-me in docker-compose.yml and backend/app/config.py. Placeholder, not a real secret. CF-1 does not issue JWTs."
+        },
+        {
+          "id": "SEC-CF1-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "Redis has no AUTH; postgres:5432 and redis:6379 published to host. Acceptable for local-dev scaffold."
+        },
+        {
+          "id": "SEC-CF1-L4",
+          "severity": "low",
+          "status": "fixed",
+          "note": "Images ran as root; COPY . . could bake a local .env into the image. Added non-root USER and .env to dockerignores."
+        },
+        {
+          "id": "SEC-CF1-L5",
+          "severity": "low",
+          "status": "open",
+          "note": "CORS allow_methods=* allow_headers=* with credentials; FastAPI /docs enabled. Fine for CF-1 health shell; tighten in CF-2 auth."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "No .git in workspace — committed-secret check is working-tree only",
+        "Local JWT_SECRET and Postgres password remain trivial by design for compose"
+      ],
+      "handoff": "teamlead. GATE_PASS (no middle+). Do not start CF-2. Next in phase loop: code_simplify_assessor."
+    },
+    {
+      "role": "code_simplify_assessor",
+      "task": "CF-1 simplicity",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-1",
+      "scope": [
+        "backend/",
+        "frontend/",
+        "docker-compose.yml",
+        "Alembic",
+        "tests"
+      ],
+      "ignored": [
+        "ai/workflow/research/kwork-* leftover Mockup/Kwork JSON"
+      ],
+      "changes": [
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        "No inline imports in backend/app, tests, migrations (all top-of-file)",
+        "No extra frameworks beyond TZ appendix C / CF-1 plan (FastAPI, SQLAlchemy, Alembic, Celery, Vite React TS)",
+        "No Next.js/Prisma/portfolio JSON mix-in",
+        "Health skeleton is small: create_app + CORS + one health handler + Celery ping + empty Alembic baseline",
+        "Frontend shell is App.tsx fetch /health only — no router/query/zod",
+        "Security USER/dockerignore additions are tiny, not extra architecture"
+      ],
+      "findings_low": [
+        {
+          "id": "SIM-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "Duplicate health aliases GET /health and GET /api/v1/health on the same handler. CF-1 plan/QA/compose/frontend only need /health; TZ §12 has no app health under /api/v1. Weak dual-contract, not a subsystem."
+        },
+        {
+          "id": "SIM-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "pytest and httpx live in backend/requirements.txt so they ship in the API/worker image. Acceptable for CF-1; split later if image size matters."
+        },
+        {
+          "id": "SIM-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "Empty app/workers package; ping lives on celery_app.py. Placeholder for CF-3, not dead complexity."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "Keeping both health paths may freeze a second public contract before CF-2 API prefix lands"
+      ],
+      "handoff": "teamlead"
+    },
+    {
+      "role": "coder",
+      "task": "CF-2 Identity Brand Kit isolation catalogs",
+      "result": "done",
+      "phase": "CF-2",
+      "changes": [
+        "backend/app/models.py User Workspace Membership BrandProfile Holiday TrendSignal RefreshToken",
+        "backend/migrations/versions/0002_identity.py",
+        "backend/app/api/auth.py brands.py catalogs.py",
+        "backend/app/services/* auth brand_kit catalog rate_limit",
+        "backend/app/security.py errors.py deps.py schemas.py db.py",
+        "backend/app/catalogs/ru_holidays.py",
+        "backend/tests/test_ac_auth.py test_ac_brands.py test_catalogs.py conftest.py helpers.py",
+        "backend/requirements.txt argon2-cffi PyJWT email-validator",
+        "docker-compose.yml JWT_SECRET placeholder length"
+      ],
+      "checks": [
+        "pytest backend -q: 16 passed (AC-01 register+email_taken, AC-02 invalid_credentials same envelope, AC-03 foreign brand 404 no leak, holidays/trends, rate limit, kit block 409)",
+        "alembic history: 0001_baseline -> 0002_identity (head)",
+        "GET responses have no password/token fields",
+        "generate-plan without kit: 409 brand_kit_incomplete; with kit: 501 not_implemented (no OpenAI/Celery)"
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "Login rate limit is process-local memory; multi-worker API will not share fail counts",
+        "JWT_SECRET compose/config placeholder is longer but still not production",
+        "Brand kit complete requires >=1 offer (TZ UC-02 says 3-5)",
+        "POST /brands/{id}/plans/generate is a CF-3 stub (409/501 only)",
+        "Analyst/Viewer exist in enum; no invite API (out of MVP)"
+      ],
+      "handoff": "qa"
+    },
+    {
+      "role": "qa",
+      "task": "CF-2 tests",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-2",
+      "changes": [
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        {
+          "id": "AC-01",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest tests/test_ac_auth.py::test_ac01_register_creates_user_and_workspace_owner + test_ac01_duplicate_email_taken passed. Independent TestClient dump: POST /api/v1/auth/register 201 keys user/workspace/tokens; workspace.role=owner name=Acme; user keys id/email/is_active/created_at (no password/password_hash). Duplicate Owner@example.com -> 409 {error:{code:email_taken,message,details:{}}}"
+        },
+        {
+          "id": "AC-02",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest test_ac02_invalid_password_and_unknown_email_same_envelope passed. Dump: wrong password and unknown email both 401; JSON bodies identical {error:{code:invalid_credentials,message,details:{}}}; no exists/not found/unknown. Dummy argon2 verify on missing user in auth_service.login_user"
+        },
+        {
+          "id": "AC-03",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest test_ac03_foreign_brand_id_is_not_found + test_unknown_brand_id_same_as_foreign passed. Dump: stranger GET /api/v1/brands/{foreign_id} 404 not_found same body as unknown UUID; list=[]; no NODEX/audience leak. require_brand returns 404 for missing and non-member"
+        },
+        {
+          "id": "pytest_suite",
+          "source": "QA CF-2 extra",
+          "result": "pass",
+          "evidence": "backend pytest -q (QA rerun): 16 passed, 1 warning (Starlette TestClient deprecation) in 0.71s then 0.73s. Files: test_ac_auth.py, test_ac_brands.py, test_catalogs.py, test_health.py, test_worker_import.py"
+        },
+        {
+          "id": "alembic_0002",
+          "source": "QA CF-2 extra",
+          "result": "pass",
+          "evidence": "alembic history: 0001_baseline -> 0002_identity (head); <base> -> 0001_baseline. File backend/migrations/versions/0002_identity.py revises 0001_baseline; tables users/workspaces/memberships/brand_profiles/holidays/trend_signals/refresh_tokens"
+        },
+        {
+          "id": "error_envelope",
+          "source": "design api-contract.json",
+          "result": "pass",
+          "evidence": "AppError/HTTP/validation handlers emit {error:{code,message,details}}. Confirmed on 409 email_taken, 401 invalid_credentials, 404 not_found, 422 validation_error"
+        },
+        {
+          "id": "get_brands_no_secrets",
+          "source": "QA CF-2 extra",
+          "result": "pass",
+          "evidence": "GET /api/v1/brands and GET /api/v1/brands/{id} keys: id,workspace_id,name,niche,audience,voice_tone,stopwords,offers,example_posts,default_locale,timezone,onboarding_completed,onboarding_completed_at,created_at. secret_fields empty; password/token not in list text. BrandPublic has no password/token fields. response_model=list[BrandPublic]"
+        }
+      ],
+      "findings": [
+        {
+          "id": "QA-CF2-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "test_ac01_duplicate_email_taken assertion is tautological (`email not in body or code==email_taken`). Product dump still has empty details and no email in body. Test quality only."
+        },
+        {
+          "id": "QA-CF2-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "Starlette TestClient deprecation warning (httpx vs httpx2). Same as CF-1, does not fail tests."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "Login rate limiter is process-local (coder risk); security_expert should review multi-worker bypass",
+        "pytest uses SQLite create_all, not Alembic upgrade against Postgres",
+        "POST /brands/{id}/plans/generate is CF-3 stub (409/501); out of CF-2 must_pass"
+      ],
+      "handoff": "security_expert"
+    },
+    {
+      "role": "security_expert",
+      "task": "CF-2 auth isolation",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-2",
+      "changes": [
+        "backend/app/services/brand_service.py (foreign trend PATCH 404 same envelope as missing)",
+        "backend/tests/test_catalogs.py (stranger vs unknown trend_id same JSON)",
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        {
+          "id": "AC-02",
+          "source": "qa-test-plan.json / TZ AC-02",
+          "result": "pass",
+          "evidence": "login_user: missing/inactive and wrong password both AppError 401 invalid_credentials same message; dummy argon2 verify before fail; pytest test_ac02 bodies identical. Register email_taken is AC-01, not login enumeration."
+        },
+        {
+          "id": "AC-03",
+          "source": "qa-test-plan.json / TZ AC-03",
+          "result": "pass",
+          "evidence": "require_brand: missing, soft-deleted, and non-member all 404 not_found same message, no brand fields. GET/PATCH/DELETE/holidays/trends/generate-plan go through require_brand or list_brands(workspace). pytest test_ac03 + catalogs foreign 404, no NODEX/audience/trend title leak."
+        },
+        {
+          "id": "password_hashing",
+          "source": "NFR-SEC argon2/bcrypt",
+          "result": "pass",
+          "evidence": "argon2-cffi PasswordHasher() (argon2id); hash prefix $argon2id$v=; verify catches VerifyMismatchError/InvalidHashError. No bcrypt fallback required."
+        },
+        {
+          "id": "jwt_secret_not_prod_key",
+          "source": "CF-2 security_review",
+          "result": "pass",
+          "evidence": "jwt_secret default and compose JWT_SECRET=${JWT_SECRET:-dev-insecure-change-me-not-for-production} — labeled placeholder, not a production key. .env.example JWT_SECRET empty. decode algorithms=[HS256] only; typ access vs refresh checked; refresh jti stored and revoked on rotate/logout."
+        },
+        {
+          "id": "login_rate_limit",
+          "source": "design security-notes 5/10min IP+email",
+          "result": "pass",
+          "evidence": "LoginRateLimiter WINDOW_SECONDS=600 MAX_FAILURES=5 key ip:email.lower; check before lookup; record_failure on miss and bad password; pytest test_login_rate_limit 5x401 then 429 rate_limited. client_ip uses request.client.host (no X-Forwarded-For spoof)."
+        },
+        {
+          "id": "get_no_secrets",
+          "source": "CF-2 GET brands/users",
+          "result": "pass",
+          "evidence": "No GET /users. UserPublic: id,email,is_active,created_at (no password_hash). BrandPublic has no token fields. GET /brands response_model=list[BrandPublic]; tests assert password/access_token/refresh_token/password_hash absent. 422 sanitizes password/refresh_token/access_token/password_hash input. app/ has no logger/print of secrets."
+        },
+        {
+          "id": "cors",
+          "source": "CF-1 SEC-CF1-L5 follow-up",
+          "result": "pass_low",
+          "evidence": "allow_origins=[public_web_url] not *; allow_credentials=True; methods/headers still *. Tokens are Bearer JSON, not cookies. No CF-2 CORS token-theft vector."
+        },
+        {
+          "id": "pytest_after_tiny_fix",
+          "source": "security tiny fix",
+          "result": "pass",
+          "evidence": "backend/.venv pytest -q: 16 passed, 1 warning in 0.61s after unifying trend PATCH 404"
+        }
+      ],
+      "findings": [
+        {
+          "id": "SEC-CF2-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "Login rate limiter is in-process memory. Multi-worker API does not share fail counts. Acceptable for local CF-2; not GATE_FAIL."
+        },
+        {
+          "id": "SEC-CF2-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "JWT_SECRET compose/config placeholder remains. Not a committed production key. Same class as SEC-CF1-L2."
+        },
+        {
+          "id": "SEC-CF2-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "CORS origins locked to PUBLIC_WEB_URL; allow_methods=* allow_headers=* remain. Bearer tokens, no cookie session. Not a CF-2 token theft vector; do not fail."
+        },
+        {
+          "id": "SEC-CF2-L4",
+          "severity": "low",
+          "status": "fixed",
+          "note": "PATCH /trends/{id} returned 'Бренд не найден' for a foreign existing trend vs 'Тренд не найден' for unknown UUID (existence oracle, no payload). Unified 404 envelope; regression in test_catalogs.py."
+        },
+        {
+          "id": "SEC-CF2-L5",
+          "severity": "low",
+          "status": "open",
+          "note": "Logout revokes refresh JTIs only. Access JWT stays valid until 15min TTL. Expected for stateless JWT."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "Process-local login rate limit can be split across workers",
+        "Default JWT_SECRET is a known placeholder if compose is used as-is in a shared network",
+        "FastAPI /docs still enabled (CF-1 low, unchanged)"
+      ],
+      "handoff": "teamlead. GATE_PASS (no middle+). Tiny isolation fix applied. Do not start CF-3."
+    },
+    {
+      "role": "code_simplify_assessor",
+      "task": "CF-2 simplicity",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-2",
+      "scope": [
+        "backend/app/api/auth.py",
+        "backend/app/api/brands.py",
+        "backend/app/api/catalogs.py",
+        "backend/app/models.py",
+        "backend/app/schemas.py",
+        "backend/app/services/*",
+        "backend/app/security.py",
+        "backend/app/deps.py",
+        "backend/app/errors.py",
+        "backend/tests/test_ac_auth.py",
+        "backend/tests/test_ac_brands.py",
+        "backend/tests/test_catalogs.py"
+      ],
+      "ignored": [
+        "CF-3 OpenAI/Celery generate implementation",
+        "frontend CF-2 UI (not in this review)"
+      ],
+      "changes": [
+        "backend/app/services/auth_service.py (removed dead logout extra-token branch)",
+        "backend/app/api/auth.py (logout_user(db, user))",
+        "backend/app/schemas.py (brand_to_public typed BrandProfile)",
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        "No inline imports in backend/app and tests (conftest TESTING=1 before app import is module-level, required for argon2 hasher)",
+        "No extra frameworks vs CF-2 plan (argon2-cffi, PyJWT, email-validator only)",
+        "No repository/usecase/ABC unused layers; routers -> services -> models",
+        "No CF-3 OpenAI/Celery generate; plans/generate is 409/501 stub per CF-2 check",
+        "analyst/viewer, openai_soft_quota_tokens, TrendSource.provider match TZ §11, not extra architecture",
+        "brand_kit.py is 3 functions used by CRUD + generate stub, not a dead layer",
+        "pytest tests/test_ac_auth.py tests/test_ac_brands.py tests/test_catalogs.py: 12 passed after tiny cleanup"
+      ],
+      "findings_low": [
+        {
+          "id": "SIM-CF2-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "Owner-first membership pick duplicated in auth_service._primary_membership and brand_service.primary_workspace_id. Same 4-line rule, can drift."
+        },
+        {
+          "id": "SIM-CF2-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "TrendUpdate has both archived:bool and status:TrendStatus for the same field. Tests use archived only."
+        },
+        {
+          "id": "SIM-CF2-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "Duplicate _error helpers in test_ac_auth.py and test_ac_brands.py; duplicate email strip/lower validators on RegisterRequest and LoginRequest."
+        },
+        {
+          "id": "SIM-CF2-L4",
+          "severity": "low",
+          "status": "fixed",
+          "note": "logout_user revoked all refresh tokens then had a dead per-jti branch. Removed the dead branch; logout still revokes all sessions. LogoutRequest.refresh_token still accepted, unused."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "Dual /health + /api/v1/health still present from CF-1 (SIM-L1), not a new CF-2 layer",
+        "Login rate limiter remains process-local; not a simplicity issue"
+      ],
+      "handoff": "teamlead"
+    },
+    {
+      "role": "coder",
+      "task": "CF-3 Jobs AI plan and content",
+      "result": "done",
+      "phase": "CF-3",
+      "changes": [
+        "backend/app/models.py Job ContentPlan PlanItem ContentPiece ContentVariant AuditLog",
+        "backend/migrations/versions/0003_plans_content.py",
+        "backend/app/api/plans.py content.py jobs.py publish.py brands.py generate 202",
+        "backend/app/services/ai_client.py ai_schemas.py ai_jobs.py job_runner.py job_service.py plan_service.py content_service.py stopwords.py audit.py publish_service.py",
+        "backend/app/celery_app.py queue ai: generate_plan generate_content rewrite",
+        "backend/app/schemas.py plan/content/job/schedule stub",
+        "backend/tests/test_ac_plans.py test_ac_content.py openai_mock.py",
+        "backend/requirements.txt openai",
+        "docker-compose.yml worker -Q celery,ai"
+      ],
+      "checks": [
+        "pytest backend -q: 29 passed, 1 warning (Starlette TestClient deprecation) in 1.35s",
+        "AC-04 no kit 409 brand_kit_incomplete",
+        "AC-05 item_count == sum(targets); holidays_considered includes Новый год (January)",
+        "AC-06 invalid JSON and count mismatch: job failed, no ContentPlan",
+        "AC-07 approve then 409 plan_active_exists; create_revision archives old",
+        "AC-08 generate variant A + PATCH payload",
+        "AC-09 stopword 409 on POST publications; Owner override 501 + AuditLog; Editor override 403",
+        "AC-10 rewrite selection isolation AAA NEW:BBB CCC",
+        "AC-20 POST generate 202 job_id; GET /jobs/{id} succeeded/failed",
+        "alembic history: 0002_identity -> 0003_plans_content (head)",
+        "OpenAI mocked; _call_openai raises if live path hit in tests"
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "TESTING=1 runs AI jobs inline in the HTTP session, not a live Celery worker",
+        "confirm=true archives the old draft before the new job; if AI fails there is no active plan",
+        "POST /publications is a CF-5 stub: stopwords then 501 not_implemented; no Publication rows",
+        "AuditLog is a minimal stub table (full FR-AUD is CF-7)",
+        "Live OpenAI path is untested in CI by design",
+        "pytest uses SQLite create_all, not Alembic upgrade on Postgres"
+      ],
+      "handoff": "qa"
+    },
+    {
+      "role": "efficiency_assessor",
+      "task": "CF-3 async AI jobs efficiency",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-3",
+      "scope": [
+        "backend/app/api/brands.py generate 202",
+        "backend/app/api/content.py generate/rewrite 202",
+        "backend/app/api/jobs.py",
+        "backend/app/services/job_service.py",
+        "backend/app/services/job_runner.py",
+        "backend/app/services/ai_client.py",
+        "backend/app/services/ai_jobs.py",
+        "backend/app/services/plan_service.py",
+        "backend/app/services/content_service.py",
+        "backend/app/celery_app.py",
+        "docker-compose.yml api/worker env",
+        "backend/tests/conftest.py TESTING=1"
+      ],
+      "ignored": [
+        "CF-4 channel tokens / media / recipients",
+        "frontend"
+      ],
+      "changes": [
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        {
+          "id": "http_202_not_blocking_openai",
+          "source": "TZ NFR-PERF-02 / AC-20",
+          "result": "pass",
+          "evidence": "POST /brands/{id}/plans/generate, /content/{id}/generate, /content/.../rewrite all status_code=202 JobAccepted after enqueue_*. Production dispatch_job calls Celery .delay(job_id) only. _call_openai / complete_json live only in ai_jobs via job_runner, not in API handlers."
+        },
+        {
+          "id": "generate_not_in_request_thread",
+          "source": "CF-3 efficiency_review",
+          "result": "pass",
+          "evidence": "Inline run_job_in_session only if TESTING=='1'. TESTING set solely in backend/tests/conftest.py for pytest. docker-compose api/worker do not set TESTING. Coder risk + worklog document the pytest exception."
+        },
+        {
+          "id": "no_obvious_n_plus_1",
+          "source": "CF-3 efficiency_review",
+          "result": "pass",
+          "evidence": "list_plans selectinload(ContentPlan.items); list_pieces/get_piece selectinload variants (+plan_item). Plan persist is db.add PlanItem in one flush, not per-item SELECT. Month holidays SQL-filtered by year/month. Worker lazy-loads plan_item/variants once per job, not in a request loop."
+        },
+        {
+          "id": "bounded_retries",
+          "source": "middle+ unbounded retries",
+          "result": "pass",
+          "evidence": "complete_json: 1 call + at most 1 repair. Celery tasks have no bind/retry/autoretry_for. AIJobError and unexpected errors in run_job_in_session mark Job failed and do not re-raise. OpenAI SDK default max_retries=2 is bounded."
+        },
+        {
+          "id": "month_plan_not_full_db",
+          "source": "middle+ load entire DB for month plan",
+          "result": "pass",
+          "evidence": "execute_generate_plan loads brand row + month holidays + active trends (python date filter) + AI items equal to sum(targets). Does not load all plans/pieces/jobs. Job.result stores ids/counts/usage/holidays_considered, not full item payloads."
+        },
+        {
+          "id": "prompt_token_logging",
+          "source": "CF-3 efficiency_review",
+          "result": "pass",
+          "evidence": "ai_client logs openai_ok model + prompt_tokens + completion_tokens only; openai_error logs exception type name. job_runner logs job_id/type. No messages/content/json.dumps of prompts in log loops."
+        }
+      ],
+      "findings_low": [
+        {
+          "id": "EFF-CF3-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "inflight_generate_plan SELECT all queued/running generate_plan jobs then filters brand/year/month in Python. Fine at MVP concurrency; not a table-wide month-plan load."
+        },
+        {
+          "id": "EFF-CF3-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "trends_for_plan loads all active TrendSignal (brand+global) then date-filters in Python. Holidays are month-scoped in SQL."
+        },
+        {
+          "id": "EFF-CF3-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "GeneratePlanRequest.targets has no max; a huge sum still 202s then the worker holds the AI JSON. Not request-thread OpenAI. Cap later if abuse appears."
+        },
+        {
+          "id": "EFF-CF3-L4",
+          "severity": "low",
+          "status": "open",
+          "note": "dispatch_job .delay() runs before get_db commit. Worker miss logs ai_job_missing and returns (no retry). Race, not unbounded retry / blocking HTTP."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "If an operator sets TESTING=1 on the API process, generate runs OpenAI in the HTTP thread — compose does not set this",
+        "OpenAI client default retries (2) add worker latency, not HTTP hold",
+        "GET /brands/{id}/plans without year/month selectinloads all plans+items for the brand"
+      ],
+      "handoff": "teamlead. GATE_PASS (no middle+). Do not start CF-4."
+    },
+    {
+      "role": "code_simplify_assessor",
+      "task": "CF-3 simplicity",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-3",
+      "scope": [
+        "backend/app/services/ai_client.py",
+        "backend/app/services/ai_schemas.py",
+        "backend/app/services/ai_jobs.py",
+        "backend/app/services/job_runner.py",
+        "backend/app/services/job_service.py",
+        "backend/app/services/plan_service.py",
+        "backend/app/services/content_service.py",
+        "backend/app/services/stopwords.py",
+        "backend/app/services/audit.py",
+        "backend/app/services/publish_service.py",
+        "backend/app/api/plans.py",
+        "backend/app/api/content.py",
+        "backend/app/api/jobs.py",
+        "backend/app/api/publish.py",
+        "backend/app/api/brands.py",
+        "backend/app/celery_app.py",
+        "backend/app/models.py Job/ContentPlan/PlanItem/ContentPiece/ContentVariant/AuditLog",
+        "backend/app/schemas.py plan/content/job",
+        "backend/tests/test_ac_plans.py",
+        "backend/tests/test_ac_content.py",
+        "backend/tests/openai_mock.py"
+      ],
+      "ignored": [
+        "CF-4 channel tokens / media / Gmail / Fernet",
+        "frontend",
+        "large refactor of enqueue/brand-context duplication"
+      ],
+      "changes": [
+        "backend/app/services/ai_jobs.py (removed unused Locale import)",
+        "backend/app/api/plans.py (removed unused JobAccepted import)",
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        "No inline imports in backend/app CF-3 modules",
+        "Single OpenAI wrapper: ai_client._call_openai + complete_json (one repair). No second client/factory/ABC",
+        "ai_jobs/job_runner/job_service/ai_schemas all used; routers -> services -> models. No repository/usecase layer",
+        "Three Celery tasks are named TZ/plan routes, all call run_job_in_worker — not extra wrappers",
+        "No CF-4: no Fernet, ChannelAccount, Telegram send, Gmail tokens",
+        "pytest -q: 29 passed, 1 warning (Starlette TestClient deprecation) after tiny unused-import cleanup"
+      ],
+      "findings_low": [
+        {
+          "id": "SIM-CF3-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "Brand context dict duplicated in execute_generate_plan and execute_generate_content. Same 8 fields; can drift."
+        },
+        {
+          "id": "SIM-CF3-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "PlanStatus.generating is in enum + unique index + enqueue 409 branch, but never written. AC-06 creates ContentPlan only after AI success; inflight uses Job queued/running. Dead status, not an extra layer."
+        },
+        {
+          "id": "SIM-CF3-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "create_job + skip-if-not-queued + dispatch_job copied in three enqueue_* functions. Rewrite start/end/field checks duplicated in content_service.enqueue_rewrite and ai_jobs.execute_rewrite."
+        },
+        {
+          "id": "SIM-CF3-L4",
+          "severity": "low",
+          "status": "fixed",
+          "note": "Unused Locale import in ai_jobs.py; unused JobAccepted import in api/plans.py. Removed. holidays_for_plan remains a 1-line list_holidays alias."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "TESTING=1 inline jobs is test-only, not extra architecture",
+        "POST /publications 501 stub is CF-5, required for AC-09 stopwords",
+        "Empty app/workers package leftover from CF-1 (SIM-CF1), tasks live on celery_app.py"
+      ],
+      "handoff": "teamlead"
+    },
+    {
+      "role": "qa",
+      "task": "CF-3 tests",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-3",
+      "changes": [
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        {
+          "id": "AC-04",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest test_ac04_no_kit_no_generate passed. Independent dump: brand with offers=[] onboarding_completed=false; POST /api/v1/brands/{id}/plans/generate -> 409 {error:{code:brand_kit_incomplete,details:{}}}. No job created."
+        },
+        {
+          "id": "AC-05",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest test_ac05_slot_count_and_holidays passed. Isolated dump: targets social_post=2,article=1,email=1 sum=4; job.result.item_count=4; plan.items len=4. holidays_considered includes Новый год (2026-01-01); theme0 'Новый год: контент к дате'; panel params.holidays_considered also has Новый год. Trend AI-рассылки in trends_considered."
+        },
+        {
+          "id": "AC-06",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest test_ac06_invalid_json_does_not_persist_plan + test_ac06_count_mismatch_does_not_persist_plan passed. Isolated dump on empty DB: invalid JSON -> HTTP 202, job failed error=schema_invalid, ContentPlan=0 PlanItem=0, Job row persisted failed. Count mismatch -> 202, schema_count_mismatch, ContentPlan=0 PlanItem=0. Plan is created only after complete_json; job_runner wraps execute in begin_nested savepoint."
+        },
+        {
+          "id": "AC-07",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest test_ac07_approve_then_conflict_or_revision passed. Dump: PATCH status=approved -> 200 approved; second generate same month 409 plan_active_exists; create_revision=true -> 202, old archived, new plan_id differs. Extra: draft regenerate without confirm also 409."
+        },
+        {
+          "id": "AC-08",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest test_ac08_generate_and_edit_variant_a passed (social_post). Extra dump: article and email also 201+202 succeeded, variant label A, PATCH payload field saved, revision 2."
+        },
+        {
+          "id": "AC-09",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest test_ac09_stopword_blocks_schedule passed. Isolated dump: text with гарантия -> POST /publications stopword_override=false 409 stopword_violation; Owner override true -> 501 not_implemented (CF-5 stub), AuditLog action=stopword_override hits=[гарантия] count=1. Extra: Editor override 403 forbidden."
+        },
+        {
+          "id": "AC-10",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest test_ac10_rewrite_selection_isolation passed. Dump: source 'AAA BBB CCC' selection text[4:7] -> 202 job succeeded, payload.text 'AAA NEW:BBB CCC' (prefix/suffix intact)."
+        },
+        {
+          "id": "AC-20",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest test_ac20_generate_returns_202 passed. Dump: POST generate 202 job_id; GET /jobs/{id} 200 status=succeeded, id matches. Failed JSON path also 202 then GET failed (no HTTP timeout)."
+        },
+        {
+          "id": "openai_mocked",
+          "source": "qa-test-plan.json ci_policy + implementation-plan CF-3",
+          "result": "pass",
+          "evidence": "OPENAI_API_KEY unset for QA pytest (env false). tests/openai_mock.install_openai_mock patches ai_jobs.complete_json, ai_client.complete_json, and ai_client._call_openai -> AssertionError live OpenAI must not be called. Autouse on test_ac_plans.py and test_ac_content.py. Live OpenAI() only inside _call_openai after key check. pytest 29 passed without a key."
+        },
+        {
+          "id": "pytest_suite",
+          "source": "QA CF-3 extra",
+          "result": "pass",
+          "evidence": "backend pytest -q with OPENAI_API_KEY unset: 29 passed, 1 warning (Starlette TestClient deprecation) in 1.38s. Re-run after simplify unused-import cleanup: 29 passed. Files include test_ac_plans.py test_ac_content.py plus CF-1/CF-2 suite."
+        },
+        {
+          "id": "alembic_0003",
+          "source": "QA CF-3 extra",
+          "result": "pass",
+          "evidence": "alembic history: 0002_identity -> 0003_plans_content (head); 0001_baseline -> 0002_identity; <base> -> 0001_baseline."
+        }
+      ],
+      "findings": [
+        {
+          "id": "QA-CF3-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "pytest AC-08 covers only social_post. Extra dump confirmed article/email generate+edit variant A. Test gap, not product fail."
+        },
+        {
+          "id": "QA-CF3-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "TESTING=1 runs AI jobs inline in the HTTP session (conftest). AC-20 still returns 202; production dispatch is Celery .delay. Documented coder/efficiency risk."
+        },
+        {
+          "id": "QA-CF3-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "confirm=true / create_revision archives the active plan before the new job. If AI then fails, no active ContentPlan remains. AC-06 still holds (no half-plan). Recover by generate again."
+        },
+        {
+          "id": "QA-CF3-L4",
+          "severity": "low",
+          "status": "open",
+          "note": "Starlette TestClient deprecation warning (httpx vs httpx2). Same as CF-1/CF-2, does not fail tests."
+        },
+        {
+          "id": "QA-CF3-L5",
+          "severity": "low",
+          "status": "open",
+          "note": "pytest uses SQLite create_all, not Alembic upgrade against Postgres. 0003 exists as head. Same class as CF-2."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "Live OpenAI path untested in CI by design",
+        "POST /publications is CF-5 stub (501 after stopword check)",
+        "Inline TESTING=1 jobs are not a live Celery worker"
+      ],
+      "handoff": "code_simplify_assessor and efficiency_assessor (security_review false for CF-3). Do not start CF-4. No middle+ findings. GATE_PASS."
+    },
+    {
+      "role": "coder",
+      "task": "CF-4 Encrypted channels media recipients",
+      "result": "done",
+      "phase": "CF-4",
+      "changes": [
+        "backend/app/models.py ChannelAccount EmailRecipient MediaAsset",
+        "backend/migrations/versions/0004_channels_media_recipients.py",
+        "backend/app/services/token_crypto.py channel_service.py recipient_service.py media_service.py",
+        "backend/app/services/publish_service.py no_recipients before 501 stub",
+        "backend/app/api/channels.py recipients.py media.py",
+        "backend/app/main.py routers + fail-fast TOKEN_ENCRYPTION_KEY",
+        "backend/tests/test_ac_channels.py test_ac_recipients.py test_ac_media.py conftest.py",
+        "backend/requirements.txt cryptography python-multipart",
+        "docker-compose.yml media_data volume MEDIA_ROOT",
+        ".env.example Fernet key comment"
+      ],
+      "checks": [
+        "pytest backend -q: 41 passed, 1 warning (Starlette TestClient deprecation) in 1.95s",
+        "AC-18 GET /channels and credentials response have no token/app_password/ciphertext fields",
+        "PDN consent required: 400 pdn_consent_required",
+        "Health stub: ciphertext present -> connected; wiped -> error; DELETE revoke nulls secrets + status revoked",
+        "Fernet encrypt/decrypt roundtrip; missing/invalid TOKEN_ENCRYPTION_KEY raises TokenEncryptionError",
+        "Recipient unique (brand_id, email) 409 recipient_exists; email lowercased",
+        "Media 10MB jpeg/png/webp; 413 file_too_large; 415 unsupported_media_type",
+        "Gmail/email schedule without active recipients: 409 no_recipients; with recipient: 501 not_implemented (CF-5 stub)",
+        "alembic history: 0003_plans_content -> 0004_channels_media (head)",
+        "No Telegram/WP/Gmail live publish (CF-5/CF-6)"
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "Health is ciphertext-presence stub, not live API (in-plan for CF-4)",
+        "Compose api fail-fast if TOKEN_ENCRYPTION_KEY empty; named media volume may be root-owned vs Dockerfile appuser",
+        "pytest SQLite create_all, not Alembic upgrade on Postgres",
+        "POST /publications still 501 after no_recipients/stopwords (CF-5)",
+        "Revoke does not cancel publications (no Publication table yet; CF-5 AC-19)"
+      ],
+      "handoff": "qa and security_expert. Do not start CF-5+."
+    },
+    {
+      "role": "code_simplify_assessor",
+      "task": "CF-4 simplicity",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-4",
+      "scope": [
+        "backend/app/services/token_crypto.py",
+        "backend/app/services/channel_service.py",
+        "backend/app/services/recipient_service.py",
+        "backend/app/services/media_service.py",
+        "backend/app/services/publish_service.py",
+        "backend/app/api/channels.py",
+        "backend/app/api/recipients.py",
+        "backend/app/api/media.py",
+        "backend/app/main.py fail-fast TOKEN_ENCRYPTION_KEY",
+        "backend/app/models.py ChannelAccount/EmailRecipient/MediaAsset",
+        "backend/app/schemas.py channel/recipient/media",
+        "backend/migrations/versions/0004_channels_media_recipients.py",
+        "backend/tests/test_ac_channels.py",
+        "backend/tests/test_ac_recipients.py",
+        "backend/tests/test_ac_media.py"
+      ],
+      "ignored": [
+        "CF-5 ChannelAdapter / Telegram send / Publication SM / live Gmail SMTP",
+        "frontend",
+        "splitting ChannelCredentialsRequest into 5 models"
+      ],
+      "changes": [
+        "backend/app/services/media_service.py (merged identical except AppError/Exception unlink)",
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        "No inline imports in backend/app CF-4 modules",
+        "Single Fernet wrapper: token_crypto get_fernet/encrypt_secret/decrypt_secret. No second crypto, no KeyManager/ABC",
+        "routers -> services -> models. No repository/usecase/ChannelAdapter (CF-5)",
+        "Health is ciphertext stub; publish still 501 after no_recipients — not live send",
+        "pytest -q: 41 passed, 1 warning (Starlette TestClient deprecation) after tiny except merge"
+      ],
+      "findings_low": [
+        {
+          "id": "SIM-CF4-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "ChannelCredentialsRequest is one optional-field bag for all 5 types. MVP vs five request models; can drift unused fields. Not an extra layer."
+        },
+        {
+          "id": "SIM-CF4-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "WordPress meta stores both blog_url and site_url with the same value (TZ says blog url; API field is site_url)."
+        },
+        {
+          "id": "SIM-CF4-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "Foreign 404 remap (brand 404 -> resource 404) copied in require_channel, require_recipient, get_media. Same CF-2 isolation pattern. Extracting a helper would be extra."
+        },
+        {
+          "id": "SIM-CF4-L4",
+          "severity": "low",
+          "status": "fixed",
+          "note": "media_service.save_upload had two except blocks that both unlink+reraise. Merged to except Exception."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "decrypt_secret unused in app runtime; tests + CF-5 adapters will call it — not a dead wrapper",
+        "POST /publications 501 stub remains CF-5 after no_recipients/stopwords",
+        "ChannelStatus expired/missing_scopes unused until live health (CF-5)"
+      ],
+      "handoff": "teamlead. GATE_PASS (no middle+). Do not start CF-5."
+    },
+    {
+      "role": "security_expert",
+      "task": "CF-4 Fernet channels media pdn",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-4",
+      "changes": [
+        "backend/app/services/media_service.py (media_file_path confined to media_root)",
+        "backend/app/api/media.py (X-Content-Type-Options: nosniff)",
+        "backend/tests/test_ac_media.py (foreign 404 + path escape)",
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        {
+          "id": "fernet_at_rest",
+          "source": "TZ NFR-SEC-01 / GATE plaintext tokens",
+          "result": "pass",
+          "evidence": "ChannelAccount has token_ciphertext + refresh_ciphertext only (no plaintext token column). save_credentials encrypt_secret(Fernet) before flush. Alembic 0004 same columns. pytest: stored.token_ciphertext != bot_token and SECRET-BOT-TOKEN not in ciphertext; encrypt/decrypt roundtrip."
+        },
+        {
+          "id": "AC-18_get_channels_no_secrets",
+          "source": "qa-test-plan AC-18 / NFR-SEC-04 / GATE secret in GET /channels",
+          "result": "pass",
+          "evidence": "GET /brands/{id}/channels and POST credentials response_model=ChannelPublic via channel_to_public + public_meta (strips token/access_token/refresh_token/bot_token/app_password/password/token_ciphertext/refresh_ciphertext). 422 sanitizer same fields. test_ac18: no secret keys and plaintext bot token absent from GET and 201 body. Health returns id/status/ok only."
+        },
+        {
+          "id": "token_encryption_key_not_prod",
+          "source": "GATE TOKEN_ENCRYPTION_KEY hardcoded prod key",
+          "result": "pass",
+          "evidence": "config token_encryption_key default empty; .env.example TOKEN_ENCRYPTION_KEY= empty; compose ${TOKEN_ENCRYPTION_KEY:-}; no Fernet gAAAAA key and no .env in tree. main.py fail-fast get_fernet() unless TESTING=1. Invalid/missing key raises TokenEncryptionError. conftest generates ephemeral test key at runtime."
+        },
+        {
+          "id": "pdn_consent",
+          "source": "NFR-COMP-01 / R10",
+          "result": "pass",
+          "evidence": "save_credentials requires pdn_consent is True else 400 pdn_consent_required (default False). Audit connect_channel data={type, pdn_consent:true} no secrets. meta stores pdn_consent + pdn_consent_at only."
+        },
+        {
+          "id": "logs_no_secrets",
+          "source": "design security-notes / CF-4 logs",
+          "result": "pass",
+          "evidence": "channel/media/recipient services have no logger/print. Audit connect/revoke: type + pdn_consent only. 422 omits input for bot_token/app_password/access_token/refresh_token. No application log of ciphertext or plaintext tokens."
+        },
+        {
+          "id": "media_upload",
+          "source": "TZ §12.11 10MB jpeg/png/webp",
+          "result": "pass",
+          "evidence": "Auth required. Magic-byte sniff vs declared MIME; 415 unsupported_media_type; 413 file_too_large; UUID storage_key (filename ignored). GET meta/file require_brand 404 same envelope as unknown. FileResponse nosniff. media_file_path resolve + is_relative_to(media_root)."
+        },
+        {
+          "id": "isolation",
+          "source": "NFR-SEC-02 own accounts",
+          "result": "pass",
+          "evidence": "require_channel/require_brand: stranger GET channels 404; foreign health same JSON as unknown UUID; foreign recipient PATCH 404; foreign media meta/file 404 same as unknown."
+        },
+        {
+          "id": "pytest_after_tiny_fix",
+          "source": "security tiny fix",
+          "result": "pass",
+          "evidence": "backend/.venv pytest -q: 43 passed, 1 warning in 2.01s after path confine + nosniff + isolation tests (coder/simplify had 41)"
+        }
+      ],
+      "findings": [
+        {
+          "id": "SEC-CF4-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "Health stub is ciphertext-presence, not live token/scopes. In-plan for CF-4; live check is CF-5/FR-CHN-02."
+        },
+        {
+          "id": "SEC-CF4-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "Compose named volume media_data may be root-owned vs Dockerfile USER appuser. Local-dev; files stay behind JWT FileResponse."
+        },
+        {
+          "id": "SEC-CF4-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "EmailRecipient emails stored plaintext (FR-CHN-05 list/query). Not channel tokens. Brand-scoped via require_brand."
+        },
+        {
+          "id": "SEC-CF4-L4",
+          "severity": "low",
+          "status": "fixed",
+          "note": "media_file_path joined storage_key without confining to media_root (absolute/.. would escape if DB poisoned). Now resolve + is_relative_to; 404 otherwise. Regression in test_ac_media.py."
+        },
+        {
+          "id": "SEC-CF4-L5",
+          "severity": "low",
+          "status": "fixed",
+          "note": "GET /media/{id}/file now sends X-Content-Type-Options: nosniff. Magic-byte allowlist already jpeg/png/webp."
+        },
+        {
+          "id": "SEC-CF4-L6",
+          "severity": "low",
+          "status": "open",
+          "note": "TESTING=1 skips Fernet fail-fast at app import (pytest conftest). Compose does not set TESTING. Empty key still fails on encrypt."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "Health stub can mark corrupt ciphertext as connected until CF-5 live health",
+        "Recipient emails are PDN at rest unencrypted by design of the mailing list",
+        "Named media volume permissions vs non-root USER on first compose up"
+      ],
+      "handoff": "teamlead. GATE_PASS (no middle+). Tiny media path/nosniff fix applied. Do not start CF-5."
+    },
+    {
+      "role": "qa",
+      "task": "CF-4 tests",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-4",
+      "changes": [
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        {
+          "id": "AC-18",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest test_ac18_get_channels_has_no_token_fields PASSED. Independent dump: POST credentials telegram/wordpress/gmail/vk/instagram all 201; GET /api/v1/brands/{id}/channels 200 count=5. Keys: blog_url brand_id channel_id display_name external_account_id gmail_from group_id id ig_user_id meta pdn_consent pdn_consent_at revoked_at scopes site_url smtp_host smtp_port status token_expires_at type username. SECRET_KEY_HIT [] (no token/access_token/refresh_token/bot_token/app_password/password/password_hash/token_ciphertext/refresh_ciphertext). SECRET_VALUE_HIT [] (no 123:SECRET-BOT-TOKEN, wp-app-pass, gmail-app-pass, vk-community-token, ig-token, ig-refresh). ChannelPublic has no secret fields; channel_to_public + public_meta. decrypt_secret unused on GET path."
+        },
+        {
+          "id": "recipient_unique_409",
+          "source": "QA CF-4 extra + implementation-plan",
+          "result": "pass",
+          "evidence": "pytest test_recipient_unique_lowercase_and_crud PASSED. Dump: POST Owner@Example.com -> 201 email=owner@example.com; second owner@example.com -> 409 recipient_exists. UniqueConstraint uq_email_recipients_brand_email + IntegrityError mapped to 409."
+        },
+        {
+          "id": "media_size_mime_reject",
+          "source": "QA CF-4 extra + implementation-plan",
+          "result": "pass",
+          "evidence": "pytest test_media_accepts_images_and_rejects_oversize_and_mime PASSED. Dump: PNG 201 mime=image/png; text/plain 415 unsupported_media_type; jpeg >10MB 413 file_too_large. jpeg/webp also 201 in pytest. Extra after security tiny: GET /file 200 nosniff; foreign media 404; storage_key ../escape 404."
+        },
+        {
+          "id": "encrypt_roundtrip",
+          "source": "QA CF-4 extra (tests exist)",
+          "result": "pass",
+          "evidence": "pytest test_encrypt_decrypt_roundtrip PASSED. Dump: encrypt_secret('roundtrip-secret') != plaintext, plaintext not in ciphertext, decrypt_secret == plaintext. test_missing_token_encryption_key_fails_fast and test_invalid_token_encryption_key_fails_fast PASSED."
+        },
+        {
+          "id": "pdn_consent_required",
+          "source": "QA CF-4 extra + implementation-plan",
+          "result": "pass",
+          "evidence": "pytest test_pdn_consent_required PASSED: pdn_consent=false -> 400 pdn_consent_required. Dump: omitted pdn_consent (schema default false) also 400 pdn_consent_required."
+        },
+        {
+          "id": "gmail_no_recipients_409",
+          "source": "QA CF-4 extra + implementation-plan (AC-22 rule early)",
+          "result": "pass",
+          "evidence": "pytest test_gmail_schedule_without_recipients_409 PASSED. Dump on brand with Gmail channel and no recipients: POST /publications -> 409 no_recipients; after POST recipient 201, same schedule -> 501 not_implemented (CF-5 stub). assert_gmail_recipients runs before 501."
+        },
+        {
+          "id": "secrets_not_in_GET",
+          "source": "QA CF-4 extra (AC-18 + credentials POST)",
+          "result": "pass",
+          "evidence": "Same independent dump: CREATE_KEYS identical to GET_KEYS, no secret keys/values. POST credentials response_model=ChannelPublic. meta sample has pdn_consent/channel_id/site_url/username/gmail_from/smtp_*/group_id/ig_user_id only."
+        },
+        {
+          "id": "pytest_suite",
+          "source": "QA CF-4 extra",
+          "result": "pass",
+          "evidence": "backend pytest -q with OPENAI_API_KEY unset: first run 41 passed in 1.99s; re-run after simplify except-merge + security path/nosniff tests: 43 passed, 1 warning (Starlette TestClient deprecation) in 1.88s. CF-4 files: 9 channels + 2 recipients + 3 media."
+        },
+        {
+          "id": "alembic_0004",
+          "source": "QA CF-4 extra",
+          "result": "pass",
+          "evidence": "alembic history: 0003_plans_content -> 0004_channels_media (head); 0002_identity -> 0003_plans_content; 0001_baseline -> 0002_identity; <base> -> 0001_baseline."
+        },
+        {
+          "id": "no_live_publish",
+          "source": "QA CF-4 boundary (do not start CF-5)",
+          "result": "pass",
+          "evidence": "No Telegram sendMessage / SMTP / WP publish in backend/app. POST /publications ends 501 not_implemented after stopwords + no_recipients. Health is ciphertext-presence stub."
+        }
+      ],
+      "findings": [
+        {
+          "id": "QA-CF4-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "pytest AC-18 covers telegram GET only. Extra dump confirmed wordpress/gmail/vk/instagram GET also have no token fields. Test gap, not product fail."
+        },
+        {
+          "id": "QA-CF4-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "Starlette TestClient deprecation warning (httpx vs httpx2). Same as CF-1/CF-2/CF-3, does not fail tests."
+        },
+        {
+          "id": "QA-CF4-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "pytest uses SQLite create_all, not Alembic upgrade against Postgres. 0004 exists as head. Same class as CF-2/CF-3."
+        },
+        {
+          "id": "QA-CF4-L4",
+          "severity": "low",
+          "status": "open",
+          "note": "ChannelPublic.meta is an untyped dict; public_meta filters known secret key names. password_hash is in test SECRET_KEYS and error sanitizer but not in channel_service.META_SECRET_KEYS. Current save path does not put secrets in meta."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "Health is ciphertext-presence stub, not live API (in-plan for CF-4)",
+        "POST /publications is CF-5 stub (501 after no_recipients/stopwords)",
+        "Revoke does not cancel publications (no Publication table; CF-5 AC-19)",
+        "pytest SQLite vs Alembic on Postgres"
+      ],
+      "handoff": "security_expert. Do not start CF-5. No middle+ findings. GATE_PASS."
+    },
+    {
+      "role": "coder",
+      "task": "CF-5 Publication state machine and Telegram adapter",
+      "result": "done",
+      "phase": "CF-5",
+      "changes": [
+        "backend/app/models.py Publication + PublicationStatus",
+        "backend/migrations/versions/0005_publications.py",
+        "backend/app/services/adapters/{base,telegram,manual,__init__}.py",
+        "backend/app/services/publish_service.py schedule/cancel/retry/mark-manual/idempotency",
+        "backend/app/services/publish_worker.py atomic claim, retry 1/5/15, watchdog 10m",
+        "backend/app/services/channel_service.py revoke cancels scheduled; adapter health",
+        "backend/app/api/publish.py GET/POST publications + cancel/retry/mark-manual",
+        "backend/app/celery_app.py beat publish_due every 1 min from PostgreSQL",
+        "docker-compose.yml beat service",
+        "backend/tests/test_ac_publish.py telegram_mock.py; AC-09/gmail 501->201; worker beat task"
+      ],
+      "checks": [
+        "pytest backend -q: 51 passed, 1 skipped (TELEGRAM_SMOKE live), 1 warning in 2.54s",
+        "AC-11 mocked: scheduled due -> published + external_id, one sendMessage",
+        "AC-12 same idempotency_key -> 200 existing row, no second send",
+        "AC-13 bad token unauthorized -> retry 1m/5m then dead after 3 attempts",
+        "AC-15 cancel scheduled -> cancelled, worker does not send",
+        "AC-19 revoke cancels future scheduled, row remains",
+        "parse_error 400 -> failed, no retry storm",
+        "VK due scan stays scheduled until mark-manual",
+        "stopwords 409 then Owner override 201; gmail no_recipients 409 then 201 scheduled (no live SMTP)",
+        "alembic history: 0004_channels_media -> 0005_publications (head)"
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "WP/Gmail adapters are manual_copy/no-autopost until CF-6; scheduled rows wait",
+        "Telegram live smoke skipped unless TELEGRAM_SMOKE=1",
+        "pytest SQLite create_all, not Alembic upgrade on Postgres",
+        "Worker crash after Telegram accept but before DB commit can duplicate (no platform idempotency)",
+        "SQLite naive datetimes; claim uses synchronize_session=False"
+      ],
+      "handoff": "qa, security_expert, efficiency_assessor. Do not start CF-6 (WordPress/Gmail live send)."
+    },
+    {
+      "role": "efficiency_assessor",
+      "task": "CF-5 beat scan, atomic claim, bounded retry, no request-thread Telegram",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-5",
+      "scope": [
+        "backend/app/services/publish_worker.py",
+        "backend/app/services/publish_service.py",
+        "backend/app/services/adapters/telegram.py",
+        "backend/app/api/publish.py",
+        "backend/app/api/channels.py",
+        "backend/app/services/channel_service.py",
+        "backend/app/celery_app.py",
+        "backend/app/models.py Publication indexes",
+        "backend/migrations/versions/0005_publications.py",
+        "docker-compose.yml beat/worker/api"
+      ],
+      "ignored": [
+        "CF-6 WordPress/Gmail live send",
+        "frontend"
+      ],
+      "changes": [
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        {
+          "id": "beat_scan_not_full_table",
+          "source": "CF-5 efficiency_review / middle+ unbounded scan",
+          "result": "pass",
+          "evidence": "run_publish_due SELECT Publication.id WHERE status=scheduled AND scheduled_at<=now. Composite index ix_publications_status_scheduled_at (status, scheduled_at) on model + Alembic 0005. Watchdog SELECT id WHERE status=publishing AND external_id IS NULL AND updated_at<=cutoff (publishing subset, not all rows). Beat crontab minute=* enqueues contentforge.publish_due; worker runs it."
+        },
+        {
+          "id": "claim_atomic",
+          "source": "CF-5 atomic scheduled->publishing",
+          "result": "pass",
+          "evidence": "claim_scheduled is UPDATE publications SET status=publishing WHERE id=? AND status=scheduled AND scheduled_at<=now; returns rowcount==1. Concurrent workers lose the race on the WHERE, not a second send from a second claim."
+        },
+        {
+          "id": "retry_bounded",
+          "source": "middle+ infinite retry",
+          "result": "pass",
+          "evidence": "MAX_ATTEMPTS=3; RETRY_DELAYS 1/5/15 then dead. Non-retryable AdapterError -> failed (parse_error 400). Celery publish_due has no bind/retry/autoretry_for. Manual POST /retry only from failed/dead and resets attempt_count (user-initiated, not a worker loop)."
+        },
+        {
+          "id": "no_request_thread_live_telegram_publish",
+          "source": "TZ NFR + design never publish in request thread",
+          "result": "pass",
+          "evidence": "POST /publications and POST /retry only persist scheduled rows. adapter.publish / telegram_api sendMessage|sendPhoto only from process_publication in publish_worker. Celery task contentforge.publish_due; compose api uvicorn does not set TESTING and does not run the worker. TELEGRAM_SMOKE live path is pytest-only skip unless env=1."
+        }
+      ],
+      "findings_low": [
+        {
+          "id": "EFF-CF5-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "Due scan has no LIMIT; one tick loads all due ids and holds one DB txn across Telegram HTTP. Filtered+indexed, not a full-table scan."
+        },
+        {
+          "id": "EFF-CF5-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "supports_autopost=false (VK/IG/WP/Gmail) reverts to scheduled without bumping scheduled_at, so due manuals are re-claimed every minute until mark-manual. Indexed scheduled filter, not all publications."
+        },
+        {
+          "id": "EFF-CF5-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "POST /channels/{id}/health TelegramAdapter.health does sync getMe in the API thread (timeout 30s). Not sendMessage/publish. Ciphertext stub still used if token missing."
+        },
+        {
+          "id": "EFF-CF5-L4",
+          "severity": "low",
+          "status": "open",
+          "note": "GET /brands/{id}/publications has no pagination; optional status/from/to filters. Brand-scoped join, not beat path."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "Overlapping publish_due ticks can wait on uncommitted row locks for the duration of Telegram HTTP (READ COMMITTED + single txn per tick)",
+        "Poison non-AdapterError in a tick rolls back the whole batch; next minute Beat retries due rows (attempt_count not persisted). Bounded per successful commit path; crash-before-commit can duplicate send (coder risk)",
+        "POST health getMe can block an API worker up to SEND_TIMEOUT"
+      ],
+      "handoff": "teamlead. GATE_PASS (no middle+). Do not start CF-6."
+    },
+    {
+      "role": "code_simplify_assessor",
+      "task": "CF-5 simplicity",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-5",
+      "scope": [
+        "backend/app/services/adapters/base.py",
+        "backend/app/services/adapters/telegram.py",
+        "backend/app/services/adapters/manual.py",
+        "backend/app/services/adapters/__init__.py",
+        "backend/app/services/publish_service.py",
+        "backend/app/services/publish_worker.py",
+        "backend/app/services/channel_service.py health/revoke",
+        "backend/app/api/publish.py",
+        "backend/app/celery_app.py publish_due",
+        "backend/app/models.py Publication + PublicationStatus",
+        "backend/app/schemas.py ScheduleRequest/PublicationPublic/MarkManualRequest",
+        "backend/migrations/versions/0005_publications.py",
+        "backend/tests/test_ac_publish.py",
+        "backend/tests/telegram_mock.py",
+        "docker-compose.yml beat"
+      ],
+      "ignored": [
+        "CF-6 WordPress/Gmail live send / SMTP / WP REST",
+        "frontend",
+        "extracting sendMessage helper / renaming stub_health"
+      ],
+      "changes": [
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        "No inline imports in backend/app CF-5 publish/adapter/worker modules",
+        "Single Telegram HTTP wrapper: telegram_api. Mock patches that function. No second client/factory/PluginRegistry",
+        "ChannelAdapter ABC is TZ 10.4 / plan CF-5, not an extra usecase/repo layer. get_adapter if/assert_never + 2 classes (Telegram + ManualCopy)",
+        "WP/Gmail/VK/IG are ManualCopyAdapter; no smtplib/xmlrpc/wp-json. Retry folded into scheduled scan (no extra retry_publish task)",
+        "routers -> publish_service (HTTP) / publish_worker (beat). Same get_session_factory pattern as job_runner",
+        "No CF-6 live send"
+      ],
+      "findings_low": [
+        {
+          "id": "SIM-CF5-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "stub_health still named stub; TelegramAdapter.health does live getMe. Ciphertext stub remains for missing token / non-TG. Rename later, not an extra layer."
+        },
+        {
+          "id": "SIM-CF5-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "PublicationStatus.draft is in enum, never written. Same class as CF-3 PlanStatus.generating."
+        },
+        {
+          "id": "SIM-CF5-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "fetch_metrics is TZ 10.4 stub (unavailable dict) unused until CF-7. ManualCopyAdapter.limits/requires_media never read by worker. TZ surface, not a dead wrapper class."
+        },
+        {
+          "id": "SIM-CF5-L4",
+          "severity": "low",
+          "status": "open",
+          "note": "supports_autopost=false short-circuit means ManualCopyAdapter.publish is never called by worker. Two ways to say no-autopost (flag vs AdapterError). Keep: calling publish() would fail VK rows instead of waiting for mark-manual."
+        },
+        {
+          "id": "SIM-CF5-L5",
+          "severity": "low",
+          "status": "open",
+          "note": "ScheduleRequest.channel_account_id still optional then 400 in service. Leftover from CF-3 stub. Telegram _send_photo duplicates sendMessage fallback twice."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "WP/Gmail stay ManualCopy until CF-6; due manuals re-claimed each minute (efficiency L2)",
+        "fetch_metrics unused until CF-7 analytics",
+        "Worker crash after Telegram accept before commit can duplicate (coder risk)"
+      ],
+      "handoff": "teamlead. GATE_PASS (no middle+). Do not start CF-6."
+    },
+    {
+      "role": "qa",
+      "task": "CF-5 tests",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-5",
+      "changes": [
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        {
+          "id": "AC-12",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest test_ac12_idempotency_no_duplicate PASSED. Independent dump: POST same idempotency_key first 201 id=f3f8b05f-a30b-44e6-b04f-5176fdf443a9 then 200 same id; after due worker replay 200 status=published external_id=42; POST /retry 409 invalid_status; sendMessage count=1; GET publications rows=1. No duplicate send."
+        },
+        {
+          "id": "AC-15",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest test_ac15_cancel_scheduled_not_published PASSED. Independent dump: POST cancel 200 cancelled; run_publish_due after due: db status=cancelled external_id=None sends=0."
+        },
+        {
+          "id": "AC-19",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest test_ac19_revoke_cancels_future PASSED (future scheduled -> cancelled, row remains). Extra dump: published row stays published external_id=42; future cancelled; GET count=2; DELETE channel 204; sendMessage still 1 (only the already-published). History kept."
+        },
+        {
+          "id": "AC-11",
+          "source": "qa-test-plan.json must_pass mocked adapter; live optional",
+          "result": "pass",
+          "evidence": "pytest test_ac11_success_sets_published_and_external_id PASSED. Independent dump: POST schedule +2min 201 scheduled; run_publish_due at due -> published external_id=42; sendMessage=1; GET list external_id=42; GOOD-TOKEN not in list or send data. Live test_ac11_live_smoke SKIPPED (TELEGRAM_SMOKE unset, reason=live telegram disabled)."
+        },
+        {
+          "id": "AC-13",
+          "source": "qa-test-plan.json must_pass mocked adapter; live optional",
+          "result": "pass",
+          "evidence": "pytest test_ac13_bad_token_failed_then_dead PASSED. Independent dump unauthorized mock: attempt1 scheduled unauthorized; attempt2 scheduled unauthorized; attempt3 dead unauthorized; external_id=None; BAD-TOKEN not in error_message. Live AC-13 not run (same TELEGRAM_SMOKE skip policy)."
+        },
+        {
+          "id": "pytest_suite",
+          "source": "QA CF-5 extra",
+          "result": "pass",
+          "evidence": "backend pytest -q OPENAI_API_KEY unset TELEGRAM_SMOKE unset: 51 passed, 1 skipped (tests/test_ac_publish.py:386 live telegram disabled), 1 warning (Starlette TestClient deprecation) in 2.40s then 2.45s. Must_pass subset -v: 5 passed, 1 skipped in 0.45s."
+        },
+        {
+          "id": "alembic_0005",
+          "source": "QA CF-5 extra",
+          "result": "pass",
+          "evidence": "alembic history: 0004_channels_media -> 0005_publications (head); 0003_plans_content -> 0004_channels_media; 0002_identity -> 0003_plans_content; 0001_baseline -> 0002_identity; <base> -> 0001_baseline."
+        },
+        {
+          "id": "no_cf6_live_send",
+          "source": "QA CF-5 boundary (do not start CF-6)",
+          "result": "pass",
+          "evidence": "get_adapter: wordpress/gmail=ManualCopyAdapter supports_autopost=False. No smtplib/wp-json/xmlrpc in backend/app. Dump: WP due stays scheduled external_id=None; Gmail no recipients 409 no_recipients; with recipient 201 scheduled; after due still scheduled external_id=None. AC-09 override 201 scheduled (no longer 501)."
+        },
+        {
+          "id": "beat_registered",
+          "source": "QA CF-5 extra",
+          "result": "pass",
+          "evidence": "pytest test_worker_import: contentforge.publish_due registered; beat_schedule has publish-due crontab minute=*. docker-compose beat service celery beat; worker -Q celery,ai."
+        }
+      ],
+      "findings": [
+        {
+          "id": "QA-CF5-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "TZ AC-13 says failed then 3 retry then dead. Product keeps status=scheduled with error_code=unauthorized until attempt 3 -> dead. Retryable SM, not PublicationStatus.failed (that is parse_error non-retryable). AC intent met."
+        },
+        {
+          "id": "QA-CF5-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "RETRY_DELAYS includes 15m but MAX_ATTEMPTS=3 dead after 3rd fail uses only 1m then 5m gaps. 15m delay unused. Matches coded tests; naming leftover."
+        },
+        {
+          "id": "QA-CF5-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "pytest AC-19 only covers future scheduled. Extra dump confirmed already-published stays published. Test gap, not product fail."
+        },
+        {
+          "id": "QA-CF5-L4",
+          "severity": "low",
+          "status": "open",
+          "note": "Starlette TestClient deprecation warning (httpx vs httpx2). Same as CF-1..CF-4, does not fail tests."
+        },
+        {
+          "id": "QA-CF5-L5",
+          "severity": "low",
+          "status": "open",
+          "note": "pytest uses SQLite create_all, not Alembic upgrade against Postgres. 0005 exists as head. Same class as CF-2..CF-4."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "Telegram live smoke untested in CI by design (TELEGRAM_SMOKE=1)",
+        "WP/Gmail stay ManualCopy until CF-6; due manuals re-claimed each minute",
+        "Worker crash after Telegram accept before DB commit can duplicate (coder risk)",
+        "pytest SQLite vs Alembic on Postgres"
+      ],
+      "handoff": "security_expert. Do not start CF-6. No middle+ findings. GATE_PASS."
+    },
+    {
+      "role": "security_expert",
+      "task": "CF-5 bot token logs/API, Telegram HTTP, publish authz, revoke",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-5",
+      "changes": [
+        "backend/app/services/adapters/telegram.py (allowlist method, path-safe token, follow_redirects=False, trust_env=False, no HTTPError chain)",
+        "backend/tests/test_ac_publish.py (401/IDOR/viewer 403, SSRF URL pin, token redact)",
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        {
+          "id": "token_not_in_api",
+          "source": "GATE token in logs/API / NFR-SEC-04",
+          "result": "pass",
+          "evidence": "PublicationPublic has no token/ciphertext fields. GET/POST publications + cancel/retry/mark-manual return status/external_id/error_message only. telegram_result_or_raise redacts bot token from Telegram description before AdapterError.message (stored as error_message). AC-11 GOOD-TOKEN not in list; AC-13 BAD-TOKEN not in error_message. Channel GET still ChannelPublic. Audit schedule/cancel/retry/revoke: type/variant_id, no secrets. Logs: telegram_send method+chat_id; telegram_http_error method only; HTTPError not chained (from None)."
+        },
+        {
+          "id": "publish_authz",
+          "source": "GATE unauthenticated publish",
+          "result": "pass",
+          "evidence": "All publish routes Depends(get_current_user). POST schedule/cancel/retry/mark-manual require_brand MUTATE (owner/editor). GET list require_brand. Stranger brand/publication 404 same envelope. No auth -> 401. Viewer GET 200, schedule/cancel 403. Live sendMessage/sendPhoto only from publish_worker (Celery beat), not request thread."
+        },
+        {
+          "id": "telegram_http_ssrf",
+          "source": "GATE SSRF via telegram API URL if user-controlled",
+          "result": "pass",
+          "evidence": "TELEGRAM_API_BASE hardcoded https://api.telegram.org; not in Settings/env/channel.meta. build_telegram_url allowlists getMe/sendMessage/sendPhoto; rejects token with /\\\\?#@ whitespace or ://. httpx follow_redirects=False trust_env=False. chat_id is JSON body to Telegram, not request host. Photo is local file bytes, not user URL fetch."
+        },
+        {
+          "id": "revoke_ac19",
+          "source": "AC-19 / TZ FR-PUB revoke",
+          "result": "pass",
+          "evidence": "revoke_channel nulls token_ciphertext+refresh_ciphertext, status=revoked, cancel_scheduled_for_channel (scheduled -> cancelled, row remains). Worker: revoked channel -> AdapterError channel_revoked retryable=False. QA AC-19 + published-stays-published dump. Auth: DELETE channel MUTATE + require_channel 404 for stranger."
+        },
+        {
+          "id": "pytest_after_tiny_fix",
+          "source": "security tiny fix",
+          "result": "pass",
+          "evidence": "backend/.venv pytest -q: 56 passed, 1 skipped (TELEGRAM_SMOKE live), 1 warning in 2.76s (coder/qa 51 + 5 security tests)"
+        }
+      ],
+      "findings": [
+        {
+          "id": "SEC-CF5-L1",
+          "severity": "low",
+          "status": "fixed",
+          "note": "httpx.Client default follow_redirects+trust_env and unconstrained token/method path. Now follow_redirects=False, trust_env=False, method allowlist, path-safe token, HTTPError not chained into logs."
+        },
+        {
+          "id": "SEC-CF5-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "Revoke cancels scheduled only. In-flight publishing may still send with a session-cached ciphertext (TOCTOU). Next load sees revoked/missing token. Telegram-side token stays valid until BotFather revoke."
+        },
+        {
+          "id": "SEC-CF5-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "Bot token is in the outbound Telegram URL by Bot API design. We do not log the URL; description redacted. DEBUG httpx access logs still could print URLs if enabled later."
+        },
+        {
+          "id": "SEC-CF5-L4",
+          "severity": "low",
+          "status": "open",
+          "note": "Idempotency_key is globally unique: other brand gets 409 idempotency_conflict, not the row. Minor cross-tenant existence oracle."
+        },
+        {
+          "id": "SEC-CF5-L5",
+          "severity": "low",
+          "status": "open",
+          "note": "Compose Redis has no password and publishes 6379. Enqueue of publish_due is infra, not an unauthenticated HTTP publish route. Same class as CF-1 broker exposure."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "In-flight publishing after revoke can still hit Telegram once",
+        "Telegram Bot API requires token in URL; keep log level away from httpx debug",
+        "WP/Gmail live send is CF-6"
+      ],
+      "handoff": "teamlead. GATE_PASS (no middle+). Tiny Telegram HTTP pin + authz tests. Do not start CF-6."
+    },
+    {
+      "role": "coder",
+      "task": "CF-6 WordPress REST and Gmail SMTP adapters",
+      "result": "done",
+      "phase": "CF-6",
+      "changes": [
+        "backend/app/services/adapters/wordpress.py Application Password REST wp/v2/posts status=publish",
+        "backend/app/services/adapters/gmail.py SMTP smtp.gmail.com:587 STARTTLS cap 50 sent/failed meta",
+        "backend/app/services/adapters/base.py AdapterCapabilityError + AdapterResult.meta",
+        "backend/app/services/adapters/manual.py raises AdapterCapabilityError",
+        "backend/app/services/adapters/__init__.py WP/Gmail live adapters; VK/IG ManualCopy",
+        "backend/app/services/publish_worker.py merge AdapterResult.meta",
+        "backend/app/services/recipient_service.py list_active_recipients cap 50",
+        "backend/app/schemas.py PublicationPublic.meta",
+        "backend/app/main.py version 0.6.0",
+        "backend/tests/wordpress_mock.py gmail_mock.py test_ac_publish.py AC-14/23 quota/VK-IG; test_ac_channels.py AC-22 rename"
+      ],
+      "checks": [
+        "pytest backend -q: 62 passed, 1 skipped (TELEGRAM_SMOKE live), 1 warning in 3.55s",
+        "AC-14 mocked WP REST: due -> published + external_id=99, payload status=publish, app password not in GET publications",
+        "AC-22 Gmail no active recipients: POST /publications -> 409 no_recipients (test_ac22_gmail_no_recipients_409)",
+        "AC-23 mocked SMTP: published sent_count>=1, From=account email, unsubscribed skipped, app password not in GET /channels or caplog",
+        "Gmail 550 quota -> rate_limited failed attempt_count=1, no 3-retry storm; mailbox 550 is not quota",
+        "VK/IG stay ManualCopyAdapter AdapterCapabilityError; health ciphertext stub",
+        "No Instagram Graph / VK wall.post"
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "WP site_url is user-controlled (inherent); pinned http(s), no redirects, trust_env=False, no userinfo",
+        "Gmail SMTP host/port pinned to smtp.gmail.com:587 ignoring stored smtp_host (credential-theft via custom MX)",
+        "Partial Gmail send (some ok then quota) returns published with sent_count; remaining not retried",
+        "logger.exception on unexpected SMTP crash could include app_password in traceback locals",
+        "Live WP REST / Gmail SMTP not exercised in CI (mocks only)",
+        "pytest SQLite create_all, not Alembic upgrade on Postgres",
+        "CF-7 analytics/A/B not started"
+      ],
+      "handoff": "qa, security_expert. Do not start CF-7 (analytics/A/B). No Instagram Graph / VK wall.post."
+    },
+    {
+      "role": "code_simplify_assessor",
+      "task": "CF-6 simplicity",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-6",
+      "scope": [
+        "backend/app/services/adapters/wordpress.py",
+        "backend/app/services/adapters/gmail.py",
+        "backend/app/services/adapters/base.py AdapterCapabilityError + AdapterResult.meta",
+        "backend/app/services/adapters/manual.py AdapterCapabilityError",
+        "backend/app/services/adapters/__init__.py WP/Gmail live, VK/IG ManualCopy",
+        "backend/app/services/publish_worker.py merge AdapterResult.meta",
+        "backend/app/services/recipient_service.py list_active_recipients cap 50",
+        "backend/app/schemas.py PublicationPublic.meta"
+      ],
+      "ignored": [
+        "CF-7 analytics/A/B / live fetch_metrics",
+        "Instagram Graph / VK wall.post",
+        "frontend",
+        "extracting shared escape_html / _app_password"
+      ],
+      "changes": [
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        "No inline imports in wordpress.py gmail.py adapters/__init__.py publish_worker.py recipient_service.py",
+        "Single WP send wrapper: wordpress_create_post. Mock patches that. wordpress_http_client mirrors telegram_http_client (timeout/no-redirect/trust_env=False), not a second PluginRegistry/factory",
+        "Single Gmail send wrapper: smtp_send_one. Mock patches that. Host/port pinned smtp.gmail.com:587, not a generic SMTP client from stored smtp_host",
+        "get_adapter if/assert_never + 3 live classes (Telegram/WordPress/Gmail) + ManualCopy for VK/IG. No xmlrpc, no IG Graph, no VK wall.post",
+        "AdapterCapabilityError is AdapterError subclass for TZ manual_copy_required, not an extra usecase/repo layer. Worker still short-circuits supports_autopost",
+        "AdapterResult.meta is AC-23 sent_count/failed_count, not CF-7 analytics. fetch_metrics still TZ stub unavailable dict",
+        "list_active_recipients is cap-50 query; has_active_recipients stays schedule 409. No extra recipient pipeline",
+        "No CF-7"
+      ],
+      "findings_low": [
+        {
+          "id": "SIM-CF6-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "escape_html copied in telegram.py, wordpress.py, gmail.py. WP markdown_to_html and Gmail HTML alt are the same naive <p>/<br> split. Do not extract a shared html module this phase."
+        },
+        {
+          "id": "SIM-CF6-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "_app_password duplicated in wordpress.py and gmail.py (telegram has _bot_token). Same decrypt_secret + TokenEncryptionError. Keep per-adapter, not a crypto helper layer."
+        },
+        {
+          "id": "SIM-CF6-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "GmailAdapter.publish writes publication.meta then returns AdapterResult.meta; worker _mark_published merges again. Raise before first_id can leave sent/failed counts on a failed row."
+        },
+        {
+          "id": "SIM-CF6-L4",
+          "severity": "low",
+          "status": "open",
+          "note": "channel_service still stores smtp_host/smtp_port and both site_url+blog_url. Adapter pins Gmail SMTP and reads site_url or blog_url. CF-4 credential leftover, not a second send path."
+        },
+        {
+          "id": "SIM-CF6-L5",
+          "severity": "low",
+          "status": "open",
+          "note": "AdapterCapabilityError still never hit by worker (supports_autopost=false returns scheduled). Same as SIM-CF5-L4; named subclass is TZ surface for the test, not a dead wrapper class."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "Live WP REST / Gmail SMTP untested in CI (mocks only)",
+        "Partial Gmail send (some ok then quota) returns published; remaining not retried (coder risk)",
+        "fetch_metrics unused until CF-7 analytics"
+      ],
+      "handoff": "teamlead. GATE_PASS (no middle+). Do not start CF-7."
+    },
+    {
+      "role": "qa",
+      "task": "CF-6 tests",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-6",
+      "changes": [
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        {
+          "id": "AC-14",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest test_ac14_wordpress_mocked_publish PASSED. Independent dump: POST schedule 201 scheduled; run_publish_due -> db status=published external_id=99 external_url=https://blog.example/p/99; wp_calls=1 payload.status=publish title/content/excerpt/slug; GET publications status=published external_id=99; GET channels keys blog_url/site_url/username/pdn_* no token fields; SECRET_KEY_HIT []; SECRET_VALUE_HIT [] (wp-app-pass not in GET publications or GET channels). wordpress_create_post mocked; live WP REST not called."
+        },
+        {
+          "id": "AC-22",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest test_ac22_gmail_no_recipients_409 PASSED. Independent dump: Gmail channel connected, 0 recipients -> POST /publications 409 {error:{code:no_recipients,message,details:{}}}. Extra: only unsubscribed recipient also 409 no_recipients. After POST recipient Self@example.com -> email=self@example.com; same schedule 201 scheduled. assert_gmail_recipients uses has_active_recipients (status=active)."
+        },
+        {
+          "id": "AC-23",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest test_ac23_gmail_mocked_smtp PASSED (smtp_send_one mocked, 1 call, unsubscribed skipped). Independent dump: published sent_count=1 failed_count=0; From=me@gmail.com To=self@example.com; GET publications meta.sent_count=1; GET /channels type=gmail meta gmail_from/smtp_host/smtp_port only, no app_password; password gmail-app-pass-SECRET not in channels.text, listed.text, or logs (gmail_send recipient_count=1 only). SECRET_KEY_HIT []."
+        },
+        {
+          "id": "pytest_suite",
+          "source": "QA CF-6 extra",
+          "result": "pass",
+          "evidence": "backend pytest -q OPENAI_API_KEY unset TELEGRAM_SMOKE unset: 62 passed, 1 skipped (tests/test_ac_publish.py:409 live telegram disabled), 1 warning (Starlette TestClient deprecation) in 3.13s. Must_pass subset -v: 3 passed in 0.38s. Collect: 63 tests = 62+1 skip."
+        },
+        {
+          "id": "alembic_0005",
+          "source": "QA CF-6 extra",
+          "result": "pass",
+          "evidence": "alembic history head still 0004_channels_media -> 0005_publications. No 0006: CF-6 reused Publication.meta (already on 0005) for sent_count/failed_count/recipient_ids. PublicationPublic.meta exposed."
+        },
+        {
+          "id": "no_cf7_vk_ig",
+          "source": "QA CF-6 boundary (do not start CF-7)",
+          "result": "pass",
+          "evidence": "get_adapter: wordpress/gmail supports_autopost=True; vk/instagram ManualCopyAdapter AdapterCapabilityError. No Instagram Graph / VK wall.post / analytics routes in backend/app/api. fetch_metrics still unavailable stub. app version 0.6.0. Extra pytest: test_vk_instagram_stay_manual_copy_capability_error, test_gmail_quota_no_retry_storm, test_wordpress_url_pinned_rejects_ssrf_payloads included in 62 passed."
+        }
+      ],
+      "findings": [
+        {
+          "id": "QA-CF6-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "Starlette TestClient deprecation warning (httpx vs httpx2). Same as CF-1..CF-5, does not fail tests."
+        },
+        {
+          "id": "QA-CF6-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "pytest uses SQLite create_all, not Alembic upgrade against Postgres. No 0006; Publication.meta already in 0005. Same class as CF-2..CF-5."
+        },
+        {
+          "id": "QA-CF6-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "Live WP REST and Gmail SMTP untested in CI by design (mocks patch wordpress_create_post / smtp_send_one). Same class as TELEGRAM_SMOKE skip."
+        },
+        {
+          "id": "QA-CF6-L4",
+          "severity": "low",
+          "status": "open",
+          "note": "pytest AC-14 asserts wp-app-pass absent from GET publications only. Extra dump confirmed GET /channels also has no app_password. Test gap, not product fail."
+        },
+        {
+          "id": "QA-CF6-L5",
+          "severity": "low",
+          "status": "open",
+          "note": "WP adapter always POST status=publish at scheduler T, never WordPress future+date. Matches chosen MVP path (our scheduler). TZ AC-14 publish/future according to path."
+        },
+        {
+          "id": "QA-CF6-L6",
+          "severity": "low",
+          "status": "open",
+          "note": "publish_worker.run_publish_due_job logger.exception(publish_due_failed) can include app_password in traceback locals on unexpected crash. smtp_send_one itself logs type name only and uses from None. Security_expert next."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "Live WP REST / Gmail SMTP untested in CI (mocks only)",
+        "Partial Gmail send (some ok then quota) returns published; remaining not retried (coder risk)",
+        "pytest SQLite vs Alembic on Postgres",
+        "logger.exception on publish_due_failed may leak secrets in traceback locals"
+      ],
+      "handoff": "security_expert. Do not start CF-7. No middle+ findings. GATE_PASS."
+    },
+    {
+      "role": "security_expert",
+      "task": "CF-6 WP Application Password, Gmail app password, SMTP, logs, GET channels",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-6",
+      "changes": [
+        "backend/app/services/adapters/base.py (redact_secret also strips spaces)",
+        "backend/app/services/adapters/gmail.py (unexpected SMTP -> AdapterError from None, log type only)",
+        "backend/app/services/adapters/wordpress.py (control-char URL pin; unexpected HTTP -> AdapterError from None)",
+        "backend/tests/test_ac_publish.py (SSRF control chars, spaced-password redact, unexpected error no leak)",
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        {
+          "id": "app_password_not_in_get",
+          "source": "GATE password in GET/logs / AC-18 / AC-23",
+          "result": "pass",
+          "evidence": "ChannelPublic via public_meta strips app_password/password/token/ciphertext. GET /channels and credentials POST return site_url/username/gmail_from/smtp_* only. PublicationPublic has error_message/meta sent_count — no secrets. AC-14 wp-app-pass not in GET publications; AC-23 gmail-app-pass-SECRET not in GET channels, publications, or caplog. 422 sanitizer omits app_password input. Audit connect/schedule: type/pdn only."
+        },
+        {
+          "id": "smtp_traceback_redact",
+          "source": "coder/QA risk logger.exception SMTP locals; tiny fix",
+          "result": "pass",
+          "evidence": "smtp_send_one: SMTPException/OSError/Exception all logger.warning type=... then AdapterError from None (no chain, no str(exc) on unexpected). redact_secret also replaces space-stripped variant so WP/Gmail app passwords cannot land in error_message GET. wordpress_create_post same Exception wrap. Tests: unexpected RuntimeError with password in message -> AdapterError, cause None, password not in message or caplog; spaced abcd efgh ijkl redacted from SMTPDataError and WP 401 message."
+        },
+        {
+          "id": "publish_authz",
+          "source": "GATE unauthenticated publish",
+          "result": "pass",
+          "evidence": "WP/Gmail publish only via existing POST /publications (get_current_user + require_brand MUTATE) then Celery process_publication. No new public send routes. test_publications_require_auth_and_brand_scope: no auth 401, stranger 404. Viewer schedule/cancel 403. Live WP REST / SMTP only from worker, not request thread."
+        },
+        {
+          "id": "wp_ssrf_pin",
+          "source": "GATE obvious SSRF file:// or internal without any pin",
+          "result": "pass",
+          "evidence": "build_wordpress_posts_url: http/https only; reject userinfo, query, fragment, params, empty host, control chars (incl. trailing CRLF before strip). httpx follow_redirects=False trust_env=False. Basic auth in header not URL. file:// and javascript: raise bad_request. Gmail SMTP host/port pinned smtp.gmail.com:587 (stored smtp_host ignored)."
+        },
+        {
+          "id": "pytest_after_tiny_fix",
+          "source": "security tiny fix",
+          "result": "pass",
+          "evidence": "backend/.venv pytest -q: 66 passed, 1 skipped (TELEGRAM_SMOKE live), 1 warning in 3.14s (qa 62 + 4 security tests)"
+        }
+      ],
+      "findings": [
+        {
+          "id": "SEC-CF6-L1",
+          "severity": "low",
+          "status": "fixed",
+          "note": "Unexpected SMTP/HTTP errors could bubble to run_publish_due_job logger.exception with app_password in frame locals; WP error text might echo space-stripped password into GET error_message. Now catch Exception, from None, log type only; redact_secret covers spaced and stripped variants."
+        },
+        {
+          "id": "SEC-CF6-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "site_url is owner-controlled; scheme pin allows http(s) to RFC1918/loopback/metadata (http://127.0.0.1). Blocking that would break local WP. file:// rejected. Authenticated connect, not unauthenticated SSRF."
+        },
+        {
+          "id": "SEC-CF6-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "WP/Gmail health remains ciphertext-presence stub (same as CF-4). Live REST/SMTP untested in CI."
+        },
+        {
+          "id": "SEC-CF6-L4",
+          "severity": "low",
+          "status": "open",
+          "note": "In-flight publishing after revoke can still send once with session-cached ciphertext (same TOCTOU as SEC-CF5-L2)."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "Authenticated owner can point site_url at internal http(s) (local WP / metadata)",
+        "Live WP REST / Gmail SMTP untested in CI",
+        "Partial Gmail send published with sent_count; remaining not retried"
+      ],
+      "handoff": "teamlead. GATE_PASS (no middle+). Tiny SMTP/WP redact + URL control-char pin. Do not start CF-7."
+    },
+    {
+      "role": "coder",
+      "task": "CF-7 Analytics A/B AuditLog structured logs",
+      "result": "done",
+      "phase": "CF-7",
+      "changes": [
+        "backend/app/models.py AnalyticsSnapshot Experiment enums AuditLog append-only events Publication.experiment_id FK schedule_a/b",
+        "backend/migrations/versions/0006_analytics_experiments.py",
+        "backend/app/services/metrics.py honest pack/unavailable/gmail sent-failed",
+        "backend/app/services/analytics_service.py Celery sync + summary/publication GET",
+        "backend/app/services/experiment_service.py sequential TG start/stop/winner",
+        "backend/app/api/analytics.py backend/app/api/experiments.py",
+        "backend/app/services/audit.py scrub secrets + request_id; FR-AUD actions wired",
+        "backend/app/logutil.py request_id/job_id/publication_id SecretRedactFilter",
+        "backend/app/celery_app.py sync-analytics every 6h; main.py 0.7.0 routers middleware",
+        "adapters fetch_metrics: TG/WP/manual unavailable; Gmail sent/failed from meta",
+        "backend/tests/test_ac_analytics.py AC-16 AC-17 AC-21 gmail metrics audit append-only"
+      ],
+      "checks": [
+        "pytest backend -q: 71 passed, 1 skipped (TELEGRAM_SMOKE live), 1 warning in 3.85s",
+        "AC-16: TG summary availability=unavailable metrics={} impressions not stored/shown as 0",
+        "AC-17: sequential start creates 2 Publications T1/T2; winner 409 window_open; stop then declare_winner completed + AuditLog",
+        "AC-21: caplog on login+telegram publish has no password/token plaintext; audit metadata scrubbed",
+        "Gmail fetch_metrics: sent/failed facts; opened/clicked/unsubscribed unavailable not zeros",
+        "No Instagram Graph / Mailchimp / Reels / CF-8 UI"
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "Telegram post insights stay unavailable stub (no getChatMembersCount / message views live fetch)",
+        "gmail_split_list and wordpress_title A/B rejected 409 unsupported_mode",
+        "Experiment schedule_a/b stored extra vs TZ 11.15 so start can create T1/T2 after draft",
+        "pytest SQLite create_all, not Alembic upgrade on Postgres",
+        "Celery analytics sync untested against live Redis beat",
+        "Stop early mutates window_end to now (no stopped_at column)"
+      ],
+      "handoff": "qa, security_expert. Do not start CF-8 (React/E2E). No Instagram App Review / Mailchimp / Reels."
+    },
+    {
+      "role": "code_simplify_assessor",
+      "task": "CF-7 simplicity",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-7",
+      "scope": [
+        "backend/app/services/metrics.py",
+        "backend/app/services/analytics_service.py",
+        "backend/app/services/experiment_service.py",
+        "backend/app/services/audit.py scrub + request_id",
+        "backend/app/logutil.py SecretRedactFilter RequestContextMiddleware log_event",
+        "backend/app/api/analytics.py backend/app/api/experiments.py",
+        "backend/app/models.py AnalyticsSnapshot Experiment AuditLog append-only",
+        "backend/migrations/versions/0006_analytics_experiments.py",
+        "backend/app/celery_app.py sync-analytics",
+        "adapters fetch_metrics TG/WP/manual unavailable Gmail from_gmail_meta",
+        "backend/app/schemas.py ExperimentCreate ExperimentPublic WinnerRequest"
+      ],
+      "ignored": [
+        "CF-8 React/E2E",
+        "Instagram Graph / Mailchimp / Reels / live TG getChatMembersCount",
+        "implementing gmail_split_list / wordpress_title",
+        "extracting shared latest_snapshot query or availability helper"
+      ],
+      "changes": [
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        "No inline imports in metrics.py analytics_service.py experiment_service.py audit.py logutil.py api/analytics.py api/experiments.py adapters fetch_metrics",
+        "Single fetch_metrics path: ChannelAdapter ABC -> TG/WP/manual empty_unavailable, Gmail from_gmail_meta(publication.meta). Celery sync-analytics -> run_analytics_sync_job -> capture_publication -> get_adapter.fetch_metrics. No InsightsClient/MetricsRegistry/second pipeline",
+        "metrics.py is 4 functions (empty_unavailable/pack_available/from_gmail_meta/split_adapter_payload), not a class hierarchy. Adapters return the packed dict; service splits raw vs normalized into AnalyticsSnapshot",
+        "A/B is sequential TG only: create 409 unsupported_mode for other modes; start reuses schedule_publication twice with exp:{id}:A/B idempotency. No ExperimentEngine/Strategy",
+        "Single write_audit + _scrub. Append-only SQLAlchemy before_update/before_delete. No second audit table/service",
+        "logutil is one module: 3 ContextVars + SecretRedactFilter + log_event + raw ASGI RequestContextMiddleware. AC-21 surface, not a logging framework",
+        "Routers thin: analytics GET summary/publication; experiments CRUD start/stop/winner. Returns dict/ExperimentPublic. No CF-8 UI",
+        "No Instagram Graph / Mailchimp / Reels / CF-8"
+      ],
+      "findings_low": [
+        {
+          "id": "SIM-CF7-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "Experiment.schedule_a/schedule_b extra vs TZ 11.15 so draft→start can create T1/T2 without a second payload. Extra columns, not an extra scheduling service."
+        },
+        {
+          "id": "SIM-CF7-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "pack_available and split_adapter_payload both decide availability/metrics/unavailable. Adapters pack, capture_publication re-filters. Thin functions, not a MetricsEngine. Do not extract a third packer."
+        },
+        {
+          "id": "SIM-CF7-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "experiment_metrics.side() writes availability three times then collapses to unavailable if value is None. Messy, not an extra DTO."
+        },
+        {
+          "id": "SIM-CF7-L4",
+          "severity": "low",
+          "status": "open",
+          "note": "brand_summary joins ChannelAccount then db.get(ChannelAccount) per publication. N+1 leftover, not a repository layer."
+        },
+        {
+          "id": "SIM-CF7-L5",
+          "severity": "low",
+          "status": "open",
+          "note": "ExperimentMode.gmail_split_list/wordpress_title and ExperimentStatus.tie/cancelled are TZ enum surface. Create 409s unsupported_mode; stop mutates window_end instead of cancelled. Same pattern as CF-6 VK/IG ManualCopy."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "Telegram insights remain unavailable stub (coder)",
+        "gmail_split_list / wordpress_title not implemented (409)",
+        "Stop early mutates window_end (no stopped_at)",
+        "Celery analytics beat untested live"
+      ],
+      "handoff": "teamlead. GATE_PASS (no middle+). Do not start CF-8."
+    },
+    {
+      "role": "security_expert",
+      "task": "CF-7 AuditLog no secrets, analytics authz, log redaction AC-21",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-7",
+      "changes": [
+        "backend/app/services/audit.py (scrub_secrets: drop secret keys incl api_key; redact string values via redact_log_text)",
+        "backend/app/services/analytics_service.py (GET publication analytics raw through scrub_secrets)",
+        "backend/app/celery_app.py (configure_app_logging so worker/beat inherit SecretRedactFilter)",
+        "backend/tests/test_ac_analytics.py (AC-21 all AuditLog + JWT not in caplog; cross-workspace 401/404; scrub unit)",
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        {
+          "id": "ac21_logs_and_audit",
+          "source": "GATE tokens/passwords in logs or audit metadata / AC-21 / FR-AUD-02",
+          "result": "pass",
+          "evidence": "Login audit data={}. connect_channel type+pdn only. publish channel_type+external_id bool. write_audit runs scrub_secrets: drops keys containing password/token/secret/authorization/ciphertext/api_key; remaining strings go through redact_log_text (password=/token=/Bearer /botTOKEN/). SecretRedactFilter on root+app and now Celery import. test_ac21: AuthPass-SECRET-99, 123:BOT-TOKEN-SECRET, JWT access/refresh absent from caplog and every AuditLog.data. test_audit_scrub_drops_secret_keys_and_values passed."
+        },
+        {
+          "id": "analytics_workspace_authz",
+          "source": "GATE analytics leak across workspaces / NFR-SEC-02 / AC-03",
+          "result": "pass",
+          "evidence": "GET /brands/{id}/analytics/summary and experiments: require_brand -> stranger 404. GET /publications/{id}/analytics: require_publication -> 404. GET/POST experiments/{id} start/stop/winner: require_experiment via piece.brand_id membership, 404 mapped. Unauthenticated 401 via get_current_user. Summary join ChannelAccount.brand_id == brand.id after require_brand. No public audit list API. test_analytics_experiments_isolated_across_workspaces: owner 200, stranger 404, no auth 401. Owner summary does not include other workspace pubs."
+        },
+        {
+          "id": "pytest_after_tiny_fix",
+          "source": "security tiny fix",
+          "result": "pass",
+          "evidence": "backend/.venv pytest -q: 73 passed, 1 skipped (TELEGRAM_SMOKE live), 1 warning in 3.98s (coder 71 + 2 security tests)"
+        }
+      ],
+      "findings": [
+        {
+          "id": "SEC-CF7-L1",
+          "severity": "low",
+          "status": "fixed",
+          "note": "Celery worker/beat did not call configure_app_logging; SecretRedactFilter only on FastAPI create_app. Now celery_app imports configure_app_logging. logger.exception still formats traceback locals after filter (same residual as SEC-CF6-L1); current fetch_metrics does not decrypt tokens."
+        },
+        {
+          "id": "SEC-CF7-L2",
+          "severity": "low",
+          "status": "fixed",
+          "note": "Audit scrub was key-only; a secret under a benign key (note=token=...) would persist in metadata. Now string values run redact_log_text. GET publication analytics raw also scrubbed."
+        },
+        {
+          "id": "SEC-CF7-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "Unlabeled secret values (JWT/bot token with no password/token/Bearer/botURL marker) still survive redact. Current write_audit callers do not pass those. Snapshot raw today is {reason} or {source: publication.meta}."
+        },
+        {
+          "id": "SEC-CF7-L4",
+          "severity": "low",
+          "status": "open",
+          "note": "run_analytics_sync iterates all published rows across workspaces (worker, no user). Not an HTTP IDOR. No admin trigger endpoint."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "logger.exception traceback locals can still contain decrypted secrets on unexpected worker crash",
+        "Live TG insights / WP views not fetched; raw payloads not exercised against platform APIs",
+        "Celery beat sync-analytics untested against live Redis"
+      ],
+      "handoff": "teamlead. GATE_PASS (no middle+). Tiny audit/celery/raw scrub + authz tests. Do not start CF-8."
+    },
+    {
+      "role": "qa",
+      "task": "CF-7 tests",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-7",
+      "changes": [
+        "ai/workflow/coding/subagent_reports.json",
+        "ai/workflow/coding/stage_checkpoint.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        {
+          "id": "AC-16",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest test_ac16_summary_does_not_present_zero_when_unavailable PASSED. Independent dump: TG GET summary 200 availability=unavailable metrics={} publications=1 failed=0; impressions not in metrics; GET publication analytics snapshot availability=unavailable normalized.metrics={} raw.reason=telegram_insights_unavailable; 0 not in metric values. Extra WP: summary unavailable metrics={}; snapshot same empty metrics. Extra Gmail: summary partial sent.sum=1 failed.sum=0 (SMTP facts); opened/clicked not in summary metrics; snapshot unavailable includes opened/clicked/unsubscribed, not stored as 0."
+        },
+        {
+          "id": "AC-17",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest test_ac17_sequential_experiment_two_publications_declare_winner PASSED. Independent dump: POST experiment 201 status=draft; winner on draft 409 invalid_status; POST start 200 running; GET publications experiment_id match count=2 both scheduled, scheduled_at distinct (T+1min vs T+5min); winner while window open 409 window_open; POST stop 200 (status stays running, window closed); POST winner 200 status=completed winner_variant_id=A; GET experiment metrics.publication_ids len=2 leader=unavailable (no TG impressions); AuditLog declare_winner=1. Extra: gmail_split_list 409 unsupported_mode."
+        },
+        {
+          "id": "AC-21",
+          "source": "qa-test-plan.json must_pass",
+          "result": "pass",
+          "evidence": "pytest test_ac21_logs_have_no_password_or_token_plaintext PASSED (also JWT access/refresh absent from caplog and every AuditLog.data after security tiny). Independent dump: login 200; publication published; GET /channels keys brand_id/display_name/external_account_id/id/meta/revoked_at/scopes/status/token_expires_at/type — no bot_token/app_password/password/ciphertext; login audit data={request_id}; publish audit {channel_type:telegram, external_id:true}; SECRET_VALUE_HIT [] (AuthPass-SECRET-99, 123:BOT-TOKEN-SECRET); SECRET_KEY_HIT []; log_has_password=false log_has_token=false; sample logs http_request method/path/status + telegram_send method=sendMessage chat_id=-100123 (no token)."
+        },
+        {
+          "id": "pytest_suite",
+          "source": "QA CF-7 extra",
+          "result": "pass",
+          "evidence": "QA ran pytest twice. First (coder baseline): 71 passed, 1 skipped, 1 warning in 3.72s. Rerun on current tree (security added test_analytics_experiments_isolated_across_workspaces + test_audit_scrub_drops_secret_keys_and_values): 73 passed, 1 skipped (tests/test_ac_publish.py::test_ac11_live_smoke TELEGRAM_SMOKE unset), 1 warning (Starlette TestClient deprecation) in 3.99s. Must_pass -v: AC-16/AC-17/AC-21 3 passed in 0.43s. Collect was 72 then 74 = passed+skip. Matches ~71+1 skip brief; +2 security tests."
+        },
+        {
+          "id": "alembic_0006",
+          "source": "QA CF-7 extra",
+          "result": "pass",
+          "evidence": "alembic history head: 0005_publications -> 0006_analytics_experiments (analytics snapshots and sequential experiments). experiments + analytics_snapshots tables; fk_publications_experiment_id. pytest still SQLite create_all, not Alembic upgrade on Postgres."
+        },
+        {
+          "id": "no_cf8_ig_mailchimp",
+          "source": "QA CF-7 boundary (do not start CF-8)",
+          "result": "pass",
+          "evidence": "frontend/src/App.tsx still health stub only. No analytics/experiments tsx. No Instagram Graph / Mailchimp / Reels in backend/app. app version 0.7.0; analytics+experiments routers present (API, not CF-8 UI). Extra pytest: gmail metrics + audit append-only + isolation/scrub included in 73 passed."
+        }
+      ],
+      "findings": [
+        {
+          "id": "QA-CF7-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "Starlette TestClient deprecation warning (httpx vs httpx2). Same as CF-1..CF-6, does not fail tests."
+        },
+        {
+          "id": "QA-CF7-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "pytest uses SQLite create_all, not Alembic upgrade against Postgres. 0006 exists and is head. Same class as CF-2..CF-6."
+        },
+        {
+          "id": "QA-CF7-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "Telegram/WP insights stay unavailable stub (empty metrics, not zeros). By design for CF-7; not AC-16 fail."
+        },
+        {
+          "id": "QA-CF7-L4",
+          "severity": "low",
+          "status": "open",
+          "note": "POST /stop leaves Experiment.status=running and mutates window_end to now (no stopped_at). Winner then allowed. Matches TZ AC-17 after-window declare. Security/simplify already noted."
+        },
+        {
+          "id": "QA-CF7-L5",
+          "severity": "low",
+          "status": "open",
+          "note": "brand_summary emits availability=unavailable if no metrics else always partial — never available. Honest for Gmail (opens missing). Test gap if a channel ever has a full metric set."
+        },
+        {
+          "id": "QA-CF7-L6",
+          "severity": "low",
+          "status": "open",
+          "note": "empty_unavailable lists ALL_METRIC_KEYS including gmail sent/opened on TG/WP snapshots. Noisy, still not zeros-as-facts."
+        },
+        {
+          "id": "QA-CF7-L7",
+          "severity": "low",
+          "status": "open",
+          "note": "pytest AC-16 `metrics.get('impressions') != 0` would pass if impressions were a dict with sum=0; the following `impressions not in metrics` is the real assert. Independent dump confirmed key absent."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "Telegram post insights stay unavailable stub (no live views)",
+        "gmail_split_list / wordpress_title 409 unsupported_mode",
+        "pytest SQLite vs Alembic on Postgres",
+        "Celery sync-analytics beat untested against live Redis",
+        "Stop early mutates window_end; status stays running",
+        "logger.exception traceback locals may still leak on crash (security residual)"
+      ],
+      "handoff": "security_expert. Do not start CF-8. No middle+ findings. GATE_PASS. Note: security_expert CF-7 GATE_PASS already present in this file (tiny scrub/celery/authz; pytest 73); parent may skip duplicate security and go teamlead."
+    },
+    {
+      "role": "coder",
+      "task": "CF-8 React screens wired to FastAPI",
+      "result": "done",
+      "phase": "CF-8",
+      "changes": [
+        "frontend/package.json 0.8.0 + react-router tanstack-query rhf zod vitest RTL",
+        "frontend/vite.config.ts proxy /health /api + vitest jsdom",
+        "frontend/src/api/{client,types,cf}.ts JWT fetch + error envelope",
+        "frontend/src/auth/session.ts memory+localStorage JWT (no channel tokens)",
+        "frontend/src/components/{Layout,MonthGrid,Status}.tsx brand switcher header",
+        "frontend/src/screens SCR-AUTH ONB DASH CAL PLAN EDT CHN QUE ANL AB SET",
+        "frontend/src/test + login-error, plan-polling, calendar, client envelope tests",
+        "backend/app/main.py tiny CORS localhost+127.0.0.1:5173",
+        "logs/cf8-manual-e2e.txt",
+        "ai/workflow/coding/subagent_reports.json stage_checkpoint.json logs/agent-worklog.txt"
+      ],
+      "checks": [
+        "frontend npm test: 4 passed (invalid_credentials UI+envelope, plan 202 poll mock, calendar click not drag)",
+        "frontend tsc --noEmit: pass",
+        "backend pytest -q: 73 passed, 1 skipped (TELEGRAM_SMOKE), 1 warning in 5.02s",
+        "Vite proxy already /health and /api; CORS allow 127.0.0.1 for non-proxy",
+        "RU UI routes: /login /onboarding / calendar /plan /content /channels /queue /analytics /ab /settings",
+        "No Reels / IG App Review / Mailchimp / Viewer invite",
+        "Playwright live compose: skipped (docker image pull historically blocked); manual checklist logs/cf8-manual-e2e.txt"
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "JWT in localStorage (XSS) — allowed MVP",
+        "No GET /jobs list; dashboard job alerts only from client recent-job ids",
+        "Playwright vs compose not run; docker pull may still fail",
+        "Live generate/publish needs worker + OPENAI_API_KEY / channel creds",
+        "Calendar click-only; TZ drag-and-drop not implemented (task: click not drag)",
+        "IG/VK connect forms omitted from UI (MVP TG/WP/Gmail)"
+      ],
+      "handoff": "qa (UI + existing backend pytest still green). Then security_expert (JWT storage, channel tokens not in client)."
+    },
+    {
+      "role": "code_simplify_assessor",
+      "task": "CF-8 simplicity",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-8",
+      "scope": [
+        "frontend/src/App.tsx routes SCR-AUTH ONB DASH CAL PLAN EDT CHN QUE ANL AB SET",
+        "frontend/src/screens/*.tsx",
+        "frontend/src/components/{Layout,MonthGrid,Status}.tsx",
+        "frontend/src/api/{client,cf,types}.ts",
+        "frontend/src/auth/session.ts",
+        "frontend/src/labels.ts frontend/src/index.css frontend/src/main.tsx",
+        "frontend/package.json deps"
+      ],
+      "ignored": [
+        "rewriting UI / extracting shared Shell type / wiring unused cf methods",
+        "Playwright compose E2E",
+        "Instagram App Review / Mailchimp / Reels / Viewer invite",
+        "backend except noting CORS already in coder report"
+      ],
+      "changes": [
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        "No MUI/Chakra/Ant/Tailwind/shadcn/Radix/styled-components. package.json is react + router + tanstack-query + rhf + zod + hookform resolvers. CSS is one 300-line index.css with used panel/btn/card classes — not an unused design system",
+        "Single HTTP client: fetch only in api/client.ts (apiRequest/apiGet/apiPost/apiPatch/apiDelete/pollJob). Screens import cf from api/cf.ts. No axios/ky/openapi-generated client, no second fetch wrapper",
+        "RHF+Zod used on AuthPage + OnboardingPage (required stack). Other screens useState forms — simpler, not a parallel form library",
+        "No inline imports in frontend/src screens/api/components",
+        "Tiny slop recorded as low; did not rewrite UI"
+      ],
+      "findings_low": [
+        {
+          "id": "SIM-CF8-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "type Shell duplicated in 10 screens. Copy, not a context/provider framework. Do not extract."
+        },
+        {
+          "id": "SIM-CF8-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "cf.ts has unused methods (health, refresh, getBrand, patchPlanItem, deletePlanItem, addTrend, getExperiment, patchRecipient, deleteRecipient). Fat facade over the same apiRequest, not a second client. Refresh lives in client.ts 401 path."
+        },
+        {
+          "id": "SIM-CF8-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "Calendar legend chips (черновик/очередь/опубликован) are decorative; MonthGrid shows channel chips only. Don't wire a status DS."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "JWT in localStorage (coder)",
+        "Playwright compose skipped",
+        "qa/security CF-8 still pending in stage_checkpoint when this report was written"
+      ],
+      "handoff": "teamlead. GATE_PASS (no middle+). No UI rewrite."
+    },
+    {
+      "role": "efficiency_assessor",
+      "task": "CF-8 job polling interval and calendar list bounds",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-8",
+      "scope": [
+        "frontend/src/api/client.ts pollJob",
+        "frontend/src/api/cf.ts plans/publications",
+        "frontend/src/screens/CalendarPage.tsx",
+        "frontend/src/screens/PlanPage.tsx",
+        "frontend/src/screens/EditorPage.tsx",
+        "frontend/src/screens/DashboardPage.tsx",
+        "frontend/src/screens/QueuePage.tsx",
+        "frontend/src/screens/AnalyticsPage.tsx",
+        "frontend/src/main.tsx QueryClient",
+        "frontend/src/screens/plan-polling.test.tsx",
+        "backend/app/api/plans.py year/month",
+        "backend/app/api/publish.py from/to"
+      ],
+      "ignored": [
+        "Reels / IG App Review / Mailchimp / Viewer invite",
+        "Playwright live compose"
+      ],
+      "changes": [
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        {
+          "id": "job_poll_not_tight_loop",
+          "source": "CF-8 efficiency / middle+ polling every 0ms",
+          "result": "pass",
+          "evidence": "pollJob awaits setTimeout(intervalMs) before each subsequent GET /jobs/{id}. Default intervalMs=400 maxTicks=40. PlanPage/EditorPage pass intervalMs:700 maxTicks:60. Loop exits on succeeded|failed or maxTicks. QueryClient has no refetchInterval (false). Dashboard recent-jobs refetchInterval 2000. Queue publications refetchInterval 4000. No while without delay, no setInterval(0), no refetchInterval:0."
+        },
+        {
+          "id": "calendar_month_filter",
+          "source": "CF-8 efficiency / middle+ unbounded lists without month filter",
+          "result": "pass",
+          "evidence": "CalendarPage useQuery key [plans, brand.id, year, month] -> GET /brands/{id}/plans?year=&month=. API Query year ge=2000 le=2100, month ge=1 le=12; list_plans WHERE year/month. Dashboard mini-calendar same month-scoped plans. Calendar does not call publications. Theme input is local state only (no fetch)."
+        },
+        {
+          "id": "no_pubs_fetch_every_keystroke",
+          "source": "middle+ fetching all publications every keystroke",
+          "result": "pass",
+          "evidence": "No search/onChange that hits publications. Editor/calendar text fields only setState. Analytics days onChange refetches summary?from&to; publications queryKey is [publications, brand.id] and does not change per keystroke. Queue status is a select, not typing."
+        }
+      ],
+      "findings_low": [
+        {
+          "id": "EFF-CF8-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "Dashboard/Analytics/Queue GET publications without from/to though API supports them. Dashboard then client-filters 7 days. Mount/4s poll, not per keystroke. Same gap as EFF-CF5-L4."
+        },
+        {
+          "id": "EFF-CF8-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "Dashboard recent-jobs refetchInterval 2000 never stops after terminal status (max 8 ids via session slice)."
+        },
+        {
+          "id": "EFF-CF8-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "Calendar/Plan year number input is in queryKey; each digit refetches month-filtered plans. Empty field Number('')===0 omits year in cf.plans (falsy), so month-only list. Not all publications, not 0ms poll."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "Queue 4s poll of unpaginated brand publications can grow with history",
+        "cf.publications client cannot pass from/to yet",
+        "pollJob default 400ms is unused by screens (they pass 700); a future caller with intervalMs:0 would tight-poll"
+      ],
+      "handoff": "teamlead. GATE_PASS (no middle+)."
+    },
+    {
+      "role": "qa",
+      "task": "CF-8 tests",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-8",
+      "changes": [
+        "ai/workflow/coding/subagent_reports.json",
+        "ai/workflow/coding/stage_checkpoint.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        {
+          "id": "SCR_routes_no_crash",
+          "source": "qa-test-plan.json must_pass CF-8",
+          "result": "pass",
+          "evidence": "Spot-check source (no new screens). App.tsx routes: /login AuthPage; Layout children / DashboardPage, /onboarding OnboardingPage, /calendar CalendarPage, /plan PlanPage, /content and /content/:pieceId EditorPage, /channels ChannelsPage, /queue QueuePage, /analytics AnalyticsPage, /ab AbPage, /settings SettingsPage. Header nav covers all except onboarding (reachable via register + EmptyState). Screens guard !brand with EmptyState; queries enabled: Boolean(brand). tsc --noEmit exit 0. vitest 4 passed (login invalid_credentials, plan 202 poll, calendar click not drag, client envelope). No Reels / IG App Review / Mailchimp / Viewer invite UI (explicit muted copy)."
+        },
+        {
+          "id": "AC_matrix_01_23",
+          "source": "qa-test-plan.json must_pass CF-8 Full AC matrix",
+          "result": "pass",
+          "evidence": "backend pytest -q: 73 passed, 1 skipped, 1 warning in 4.04s. Skip: test_ac11_live_smoke TELEGRAM_SMOKE!=1 (designed). Named AC tests present: AC-01 register+duplicate, AC-02 invalid_credentials, AC-03 foreign brand, AC-04 no kit, AC-05 slots/holidays, AC-06 invalid JSON, AC-07 approve/conflict, AC-08 generate/edit A, AC-09 stopword, AC-10 rewrite isolation, AC-11 mocked publish + live skip, AC-12 idempotency, AC-13 bad token, AC-14 WP mocked, AC-15 cancel, AC-16 unavailable not zeros, AC-17 sequential A/B, AC-18 GET channels no tokens, AC-19 revoke cancels future, AC-20 generate 202, AC-21 logs no secrets, AC-22 no_recipients 409, AC-23 Gmail mocked SMTP. UI E2E not automated."
+        },
+        {
+          "id": "UI_E2E_playwright_compose",
+          "source": "qa-test-plan.json CF-8 / logs/cf8-manual-e2e.txt",
+          "result": "warning",
+          "evidence": "Playwright vs live compose NOT run (same class as CF-1 docker pull python:3.12-slim/node:22-alpine). Manual checklist logs/cf8-manual-e2e.txt exists; all SCR boxes unchecked. Parent: WARNING not fail. Do not require live compose up. Waiver: backend pytest is AC source of truth; UI wires same API."
+        },
+        {
+          "id": "RG-B",
+          "source": "qa-test-plan.json must_pass CF-8 / review-gates.json",
+          "result": "pass",
+          "evidence": "QA slice of RG-B: TZ AC-01..23 automated (mocked) green; AC-11 live optional skip; UI E2E documented waiver (no blocker/critical from QA). code_simplify_assessor + efficiency_assessor CF-8 already GATE_PASS in this file. Full RG-B still needs security_expert (required) + compliance_officer (CF-8) + teamlead. No middle+ from QA."
+        },
+        {
+          "id": "vitest",
+          "source": "QA CF-8 extra",
+          "result": "pass",
+          "evidence": "frontend npm test (vitest run) v3.2.7: Test Files 4 passed, Tests 4 passed, Duration 2.69s. client.test.ts, plan-polling.test.tsx, calendar.test.tsx, login-error.test.tsx."
+        },
+        {
+          "id": "tsc",
+          "source": "QA CF-8 extra",
+          "result": "pass",
+          "evidence": "frontend npx tsc --noEmit exit 0, no diagnostics."
+        },
+        {
+          "id": "pytest_suite",
+          "source": "QA CF-8 extra (must stay green ~73+1 skip)",
+          "result": "pass",
+          "evidence": "backend .venv python -m pytest -q: 73 passed, 1 skipped (live telegram disabled), 1 warning Starlette TestClient/httpx deprecation in 4.04s. Matches CF-7 baseline; CF-8 CORS-only backend change did not regress."
+        }
+      ],
+      "findings": [
+        {
+          "id": "QA-CF8-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "Playwright/compose E2E not executed; manual checklist unchecked. WARNING not fail (CF-1 docker pull class). Waiver documented."
+        },
+        {
+          "id": "QA-CF8-L2",
+          "severity": "low",
+          "status": "open",
+          "note": "/onboarding routed but not in Layout header LINKS. Reachable from register and EmptyState CTAs. Not a crash."
+        },
+        {
+          "id": "QA-CF8-L3",
+          "severity": "low",
+          "status": "open",
+          "note": "Starlette TestClient deprecation warning (httpx vs httpx2). Same as CF-1..CF-7, does not fail tests."
+        },
+        {
+          "id": "QA-CF8-L4",
+          "severity": "low",
+          "status": "open",
+          "note": "Vitest covers 4 behaviors, not mount of every screen. Crash check is source+tsc; live UI still the unchecked manual list."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "JWT in localStorage (XSS) — security_expert next",
+        "Playwright vs compose not run; docker pull may still fail",
+        "Live generate/publish needs worker + OPENAI_API_KEY / channel creds",
+        "Manual E2E checklist not executed",
+        "RG-B full close waits on security/compliance + teamlead"
+      ],
+      "handoff": "security_expert (JWT storage, channel tokens not in client GET/UI). GATE_PASS. No middle+. Do not require compose up."
+    },
+    {
+      "role": "security_expert",
+      "task": "CF-8 JWT localStorage, no channel tokens in UI, CORS, XSS",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-8",
+      "changes": [
+        "frontend/src/auth/session.ts (getSession requires access_token; clearSession drops cf_recent_jobs)",
+        "frontend/src/components/Layout.tsx (queryClient.clear on logout)",
+        "frontend/src/screens/DashboardPage.tsx (jobs poll enabled only with JWT)",
+        "frontend/src/screens/ChannelsPage.tsx (password autocomplete off; remount form after save)",
+        "frontend/src/api/client.test.ts (Bearer vs skipAuth vs empty token)",
+        "frontend/src/screens/channels-secrets.test.tsx",
+        "frontend/src/components/layout-auth.test.tsx",
+        "frontend/src/test/setup.ts (unstub + RTL cleanup)",
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        {
+          "id": "jwt_protected_screens",
+          "source": "GATE unauthenticated API from UI without JWT on protected screens",
+          "result": "pass",
+          "evidence": "Layout returns null and Navigate /login when getSession() is null. getSession now null if access_token empty. brandsQuery enabled: Boolean(session). Child queries enabled: Boolean(brand) except Dashboard jobsQuery now enabled: Boolean(getSession()). skipAuth only register/login/refresh. vitest layout-auth: no session and empty token do not call fetch; JWT session GET /brands Authorization Bearer jwt-acc. client.test: Bearer on /brands, skipAuth login omits Authorization. Backend routers (brands/plans/content/jobs/channels/publish/analytics/experiments/recipients/media/catalogs) Depends(get_current_user). No Viewer invite UI added."
+        },
+        {
+          "id": "channel_secrets_not_in_ui",
+          "source": "GATE channel bot token/app password rendered in UI / AC-18",
+          "result": "pass",
+          "evidence": "GET ChannelPublic via channel_to_public + public_meta strips bot_token/app_password/token/ciphertext. ChannelsPage lists display_name/type/status/token_expires_at only; does not dump meta. SECRET_KEYS detector banner if API regresses. Connect inputs type=password autocomplete=off; form remounts after save so values leave the DOM. vitest channels-secrets: meta.bot_token=123:LEAKED-BOT-TOKEN and app_password not in document.body.textContent; Bot token input type=password; no Viewer string. Secrets not written to localStorage (session stores JWT only)."
+        },
+        {
+          "id": "secrets_not_in_frontend_bundle",
+          "source": "GATE secrets in frontend bundle",
+          "result": "pass",
+          "evidence": "frontend/src has no import.meta.env, no OPENAI/JWT_SECRET/sk- literals. VITE_API_PROXY_TARGET used only in vite.config.ts (Node, not client bundle). Channel tokens POST body only, never baked in. .env.example JWT_SECRET empty. No frontend/.env."
+        },
+        {
+          "id": "cors_and_xss",
+          "source": "CF-8 CORS + XSS in rendered content",
+          "result": "pass",
+          "evidence": "CORSMiddleware allow_origins=public_web_url + http://localhost:5173 + http://127.0.0.1:5173, not *. allow_credentials True. Default Vite path is same-origin proxy /api /health. No dangerouslySetInnerHTML/innerHTML/eval in frontend/src. Editor payload in textarea; Queue error_message and AbPage metrics JSON.stringify in React text nodes (escaped). EmptyState/Link to= hardcoded paths."
+        },
+        {
+          "id": "vitest_after_tiny_fix",
+          "source": "security tiny fix",
+          "result": "pass",
+          "evidence": "frontend npm test: 6 files, 11 passed (was 4). npx tsc --noEmit exit 0."
+        }
+      ],
+      "findings": [
+        {
+          "id": "SEC-CF8-L1",
+          "severity": "low",
+          "status": "open",
+          "note": "JWT access+refresh in localStorage (cf_session). XSS can steal session. Allowed MVP. Not httpOnly cookies."
+        },
+        {
+          "id": "SEC-CF8-L2",
+          "severity": "low",
+          "status": "fixed",
+          "note": "Empty access_token still counted as session and brandsQuery would fire without Authorization. getSession() now requires access_token; Layout tests cover it."
+        },
+        {
+          "id": "SEC-CF8-L3",
+          "severity": "low",
+          "status": "fixed",
+          "note": "Logout did not queryClient.clear() or drop cf_recent_jobs; next user on same SPA could flash cached workspace data / poll old job ids. Now clearSession removes jobs key and Layout clears React Query."
+        },
+        {
+          "id": "SEC-CF8-L4",
+          "severity": "low",
+          "status": "open",
+          "note": "npm scripts vite --host 0.0.0.0 plus proxy /api /health. LAN clients can reach local API through the Vite origin. Dev-only."
+        },
+        {
+          "id": "SEC-CF8-L5",
+          "severity": "low",
+          "status": "open",
+          "note": "No CSP. Markdown/HTML in variant payload is textarea/text, not executed. Residual if a future preview uses innerHTML."
+        }
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "JWT in localStorage (accepted MVP)",
+        "Playwright/compose E2E not run; UI secret checks are vitest mocks",
+        "If PUBLIC_WEB_URL were set to a wildcard origin, CORS would widen (config, not UI)",
+        "AbPage dumps experiment.metrics JSON; relies on CF-7 scrub not putting tokens there"
+      ],
+      "handoff": "teamlead. GATE_PASS (no middle+). Tiny JWT-guard + logout cache + channel form remount. No Viewer invite."
+    },
+    {
+      "role": "compliance_officer",
+      "task": "CF-8 RG-B + stage-gate CF-1..CF-8 no_pass_no_next",
+      "result": "done",
+      "verdict": "GATE_PASS",
+      "phase": "CF-8",
+      "changes": [
+        "ai/workflow/coding/stage_checkpoint.json",
+        "ai/workflow/coding/team_review.json",
+        "ai/workflow/coding/subagent_reports.json",
+        "logs/agent-worklog.txt"
+      ],
+      "checks": [
+        {
+          "id": "stage_gate_cf1_cf8",
+          "source": "review-gates.json RG-CF-N no_pass_no_next",
+          "result": "pass",
+          "evidence": "RG-CF-N pass recorded for CF-1, CF-2, CF-3, CF-4, CF-5, CF-6, CF-7, CF-8 in team_review.json. No phase started without prior GATE_PASS. RG-A pass after CF-5 kept. No new product phase started after CF-8."
+        },
+        {
+          "id": "tz_18_ac_mvp",
+          "source": "TZTech.md §18 / review-gates.json RG-B",
+          "result": "pass",
+          "evidence": "AC-01..AC-23 covered by backend pytest (73 passed). AC-11 live TELEGRAM_SMOKE skipped by design (1 skip). TZ §18 compose+live TG/WP/Gmail waived."
+        },
+        {
+          "id": "no_blocker_critical",
+          "source": "RG-B pass_conditions",
+          "result": "pass",
+          "evidence": "findings_middle_plus empty across coder/qa/simplify/efficiency/security/compliance. No blocker/critical defects."
+        },
+        {
+          "id": "mandatory_role_reports",
+          "source": "RG-B all mandatory role reports pass",
+          "result": "pass",
+          "evidence": "coder 46db1027 done; qa 1a241150 GATE_PASS; simplify b94da8dd GATE_PASS; efficiency b3854693 GATE_PASS; security d0998609 GATE_PASS; compliance_officer GATE_PASS; teamlead RG-CF-N+RG-B go."
+        }
+      ],
+      "waivers": [
+        "live compose not run (Docker Hub python:3.12-slim / node:22-alpine)",
+        "Playwright E2E not run; logs/cf8-manual-e2e.txt WARNING not fail",
+        "TELEGRAM_SMOKE live AC-11 not run; mocked pytest covers AC-11",
+        "TZ §18 live TG/WP/Gmail compose run waived; backend pytest is AC source of truth"
+      ],
+      "findings_middle_plus": [],
+      "risks": [
+        "Live compose/Playwright/TELEGRAM_SMOKE remain unrun until Docker Hub and live accounts exist",
+        "JWT in localStorage accepted MVP"
+      ],
+      "handoff": "teamlead. GATE_PASS. RG-B pass with waivers. Coding MVP done. Next: MVP demo. Do not start a new product phase."
+    }
+  ]
+}

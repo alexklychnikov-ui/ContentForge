@@ -1,0 +1,36 @@
+{
+  "version": "1.1.0",
+  "product": "ContentForge",
+  "base_path": "/api/v1",
+  "source": "TZTech.md §12",
+  "authentication": {
+    "type": "bearer_jwt_or_httponly_cookie",
+    "register": "POST /auth/register",
+    "login": "POST /auth/login",
+    "refresh": "POST /auth/refresh",
+    "logout": "POST /auth/logout"
+  },
+  "error_envelope": {
+    "error": { "code": "string", "message": "string", "details": {} }
+  },
+  "groups": [
+    { "name": "auth", "paths": ["/auth/register", "/auth/login", "/auth/refresh", "/auth/logout"] },
+    { "name": "brands", "paths": ["/brands", "/brands/{brand_id}"] },
+    { "name": "plans", "paths": ["/brands/{brand_id}/plans", "/brands/{brand_id}/plans/generate", "/plans/{plan_id}", "/plans/{plan_id}/items"] },
+    { "name": "content", "paths": ["/brands/{brand_id}/content", "/content/{piece_id}", "/content/{piece_id}/generate", "/content/{piece_id}/variants"] },
+    { "name": "publish", "paths": ["/brands/{brand_id}/publications", "/publications/{id}/cancel", "/publications/{id}/retry", "/publications/{id}/mark-manual"] },
+    { "name": "channels", "paths": ["/brands/{brand_id}/channels", "/brands/{brand_id}/channels/{type}/credentials", "/channels/{id}/health"] },
+    { "name": "recipients", "paths": ["/brands/{brand_id}/recipients"] },
+    { "name": "analytics", "paths": ["/brands/{brand_id}/analytics/summary", "/publications/{id}/analytics"] },
+    { "name": "experiments", "paths": ["/brands/{brand_id}/experiments", "/experiments/{id}/start", "/experiments/{id}/winner"] },
+    { "name": "jobs", "paths": ["/jobs/{job_id}"] },
+    { "name": "holidays_trends", "paths": ["/holidays", "/brands/{brand_id}/trends"] },
+    { "name": "media", "paths": ["/brands/{brand_id}/media"] }
+  ],
+  "async_jobs": ["POST generate plan", "POST generate content", "POST rewrite"],
+  "constraints": [
+    "Generate/publish not in request thread",
+    "Tokens never in GET /channels",
+    "idempotency_key unique on publications"
+  ]
+}

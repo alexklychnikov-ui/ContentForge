@@ -1,0 +1,252 @@
+{
+  "version": "1.1.0",
+  "stage": "planning",
+  "product": "ContentForge",
+  "source": "TZTech.md v1.1 + design artifacts 1.1.0",
+  "global_gate_rule": "no_pass_no_next_stage",
+  "after_every_phase_loop": {
+    "order": [
+      "coder implements phase scope only",
+      "qa runs phase tests (must_pass from qa-test-plan.json)",
+      "security_expert if phase.security_review true",
+      "code_simplify_assessor reviews diff",
+      "efficiency_assessor if phase.efficiency_review true",
+      "teamlead writes ai/workflow/coding/stage_checkpoint.json"
+    ],
+    "fail_action": "Any failed check or finding severity middle+ returns to coder; do not start next phase",
+    "pass_action": "teamlead marks phase done then next phase"
+  },
+  "roles": {
+    "orchestrator": "teamlead",
+    "implement": "coder",
+    "tests": "qa",
+    "infra": "devops",
+    "secrets": "security_expert"
+  },
+  "out_of_mvp": [
+    "Instagram App Review and Reels/video publish",
+    "Gmail OAuth/Gmail API",
+    "VK autopost",
+    "CSV recipient import",
+    "invite Analyst/Viewer",
+    "Mailchimp",
+    "Next.js/Prisma/portfolio JSON UI"
+  ],
+  "phases": [
+    {
+      "id": "CF-1",
+      "name": "Scaffold and compose",
+      "owner": "devops",
+      "implementer": "coder",
+      "security_review": true,
+      "efficiency_review": false,
+      "goal": "Runnable skeleton: API health, React shell, Postgres, Redis, worker ping, Alembic",
+      "inputs": [
+        "ai/workflow/design/c4.json",
+        "TZTech.md appendix C"
+      ],
+      "actions": [
+        "Create backend/ FastAPI app with /health",
+        "Create frontend/ Vite React TS shell",
+        "docker-compose: api, worker, postgres, redis, frontend",
+        "Alembic init, .env.example without secrets",
+        "pytest smoke for /health"
+      ],
+      "checks": [
+        "compose up healthy",
+        "GET /health 200",
+        "no secrets in git"
+      ],
+      "expected_result": "Empty product boots locally",
+      "rollback": "Remove compose stack; keep only TZ and workflow artifacts",
+      "acceptance": [
+        "Developer can start stack on Windows via docker compose",
+        "Worker process starts and can import app"
+      ]
+    },
+    {
+      "id": "CF-2",
+      "name": "Auth workspace brands holidays trends",
+      "owner": "coder",
+      "implementer": "coder",
+      "security_review": true,
+      "efficiency_review": false,
+      "goal": "Identity, Brand Kit, isolation, catalogs",
+      "inputs": [
+        "TZTech.md §5 §8.4 §11 User Workspace Membership BrandProfile Holiday TrendSignal",
+        "AC-01 AC-02 AC-03 AC-04"
+      ],
+      "actions": [
+        "Models+migrations User Workspace Membership BrandProfile Holiday TrendSignal",
+        "Auth register/login/refresh/logout JWT, password hash, login rate limit",
+        "Brands CRUD + onboarding_completed_at",
+        "GET /holidays seed RU year, trends CRUD",
+        "Workspace membership checks on brand-scoped routes"
+      ],
+      "checks": [
+        "AC-01 AC-02 AC-03 automated",
+        "generate-plan endpoint if present returns 409/403 without kit else skip until CF-3 and still block at service layer",
+        "tokens/passwords not logged"
+      ],
+      "expected_result": "User can register, create brand kit, see holidays",
+      "rollback": "Alembic downgrade this revision",
+      "acceptance": ["AC-01", "AC-02", "AC-03"]
+    },
+    {
+      "id": "CF-3",
+      "name": "Jobs AI plan and content",
+      "owner": "coder",
+      "implementer": "coder",
+      "security_review": false,
+      "efficiency_review": true,
+      "goal": "Async AI plan + content variants with schema validation",
+      "inputs": [
+        "TZTech.md FR-PLN FR-CNT §14 AC-04..10 AC-20",
+        "ai/workflow/design/sequence.json uc03_generate_plan"
+      ],
+      "actions": [
+        "Job ContentPlan PlanItem ContentPiece ContentVariant",
+        "Celery ai queue: generate_plan, generate_content, rewrite",
+        "OpenAI structured JSON + one repair attempt; fail leaves no partial plan",
+        "Stopwords block publish; Owner override + AuditLog stub ok if Audit in CF-7",
+        "HTTP 202 + GET /jobs/{id}"
+      ],
+      "checks": [
+        "AC-04 AC-05 AC-06 AC-07 AC-08 AC-09 AC-10 AC-20 with OpenAI mocked"
+      ],
+      "expected_result": "Month plan and drafts editable without live OpenAI in CI",
+      "rollback": "Disable generate routes; keep CRUD manual pieces",
+      "acceptance": ["AC-04", "AC-05", "AC-06", "AC-07", "AC-08", "AC-09", "AC-10", "AC-20"]
+    },
+    {
+      "id": "CF-4",
+      "name": "Media channels crypto recipients",
+      "owner": "coder",
+      "implementer": "coder",
+      "security_review": true,
+      "efficiency_review": false,
+      "goal": "Encrypted channel credentials, media upload, Gmail recipient list",
+      "inputs": [
+        "TZTech.md FR-CHN NFR-SEC MediaAsset EmailRecipient AC-18 AC-22"
+      ],
+      "actions": [
+        "Fernet encrypt ChannelAccount secrets",
+        "credentials endpoints telegram/wordpress/gmail/vk/instagram",
+        "health check stubs",
+        "PDN consent flag",
+        "media upload 10MB jpeg/png/webp local volume",
+        "recipients CRUD unique email"
+      ],
+      "checks": [
+        "GET channels has no token/app password (AC-18)",
+        "schedule gmail without recipients 409 (may wait CF-5 but service rule exists)",
+        "security review pass"
+      ],
+      "expected_result": "Channels connectable; secrets ciphertext only",
+      "rollback": "Drop channel tables; keep auth/content",
+      "acceptance": ["AC-18"]
+    },
+    {
+      "id": "CF-5",
+      "name": "Publish engine and Telegram",
+      "owner": "coder",
+      "implementer": "coder",
+      "security_review": true,
+      "efficiency_review": true,
+      "goal": "Publication state machine + Telegram adapter live-optional",
+      "inputs": [
+        "TZTech.md FR-PUB §13.4 AC-11 AC-12 AC-13 AC-15 AC-19",
+        "sequence uc06_autopost"
+      ],
+      "actions": [
+        "Publication model + atomic scheduled->publishing",
+        "Beat scan DB every minute",
+        "ChannelAdapter interface; Telegram sendMessage/sendPhoto HTML",
+        "idempotency_key; retry 1/5/15 then dead; cancel; watchdog publishing",
+        "manual_copy mark-manual"
+      ],
+      "checks": [
+        "unit: state machine, idempotency, retry without network",
+        "optional live smoke AC-11 AC-13 behind TELEGRAM_SMOKE=1",
+        "revoke cancels future (AC-19)"
+      ],
+      "expected_result": "Due posts publish to Telegram or fail with coded errors",
+      "rollback": "Stop beat; leave publications scheduled",
+      "acceptance": ["AC-11", "AC-12", "AC-13", "AC-15", "AC-19"]
+    },
+    {
+      "id": "CF-6",
+      "name": "WordPress and Gmail adapters",
+      "owner": "coder",
+      "implementer": "coder",
+      "security_review": true,
+      "efficiency_review": false,
+      "goal": "MVP remaining autopost: WP REST + Gmail SMTP",
+      "inputs": [
+        "TZTech.md §13.5 §13.6 AC-14 AC-22 AC-23 FR-CHN-05/06"
+      ],
+      "actions": [
+        "WordPress adapter Application Password, our scheduler publishes",
+        "Gmail SMTP STARTTLS app password, cap 50, sent/failed counts",
+        "no_recipients 409; do not retry 550 quota storm",
+        "VK and Instagram adapters: capability error + manual_copy only"
+      ],
+      "checks": [
+        "WP mocked REST test AC-14",
+        "Gmail mocked SMTP AC-22 AC-23 fields; live smoke optional"
+      ],
+      "expected_result": "Three MVP transports: TG, WP, Gmail",
+      "rollback": "Feature-flag adapters off; manual_copy remains",
+      "acceptance": ["AC-14", "AC-22", "AC-23"]
+    },
+    {
+      "id": "CF-7",
+      "name": "Analytics A/B audit",
+      "owner": "coder",
+      "implementer": "coder",
+      "security_review": true,
+      "efficiency_review": false,
+      "goal": "Honest metrics, sequential TG A/B, AuditLog",
+      "inputs": [
+        "TZTech.md FR-ANL FR-AB FR-AUD AC-16 AC-17 AC-21"
+      ],
+      "actions": [
+        "AnalyticsSnapshot + sync job; unavailable not zero",
+        "Experiment sequential Telegram",
+        "AuditLog append-only required actions",
+        "structured logs without secrets"
+      ],
+      "checks": ["AC-16 AC-17 AC-21"],
+      "expected_result": "Dashboard data + A/B winner flow + audit trail",
+      "rollback": "Hide analytics UI; keep publications",
+      "acceptance": ["AC-16", "AC-17", "AC-21"]
+    },
+    {
+      "id": "CF-8",
+      "name": "React screens and E2E",
+      "owner": "coder",
+      "implementer": "coder",
+      "security_review": true,
+      "efficiency_review": true,
+      "goal": "Wire TZ screens; run full AC checklist",
+      "inputs": [
+        "TZTech.md §7 SCR-* §18",
+        "qa-test-plan.json"
+      ],
+      "actions": [
+        "Routes for all SCR screens with empty/error/job states",
+        "TanStack Query + RHF/Zod against API",
+        "RU UI",
+        "Playwright or documented manual E2E against compose"
+      ],
+      "checks": [
+        "All AC-01..AC-23 either automated or signed manual with evidence",
+        "RG-B all mandatory roles pass",
+        "no middle+ open"
+      ],
+      "expected_result": "MVP demoable on own TG/WP/Gmail",
+      "rollback": "API-only demo if UI slips; do not ship partial secret leaks",
+      "acceptance": ["all TZ §18 AC for MVP"]
+    }
+  ]
+}
