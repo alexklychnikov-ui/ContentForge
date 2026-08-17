@@ -562,3 +562,18 @@ verified_by: command_executor
 artifacts: backend/app/services/adapters/telegram.py, backend/requirements.txt, .env.example, backend/.env, .env, backend/tests/test_ac_publish.py
 checks: pytest test_ac_channels+test_ac_publish 53 passed 1 skipped; live dummy getMe 401 via socks5h
 result: no commit
+
+[2026-08-17 20:34] Instagram env notes + future VPS callback
+Prompt: Other agent asked META_APP_ID/SECRET, IG_USER_ID, ACCESS_TOKEN in .env + Graph chain; user will finish IG after VPS 45.144.232.115 kitchen.alexklyvibe.ru.
+Done: No OAuth code. .env.example comments: tokens go to ChannelAccount credentials; planned PUBLIC_* and callback https://kitchen.alexklyvibe.ru/api/v1/channels/oauth/callback. Secrets not in chat.
+stage: coding
+status: done
+result: no commit; no push
+
+[2026-08-17 20:48] Free kitchen.alexklyvibe.ru for ContentForge
+Prompt: Do not split host. Delete the old educational kitchen project; GitHub already has it.
+Done: VPS 45.144.232.115 — stopped/disabled kitchens-bot+admin, removed /opt/kitchens-bot, kitchens-postgres+volume. Kept nginx TLS. Placeholder https://kitchen.alexklyvibe.ru 200. Repo: dropped Kwork covers/rules/createKwork/portfolio guardrail.
+stage: coding
+status: done
+checks: https kitchen.alexklyvibe.ru 200; 8081/5433 free; GitHub KitchensProduction not touched
+result: commit+push cleanup
