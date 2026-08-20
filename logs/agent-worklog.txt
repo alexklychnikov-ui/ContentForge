@@ -577,3 +577,53 @@ stage: coding
 status: done
 checks: https kitchen.alexklyvibe.ru 200; 8081/5433 free; GitHub KitchensProduction not touched
 result: commit+push cleanup
+
+[2026-08-17 20:51] Wipe leftover VPS volumes + TG ping
+Prompt: When finished ping @Alex_KichenProduction_bot. Also leftover portfolio/n8n.
+Done: removed /root/portfolio-website and unused docker volumes. sendMessage via kitchen bot SOCKS ok=true. Ping script deleted, not committed. No secrets printed.
+stage: coding
+status: done
+result: no commit
+
+[2026-08-20 15:49] Research+Design+Planning: cut WordPress autopost
+Prompt: User: cut WP, articles manual only. Also explain dead kitchen process.
+Done: fact-log + design (WP->ManualCopy, UI drop) + plan WP-1..4. Kitchen aside: intentional VPS teardown 2026-08-17.
+stage: research|design|planning
+status: done
+verified_by: teamlead
+artifacts: ai/workflow/research/wordpress-cut-fact-log.json, design/wordpress-cut-design.json, planning/wordpress-cut-plan.json
+next_step: coding via coder then qa
+result: gate pass to coding
+
+[2026-08-20 15:56] Coding CLOSED: WordPress → manual_copy
+Prompt: cut WP autopost; articles manual only. Kitchen process explanation.
+Done: coder 5156d639 ManualCopy + UI telegram/gmail; qa b6e8e524 GATE_PASS. Dead wordpress.py + credentials API left (low).
+stage: coding
+status: done
+verified_by: teamlead
+checks: pytest 53+1 skip; vitest 5
+result: no commit; no push
+
+[2026-08-20 15:52] Coding WP-1..WP-3: cut WordPress autopost
+Prompt: coder — wordpress=ManualCopyAdapter; MVP_CHANNELS telegram+gmail; AC-14 manual_copy; tests green
+Done: adapters/__init__.py _WP=ManualCopyAdapter(wordpress); labels.ts MVP without wordpress; ChannelsPage no WP form/hint; test_ac14_wordpress_stays_manual_copy; test_manual_copy_channels_capability_error; openai_mock channels without wordpress
+Checks: pytest test_ac_publish+test_ac_channels 53 passed 1 skipped; vitest channels-secrets 5 passed
+stage: coding
+status: done
+verified_by: coder
+artifacts: backend/app/services/adapters/__init__.py, backend/tests/{test_ac_publish.py,openai_mock.py}, frontend/src/{labels.ts,screens/ChannelsPage.tsx}
+risks: legacy WP ChannelAccount rows still connect via API; wordpress.py dead code retained
+next_step: qa review
+result: no commit
+
+[2026-08-20 15:55] QA gate: WordPress cut to manual_copy (coder 5156d639)
+Prompt: qa — verify AC1-5; pytest test_ac_publish+test_ac_channels; vitest channels-secrets; GATE_PASS|FAIL
+Done: AC1 runtime ManualCopyAdapter supports_autopost=False; AC2 MVP_CHANNELS=[telegram,gmail] ChannelsPage no WP form; AC3 test_ac14_wordpress_stays_manual_copy wp_calls=0 + wordpress in test_manual_copy_channels_capability_error; AC4 pytest 53 passed 1 skipped, vitest 5 passed; AC5 spot-check test_ac11/test_ac23/test_telegram_* present
+Checks: pytest tests/test_ac_publish.py tests/test_ac_channels.py -q; vitest channels-secrets.test.tsx; python -c get_adapter(wordpress)
+stage: coding
+status: done
+verified_by: qa
+verdict: GATE_PASS
+findings_middle_plus: WordPressAdapter dead class in wordpress.py (supports_autopost=True unwired); API still accepts /channels/wordpress/credentials while UI removed; CHANNEL_LABELS still has wordpress for legacy rows
+next_step: teamlead sign-off or follow-up ticket for dead-code cleanup
+result: no commit

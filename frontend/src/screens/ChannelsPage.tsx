@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cf } from "../api/cf";
@@ -41,7 +41,34 @@ export function ChannelsPage() {
   const [formKey, setFormKey] = useState(0);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
+  const [oauthBanner, setOauthBanner] = useState<string | null>(null);
   const [lastChecks, setLastChecks] = useState<Record<string, LastHealthCheck>>({});
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const ok = params.get("oauth");
+    const err = params.get("oauth_error");
+    if (ok === "instagram_ok") {
+      setOauthBanner("Instagram подключён через Facebook.");
+      queryClient.invalidateQueries({ queryKey: ["channels"] });
+    } else if (err) {
+      setOauthBanner(`OAuth: ${err}`);
+    }
+    if (ok || err) {
+      params.delete("oauth");
+      params.delete("oauth_error");
+      const suffix = params.toString();
+      const next = `${window.location.pathname}${suffix ? `?${suffix}` : ""}`;
+      window.history.replaceState({}, "", next);
+    }
+  }, [queryClient]);
+
+  const instagramOAuth = useMutation({
+    mutationFn: () => cf.instagramOAuthStart(brand!.id),
+    onSuccess: (data) => {
+      window.location.href = data.auth_url;
+    },
+  });
 
   const channelsQuery = useQuery({
     queryKey: ["channels", brand?.id],
@@ -63,11 +90,6 @@ export function ChannelsPage() {
       if (type === "telegram") {
         body.bot_token = form.bot_token;
         body.channel_id = form.channel_id;
-      }
-      if (type === "wordpress") {
-        body.site_url = form.site_url;
-        body.username = form.username;
-        body.app_password = form.app_password;
       }
       if (type === "gmail") {
         body.from_email = form.from_email;
@@ -132,7 +154,8 @@ export function ChannelsPage() {
       <h1>Каналы</h1>
       <p className="muted">Instagram App Review, Reels и Mailchimp не входят в MVP. Токены в GET не показываем.</p>
       {leaked ? <div className="error">В ответе каналов есть секрет — это баг API.</div> : null}
-      <ErrorBanner error={channelsQuery.error || save.error || health.error || revoke.error || recipientsQuery.error} />
+      <ErrorBanner error={channelsQuery.error || save.error || health.error || revoke.error || recipientsQuery.error || instagramOAuth.error} />
+      {oauthBanner ? <div className="job succeeded">{oauthBanner}</div> : null}
       {adapterHealthError ? <div className="error">{adapterHealthError}</div> : null}
       <div className="cards">
         {channels.map((row) => {
@@ -175,7 +198,7 @@ export function ChannelsPage() {
         })}
       </div>
       {channels.length === 0 ? (
-        <EmptyState title="Каналы не подключены" hint="Подключите Telegram, WordPress или Gmail." cta="Онбординг" to="/onboarding" />
+        <EmptyState title="Каналы не подключены" hint="Подключите Telegram или Gmail." cta="Онбординг" to="/onboarding" />
       ) : null}
       <form
         key={formKey}
@@ -222,26 +245,6 @@ export function ChannelsPage() {
             </label>
           </>
         ) : null}
-        {type === "wordpress" ? (
-          <>
-            <label className="field">
-              Site URL
-              <input onChange={(e) => setForm((p) => ({ ...p, site_url: e.target.value }))} />
-            </label>
-            <label className="field">
-              Username
-              <input onChange={(e) => setForm((p) => ({ ...p, username: e.target.value }))} />
-            </label>
-            <label className="field">
-              App password
-              <input
-                type="password"
-                autoComplete="off"
-                onChange={(e) => setForm((p) => ({ ...p, app_password: e.target.value }))}
-              />
-            </label>
-          </>
-        ) : null}
         {type === "gmail" ? (
           <>
             <label className="field">
@@ -266,6 +269,25 @@ export function ChannelsPage() {
           Сохранить канал
         </button>
       </form>
+      <div className="panel grid">
+        <h3>Instagram</h3>
+        <p className="muted">
+          Professional (Creator) + Facebook Page. OAuth redirect:{" "}
+          <code>/api/v1/channels/oauth/callback</code>
+        </p>
+        <label>
+          <input type="checkbox" checked={form.pdn === "1"} onChange={(e) => setForm((p) => ({ ...p, pdn: e.target.checked ? "1" : "0" }))} />{" "}
+          Согласие на обработку ПДн
+        </label>
+        <button
+          className="btn"
+          type="button"
+          disabled={form.pdn !== "1" || instagramOAuth.isPending}
+          onClick={() => instagramOAuth.mutate()}
+        >
+          {instagramOAuth.isPending ? "Переход в Facebook…" : "Подключить через Facebook"}
+        </button>
+      </div>
       <div className="panel grid">
         <h3>Получатели Gmail</h3>
         <div className="row">

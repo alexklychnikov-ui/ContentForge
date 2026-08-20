@@ -75,6 +75,11 @@ export const cf = {
   channels: (brandId: string) => apiGet<ChannelPublic[]>(`/brands/${brandId}/channels`),
   saveChannel: (brandId: string, type: string, body: Record<string, unknown>) =>
     apiPost<ChannelPublic>(`/brands/${brandId}/channels/${type}/credentials`, body),
+  instagramOAuthStart: (brandId: string) =>
+    apiPost<{ auth_url: string; state: string }>(
+      `/brands/${brandId}/channels/instagram/oauth/start`,
+      {},
+    ),
   channelHealth: (channelId: string) =>
     apiPost<{ id: string; status: string; ok: boolean; reason?: string | null }>(
       `/channels/${channelId}/health`,

@@ -1,0 +1,61 @@
+{
+  "stage": "planning",
+  "topic": "Cut WordPress autopost",
+  "date": "2026-08-20 15:49 UTC+8",
+  "phases": [
+    {
+      "id": "WP-1",
+      "goal": "Adapter: wordpress = ManualCopyAdapter",
+      "inputs": ["adapters/__init__.py", "manual.py", "wordpress.py"],
+      "actions": [
+        "Wire ChannelType.wordpress to ManualCopyAdapter",
+        "Leave wordpress.py file or unused; do not call from get_adapter",
+        "Update assert that wordpress supports_autopost was True"
+      ],
+      "checks": ["get_adapter(wordpress).supports_autopost is False", "publish raises manual_copy_required like VK"],
+      "expected": "No WP REST from worker",
+      "rollback": "Revert __init__.py wiring"
+    },
+    {
+      "id": "WP-2",
+      "goal": "Frontend: drop wordpress from MVP_CHANNELS and forms",
+      "inputs": ["labels.ts", "ChannelsPage.tsx", "Plan/Editor/Calendar"],
+      "actions": [
+        "MVP_CHANNELS = telegram, gmail",
+        "Remove wordpress form branch",
+        "Hints: no WordPress in empty states"
+      ],
+      "checks": ["vitest channels; UI has no WP option"],
+      "expected": "Cannot connect WP from UI",
+      "rollback": "Restore MVP_CHANNELS"
+    },
+    {
+      "id": "WP-3",
+      "goal": "Tests + credentials path",
+      "inputs": ["test_ac_publish.py", "test_ac_channels.py", "openai_mock.py"],
+      "actions": [
+        "AC-14: replace with manual_copy expectation OR skip/delete as WP autopost gone",
+        "Channels connect wordpress may stay API-only or 400 unsupported — prefer keep API but document; UI gone",
+        "openai_mock channels list without wordpress if plan gen uses it"
+      ],
+      "checks": ["pytest focused green", "no AC-14 live WP success"],
+      "expected": "CI green without WP publish mock success",
+      "rollback": "Restore AC-14"
+    },
+    {
+      "id": "WP-4",
+      "goal": "QA + worklog",
+      "inputs": ["WP-1..3"],
+      "actions": ["qa review", "worklog checkpoint"],
+      "checks": ["qa GATE_PASS or fix"],
+      "expected": "Done",
+      "rollback": "n/a"
+    }
+  ],
+  "acceptance": [
+    "Worker never POSTs wp-json for wordpress channels",
+    "UI MVP connect: telegram + gmail only",
+    "Articles: manual_copy path",
+    "pytest/vitest pass for touched suites"
+  ]
+}

@@ -27,6 +27,8 @@ class Settings(BaseSettings):
     public_api_url: str = "http://localhost:8000"
     public_web_url: str = "http://localhost:5173"
     telegram_https_proxy: str = ""
+    meta_app_id: str = ""
+    meta_app_secret: str = ""
 
 
 @lru_cache

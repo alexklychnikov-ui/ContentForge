@@ -404,6 +404,11 @@ class ChannelHealth(BaseModel):
     reason: str | None = None
 
 
+class OAuthStartResponse(BaseModel):
+    auth_url: str
+    state: str
+
+
 class RecipientCreate(BaseModel):
     email: EmailStr
     name: str | None = Field(default=None, max_length=200)

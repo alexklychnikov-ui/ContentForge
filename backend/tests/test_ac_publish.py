@@ -51,7 +51,6 @@ from tests.telegram_mock import (
     parse_error_handler,
     unauthorized_handler,
 )
-from tests.wordpress_mock import DEFAULT_POST_ID, DEFAULT_POST_LINK, install_wordpress_mock
 
 
 @pytest.fixture(autouse=True)
@@ -843,8 +842,12 @@ def _typed_variant(
     ).json()["result"]["variant_id"]
 
 
-def test_ac14_wordpress_mocked_publish(client: TestClient, db: Session, monkeypatch) -> None:
-    calls = install_wordpress_mock(monkeypatch)
+def test_ac14_wordpress_stays_manual_copy(client: TestClient, db: Session, monkeypatch) -> None:
+    wp_calls: list[dict] = []
+    monkeypatch.setattr(
+        "app.services.adapters.wordpress.wordpress_create_post",
+        lambda *args, **kwargs: wp_calls.append({"args": args, "kwargs": kwargs}),
+    )
     owner = register_user(client).json()
     headers = auth_header(owner["tokens"])
     brand_id = create_brand(client, headers).json()["id"]
@@ -866,14 +869,20 @@ def test_ac14_wordpress_mocked_publish(client: TestClient, db: Session, monkeypa
     db.expire_all()
     row = db.get(Publication, UUID(created.json()["id"]))
     assert row is not None
-    assert row.status is PublicationStatus.published
-    assert row.external_id == str(DEFAULT_POST_ID)
-    assert row.external_url == DEFAULT_POST_LINK
-    assert len(calls) == 1
-    assert calls[0]["payload"]["status"] == "publish"
+    assert row.status is PublicationStatus.scheduled
+    assert row.external_id is None
+    assert len(wp_calls) == 0
+    marked = client.post(
+        f"/api/v1/publications/{created.json()['id']}/mark-manual",
+        json={"external_url": "https://blog.example/p/manual"},
+        headers=headers,
+    )
+    assert marked.status_code == 200
+    assert marked.json()["status"] == "published_manual"
+    assert marked.json()["external_url"] == "https://blog.example/p/manual"
     listed = client.get(f"/api/v1/brands/{brand_id}/publications", headers=headers)
     assert listed.status_code == 200
-    assert listed.json()[0]["external_id"] == str(DEFAULT_POST_ID)
+    assert listed.json()[0]["status"] == "published_manual"
     assert "wp-app-pass" not in listed.text
 
 
@@ -976,8 +985,8 @@ def test_gmail_quota_no_retry_storm(client: TestClient, db: Session, monkeypatch
     assert row.attempt_count == 1
 
 
-def test_vk_instagram_stay_manual_copy_capability_error() -> None:
-    for channel_type in (ChannelType.vk, ChannelType.instagram):
+def test_manual_copy_channels_capability_error() -> None:
+    for channel_type in (ChannelType.vk, ChannelType.instagram, ChannelType.wordpress):
         adapter = get_adapter(channel_type)
         assert isinstance(adapter, ManualCopyAdapter)
         assert adapter.supports_autopost is False
@@ -985,7 +994,6 @@ def test_vk_instagram_stay_manual_copy_capability_error() -> None:
             adapter.publish(None, None, None, None)  # type: ignore[arg-type]
         assert exc.value.code == "manual_copy_required"
         assert exc.value.retryable is False
-    assert get_adapter(ChannelType.wordpress).supports_autopost is True
     assert get_adapter(ChannelType.gmail).supports_autopost is True
 
 

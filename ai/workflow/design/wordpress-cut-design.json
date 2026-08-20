@@ -1,0 +1,36 @@
+{
+  "stage": "design",
+  "topic": "WordPress → manual_copy for articles",
+  "date": "2026-08-20 15:49 UTC+8",
+  "decision": "Keep ChannelType.wordpress in DB/enum; route adapter to ManualCopyAdapter like VK/IG. Remove wordpress from MVP UI connect/plan pickers. No WP REST calls in worker path.",
+  "C4": {
+    "containers": ["API", "Worker", "Web"],
+    "change": "Workers no longer call WordPress REST. External system WordPress optional/out of MVP path.",
+    "assumptions": ["Existing wordpress ChannelAccount rows become manual_copy capability on publish."],
+    "open_questions": []
+  },
+  "DFD": {
+    "removed_flow": "Beat/P7 -> WordPress REST",
+    "article_flow": "User -> ContentPiece(article) -> Publication(manual_copy) -> published_manual",
+    "assumptions": ["Gmail and Telegram unchanged."],
+    "open_questions": []
+  },
+  "Sequence": {
+    "publish_article": [
+      "User schedules or opens queue for article",
+      "Worker get_adapter(wordpress|any blog) -> ManualCopyAdapter",
+      "AdapterCapabilityError manual_copy_required OR supports_autopost=False short-circuit",
+      "UI: Copy for manual / mark published_manual"
+    ],
+    "assumptions": ["Same pattern as VK/IG today."],
+    "open_questions": []
+  },
+  "API_Contract": {
+    "credentials_wordpress": "May remain for legacy; UI will not offer. Prefer reject or leave dead path.",
+    "oauth": "unchanged (none for WP)"
+  },
+  "Migration_plan": "No Alembic. Enum stays.",
+  "Security_notes": "Removing live WP reduces SSRF surface from user site_url in worker path if UI cannot create new WP channels.",
+  "NFR": "No new latency. Tests must not require WP mock for happy autopost.",
+  "consistency_check": "C4/DFD/Sequence agree: no WP REST in MVP runtime."
+}

@@ -38,7 +38,7 @@ export const CHANNEL_STATUS: Record<string, string> = {
   revoked: "отозван",
 };
 
-export const MVP_CHANNELS = ["telegram", "wordpress", "gmail"] as const;
+export const MVP_CHANNELS = ["telegram", "gmail"] as const;
 
 export function label(map: Record<string, string>, key: string): string {
   return map[key] ?? key;

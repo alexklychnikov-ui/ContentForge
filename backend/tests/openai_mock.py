@@ -16,7 +16,7 @@ CONTEXT_RE = re.compile(r"<<<CONTEXT\n(.*)\nCONTEXT>>>", re.S)
 PLAN_JAN = {
     "year": 2026,
     "month": 1,
-    "channels": ["telegram", "wordpress", "gmail"],
+    "channels": ["telegram", "gmail"],
     "targets": {"social_post": 2, "article": 1, "email": 1},
     "locale": "ru",
 }

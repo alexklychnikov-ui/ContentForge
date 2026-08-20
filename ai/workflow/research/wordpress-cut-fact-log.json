@@ -1,0 +1,29 @@
+{
+  "stage": "research",
+  "topic": "Cut WordPress autopost; articles = manual_copy only",
+  "date": "2026-08-20 15:48 UTC+8",
+  "user_request": "вырезай WordPress, только manual для статей",
+  "confirmed_facts": [
+    "ChannelType.wordpress exists in models; credentials path site_url/username/app_password in channel_service.",
+    "WordPressAdapter supports_autopost=True; publishes via REST wp/v2/posts (wordpress.py).",
+    "get_adapter returns WordPressAdapter for wordpress; VK/IG already ManualCopyAdapter.",
+    "Frontend MVP_CHANNELS = telegram, wordpress, gmail; ChannelsPage has wordpress form fields.",
+    "Plan/Editor/Calendar use MVP_CHANNELS for channel pickers.",
+    "Tests: AC-14 wordpress mocked publish; test_vk_instagram asserts wordpress.supports_autopost True.",
+    "TZ §17.1 MVP autopost was Telegram+WordPress; user overrides product scope for own accounts.",
+    "Enum ChannelType.wordpress and ExperimentMode.wordpress_title remain in schema/DB; dropping enum needs migration — out of minimal cut unless required."
+  ],
+  "hypotheses": [
+    "HYPOTHESIS: Existing DB rows type=wordpress can stay; adapter ManualCopy is enough for no live POST.",
+    "HYPOTHESIS: Articles still generated as content type article; publish via mark published_manual / Copy for manual, not WP REST."
+  ],
+  "open_questions_resolved_by_user": [
+    "No WordPress sites — do not keep connect/autopost UX."
+  ],
+  "kitchen_aside_facts": [
+    "2026-08-17: kitchens-bot.service and kitchens-admin.service stopped/disabled/removed on 45.144.232.115.",
+    "/opt/kitchens-bot deleted; kitchens-postgres container+volume removed.",
+    "nginx TLS kitchen.alexklyvibe.ru kept with ContentForge placeholder.",
+    "BotFather token still valid (sendMessage via SOCKS ok) but no long-polling process on VPS."
+  ]
+}

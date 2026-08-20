@@ -5,12 +5,10 @@ from app.services.adapters.base import ChannelAdapter
 from app.services.adapters.gmail import GmailAdapter
 from app.services.adapters.manual import ManualCopyAdapter
 from app.services.adapters.telegram import TelegramAdapter
-from app.services.adapters.wordpress import WordPressAdapter
-
 _TELEGRAM = TelegramAdapter()
 _VK = ManualCopyAdapter(ChannelType.vk)
 _IG = ManualCopyAdapter(ChannelType.instagram)
-_WP = WordPressAdapter()
+_WP = ManualCopyAdapter(ChannelType.wordpress)
 _GMAIL = GmailAdapter()
 
 
