@@ -17,7 +17,7 @@ export function PlanPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [channels, setChannels] = useState<string[]>(["telegram"]);
-  const [targets, setTargets] = useState({ social_post: 8, article: 2, email: 2 });
+  const [targets, setTargets] = useState({ social_post: 8, article: 0, email: 0 });
   const [job, setJob] = useState<JobPublic | null>(null);
   const [plan, setPlan] = useState<PlanPublic | null>(null);
 
@@ -39,11 +39,20 @@ export function PlanPage() {
 
   const generate = useMutation({
     mutationFn: async (confirm: boolean) => {
+      const cleanTargets = Object.fromEntries(
+        Object.entries(targets).filter(([, value]) => Number(value) > 0),
+      );
+      if (Object.keys(cleanTargets).length === 0) {
+        throw new Error("Укажите хотя бы одну частоту > 0 (обычно Пост).");
+      }
+      if (channels.length === 0) {
+        throw new Error("Выберите хотя бы один канал.");
+      }
       const accepted = await cf.generatePlan(brand!.id, {
         year,
         month,
         channels,
-        targets,
+        targets: cleanTargets,
         locale: brand?.default_locale ?? "ru",
         include_holidays: true,
         include_trends: true,
@@ -114,9 +123,18 @@ export function PlanPage() {
                 type="checkbox"
                 checked={channels.includes(type)}
                 onChange={(e) =>
-                  setChannels((prev) =>
-                    e.target.checked ? [...prev, type] : prev.filter((item) => item !== type),
-                  )
+                  setChannels((prev) => {
+                    const next = e.target.checked
+                      ? [...prev, type]
+                      : prev.filter((item) => item !== type);
+                    if (type === "gmail") {
+                      setTargets((t) => ({
+                        ...t,
+                        email: e.target.checked ? Math.max(t.email, 2) : 0,
+                      }));
+                    }
+                    return next;
+                  })
                 }
               />{" "}
               {label(CHANNEL_LABELS, type)}
@@ -136,6 +154,10 @@ export function PlanPage() {
             </label>
           ))}
         </div>
+        <p className="muted">
+          Для старта: только Telegram + Пост (8). Статья/письмо поднимают сложность генерации;
+          письмо имеет смысл при включённом Gmail.
+        </p>
         <div>
           <h3>Праздники</h3>
           {holidays.length === 0 ? (

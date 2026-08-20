@@ -657,6 +657,27 @@ stage: coding
 status: done
 next_step: TG + plan smoke на prod; META secret когда checkpoint снимут; commit/deploy ai_jobs fix
 
+[2026-08-20 18:42] Gmail recipients delete button
+Prompt: ввёл не того получателя, удалить нельзя — добавить
+Done: кнопка Удалить в ChannelsPage (cf.deleteRecipient уже был); задеплоен frontend на VPS
+stage: coding
+status: done
+next_step: user F5 /channels → Удалить → добавить нужного
+
+[2026-08-20 22:05] Fix plan schema_invalid on heavy targets
+Prompt: нажал Сгенерировать → schema_invalid (8+2+2, только TG)
+Done: coerce enums/goals; 2 repair retries; Plan UI defaults пост=8 статья/письмо=0; hint; deploy api/worker/frontend
+stage: coding
+status: done
+next_step: user F5 /plan → Пост 8, статья/письмо 0 → Сгенерировать
+
+[2026-08-20 22:20] OPENAI_MODEL vs OPENAI_MODEL_TEXT
+Prompt: почему gpt-4o-mini если в .env OPENAI_MODEL_TEXT=gpt-5.4-mini
+Done: бэкенд читает OPENAI_MODEL; TEXT игнорировался; backend/.env имел gpt-4o-mini. VPS OPENAI_MODEL=gpt-5.4-mini-2026-03-17; patch предпочитает OPENAI_MODEL_TEXT
+stage: coding
+status: done
+next_step: regenerate plan on prod
+
 [2026-08-20 17:58] Telegram channels: channel_id -5477113632 validation UX
 Prompt: user changed Channel id to -5477113632, Save does nothing, old error "нужен @channel или -100…"
 Done: root cause — -5477113632 is bot user id with minus, not supergroup chat id (-100…). Backend: specific errors for positive bot id vs wrong negative id. Frontend: controlled inputs, save.reset() on edit. Tests: rejects 5477113632 and -5477113632.
@@ -670,3 +691,10 @@ Done: _TELEGRAM_GROUP_RE ^-\d{5,}$; accept alongside @channel and -100…; test_
 stage: coding
 status: done
 next_step: push+deploy channel_service.py to kitchen.alexklyvibe.ru
+
+[2026-08-20 18:10] Deploy channel_id fix to prod + auto-deploy rule
+Prompt: деплой всегда самостоятельно по необходимости
+Done: commit ad4575f pushed; VPS reset --hard + docker rebuild; health=200. Rule .cursor/rules/auto-deploy-vps.mdc. .gitattributes LF for *.sh. User can save -5477113632 now.
+stage: devops
+status: done
+verified_by: command_executor

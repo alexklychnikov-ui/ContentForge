@@ -135,6 +135,10 @@ export function ChannelsPage() {
       queryClient.invalidateQueries({ queryKey: ["recipients"] });
     },
   });
+  const removeRecipient = useMutation({
+    mutationFn: (id: string) => cf.deleteRecipient(id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["recipients"] }),
+  });
 
   if (!brand) {
     return (
@@ -154,7 +158,7 @@ export function ChannelsPage() {
       <h1>Каналы</h1>
       <p className="muted">Instagram App Review, Reels и Mailchimp не входят в MVP. Токены в GET не показываем.</p>
       {leaked ? <div className="error">В ответе каналов есть секрет — это баг API.</div> : null}
-      <ErrorBanner error={channelsQuery.error || save.error || health.error || revoke.error || recipientsQuery.error || instagramOAuth.error} />
+      <ErrorBanner error={channelsQuery.error || save.error || health.error || revoke.error || recipientsQuery.error || addRecipient.error || removeRecipient.error || instagramOAuth.error} />
       {oauthBanner ? <div className="job succeeded">{oauthBanner}</div> : null}
       {adapterHealthError ? <div className="error">{adapterHealthError}</div> : null}
       <div className="cards">
@@ -312,6 +316,7 @@ export function ChannelsPage() {
               <th>Email</th>
               <th>Имя</th>
               <th>Статус</th>
+              <th></th>
             </tr>
           </thead>
           <tbody>
@@ -320,6 +325,16 @@ export function ChannelsPage() {
                 <td>{row.email}</td>
                 <td>{row.name}</td>
                 <td>{row.status}</td>
+                <td>
+                  <button
+                    className="btn"
+                    type="button"
+                    disabled={removeRecipient.isPending}
+                    onClick={() => removeRecipient.mutate(row.id)}
+                  >
+                    Удалить
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>

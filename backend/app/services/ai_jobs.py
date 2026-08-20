@@ -18,6 +18,7 @@ from app.models import (
     Holiday,
     Job,
     PlanItem,
+    PlanGoal,
     PlanStatus,
     TrendSignal,
     TrendStatus,
@@ -33,7 +34,9 @@ from app.services.catalog_service import list_holidays
 from app.services.stopwords import find_stopwords, payload_text
 
 PLAN_SYSTEM = (
-    "You are ContentForge planner. Return JSON {items:[...]}. "
+    "You are ContentForge planner. Return JSON {\"items\":[...]}. "
+    "Each item: date (YYYY-MM-DD), channel_type, content_type, theme, goal, hook. "
+    "goal must be one of: awareness, traffic, lead, retention. "
     "Do not invent prices, legal guarantees, or promo dates missing from context. "
     "Mix RU holidays into themes when they fall in the month. "
     "Use only provided channels and content types. Dates must be in the requested month."
@@ -92,6 +95,24 @@ def _wrap_context(payload: dict[str, Any]) -> str:
     return "<<<CONTEXT\n" + json.dumps(payload, ensure_ascii=False) + "\nCONTEXT>>>"
 
 
+def _plan_schema_hint(
+    channels: list[ChannelType],
+    targets: dict[ContentType, int],
+    year: int,
+    month: int,
+) -> str:
+    channel_list = "|".join(item.value for item in channels)
+    type_list = "|".join(key.value for key in targets)
+    goals = "|".join(item.value for item in PlanGoal)
+    return (
+        f"Schema example item: "
+        f'{{"date":"{year}-{month:02d}-01","channel_type":"{channels[0].value}",'
+        f'"content_type":"{next(iter(targets)).value}","theme":"...","goal":"awareness","hook":"..."}}. '
+        f"Allowed channel_type: {channel_list}. Allowed content_type: {type_list}. "
+        f"Allowed goal: {goals}. Dates only in {year}-{month:02d}."
+    )
+
+
 def execute_generate_plan(db: Session, job: Job, brand: BrandProfile) -> dict[str, Any]:
     payload = job.payload
     year = int(payload["year"])
@@ -131,7 +152,8 @@ def execute_generate_plan(db: Session, job: Job, brand: BrandProfile) -> dict[st
         {
             "role": "user",
             "content": _wrap_context(context)
-            + f"\nReturn exactly {expected} items. JSON schema: items[].",
+            + f"\nReturn exactly {expected} items. "
+            + _plan_schema_hint(channels, targets, year, month),
         },
     ]
 
@@ -165,7 +187,7 @@ def execute_generate_plan(db: Session, job: Job, brand: BrandProfile) -> dict[st
                 )
         return None
 
-    result, meta = complete_json(PlanAIResult, messages, extra_validator=_check)
+    result, meta = complete_json(PlanAIResult, messages, extra_validator=_check, temperature=0.2, max_repairs=2)
     assert isinstance(result, PlanAIResult)
     settings = get_settings()
     plan = ContentPlan(

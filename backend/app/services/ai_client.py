@@ -9,7 +9,7 @@ from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 
-PROMPT_VERSION = "cf3-v1"
+PROMPT_VERSION = "cf3-v2"
 
 
 class AIJobError(Exception):
@@ -19,7 +19,11 @@ class AIJobError(Exception):
         self.details = details or {}
 
 
-def _call_openai(messages: list[dict[str, str]]) -> tuple[str, dict[str, int]]:
+def _call_openai(
+    messages: list[dict[str, str]],
+    *,
+    temperature: float = 0.4,
+) -> tuple[str, dict[str, int]]:
     settings = get_settings()
     if not settings.openai_api_key:
         raise AIJobError("upstream_unavailable", "OpenAI API key is not configured")
@@ -29,7 +33,7 @@ def _call_openai(messages: list[dict[str, str]]) -> tuple[str, dict[str, int]]:
             model=settings.openai_model,
             messages=messages,
             response_format={"type": "json_object"},
-            temperature=0.4,
+            temperature=temperature,
         )
     except OpenAIError as exc:
         logger.warning("openai_error type=%s", type(exc).__name__)
@@ -63,41 +67,60 @@ def _parse_model(model_cls: type[BaseModel], raw: str) -> BaseModel:
         raise AIJobError(
             "schema_invalid",
             "JSON не прошёл схему",
-            {"reason": "pydantic"},
+            {"reason": "pydantic", "errors": exc.errors(include_url=False)[:8]},
         ) from exc
+
+
+def _repair_hint(error: AIJobError) -> str:
+    parts = [f"Error code: {error.code}.", error.message]
+    if error.details:
+        parts.append(json.dumps(error.details, ensure_ascii=False))
+    return " ".join(parts) + " Return corrected JSON only, no markdown."
 
 
 def complete_json(
     model_cls: type[BaseModel],
     messages: list[dict[str, str]],
     extra_validator: Callable[[BaseModel], AIJobError | None] | None = None,
+    *,
+    temperature: float = 0.4,
+    max_repairs: int = 2,
 ) -> tuple[BaseModel, dict[str, Any]]:
-    raw, usage = _call_openai(messages)
-    parsed, error = _try_validate(model_cls, raw, extra_validator)
-    if parsed is not None:
-        return parsed, {"usage": usage, "repaired": False, "prompt_version": PROMPT_VERSION}
+    usage_total = {"prompt_tokens": 0, "completion_tokens": 0, "total_tokens": 0}
+    current_messages = list(messages)
+    last_error: AIJobError | None = None
+    repaired = False
 
-    repair_messages = [
-        *messages,
-        {
-            "role": "user",
-            "content": (
-                "Your previous JSON failed validation. "
-                f"Error code: {error.code}. Return corrected JSON only, no markdown."
-            ),
-        },
-    ]
-    raw2, usage2 = _call_openai(repair_messages)
-    parsed2, error2 = _try_validate(model_cls, raw2, extra_validator)
-    usage_total = {
-        "prompt_tokens": usage["prompt_tokens"] + usage2["prompt_tokens"],
-        "completion_tokens": usage["completion_tokens"] + usage2["completion_tokens"],
-        "total_tokens": usage["total_tokens"] + usage2["total_tokens"],
-    }
-    if parsed2 is None:
-        assert error2 is not None
-        raise error2
-    return parsed2, {"usage": usage_total, "repaired": True, "prompt_version": PROMPT_VERSION}
+    for attempt in range(max_repairs + 1):
+        temp = temperature if attempt == 0 else min(temperature, 0.2)
+        raw, usage = _call_openai(current_messages, temperature=temp)
+        usage_total = {
+            "prompt_tokens": usage_total["prompt_tokens"] + usage["prompt_tokens"],
+            "completion_tokens": usage_total["completion_tokens"] + usage["completion_tokens"],
+            "total_tokens": usage_total["total_tokens"] + usage["total_tokens"],
+        }
+        parsed, error = _try_validate(model_cls, raw, extra_validator)
+        if parsed is not None:
+            return parsed, {
+                "usage": usage_total,
+                "repaired": repaired,
+                "prompt_version": PROMPT_VERSION,
+            }
+        assert error is not None
+        last_error = error
+        if attempt >= max_repairs:
+            break
+        repaired = True
+        current_messages = [
+            *messages,
+            {
+                "role": "user",
+                "content": "Your previous JSON failed validation. " + _repair_hint(error),
+            },
+        ]
+
+    assert last_error is not None
+    raise last_error
 
 
 def _try_validate(
