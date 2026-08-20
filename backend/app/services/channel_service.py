@@ -36,6 +36,7 @@ META_SECRET_KEYS = {
 _TELEGRAM_BOT_TOKEN_RE = re.compile(r"^[0-9]+:[A-Za-z0-9_-]{8,}$")
 _TELEGRAM_AT_RE = re.compile(r"^@[A-Za-z][A-Za-z0-9_]{4,31}$")
 _TELEGRAM_CHAT_RE = re.compile(r"^-100\d+$")
+_TELEGRAM_GROUP_RE = re.compile(r"^-\d{5,}$")
 
 
 def public_meta(meta: dict | None) -> dict:
@@ -112,12 +113,32 @@ def _require_telegram_bot_token(value: str) -> str:
 
 
 def _require_telegram_channel_id(value: str) -> str:
-    if _TELEGRAM_AT_RE.fullmatch(value) or _TELEGRAM_CHAT_RE.fullmatch(value):
+    if (
+        _TELEGRAM_AT_RE.fullmatch(value)
+        or _TELEGRAM_CHAT_RE.fullmatch(value)
+        or _TELEGRAM_GROUP_RE.fullmatch(value)
+    ):
         return value
+    if "@" in value:
+        raise AppError(
+            422,
+            "validation_error",
+            "нужен @channel, -100… или id группы (-12345…), не email",
+            {"field": "channel_id"},
+        )
+    digits = value.lstrip("-")
+    if digits.isdigit():
+        if not value.startswith("-"):
+            raise AppError(
+                422,
+                "validation_error",
+                f"{value} — это user/bot id, не chat id. Возьмите chat.id из getUpdates (отрицательное число)",
+                {"field": "channel_id"},
+            )
     raise AppError(
         422,
         "validation_error",
-        "нужен @channel или -100…, не email",
+        "нужен @channel, -100… (супергруппа) или -12345… (группа)",
         {"field": "channel_id"},
     )
 

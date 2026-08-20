@@ -322,6 +322,45 @@ def test_telegram_channel_id_rejects_email(client: TestClient) -> None:
     assert "нужен @channel" in err["message"]
 
 
+def test_telegram_channel_id_rejects_bot_user_id(client: TestClient) -> None:
+    owner = register_user(client).json()
+    headers = auth_header(owner["tokens"])
+    brand_id = create_brand(client, headers).json()["id"]
+    denied = _connect(
+        client,
+        headers,
+        brand_id,
+        "telegram",
+        {
+            "pdn_consent": True,
+            "bot_token": "123:SECRET-BOT-TOKEN",
+            "channel_id": "5477113632",
+        },
+    )
+    assert denied.status_code == 422
+    err = _error(denied)
+    assert "user/bot id" in err["message"]
+
+
+def test_telegram_channel_id_accepts_regular_group(client: TestClient) -> None:
+    owner = register_user(client).json()
+    headers = auth_header(owner["tokens"])
+    brand_id = create_brand(client, headers).json()["id"]
+    created = _connect(
+        client,
+        headers,
+        brand_id,
+        "telegram",
+        {
+            "pdn_consent": True,
+            "bot_token": "123:SECRET-BOT-TOKEN",
+            "channel_id": "-5477113632",
+        },
+    )
+    assert created.status_code == 201
+    assert created.json()["meta"]["channel_id"] == "-5477113632"
+
+
 def test_telegram_channel_id_accepts_at_username(client: TestClient) -> None:
     owner = register_user(client).json()
     headers = auth_header(owner["tokens"])

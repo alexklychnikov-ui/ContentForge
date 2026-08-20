@@ -1,0 +1,18 @@
+---
+description: Автодеплой на kitchen.alexklyvibe.ru после фиксов backend/frontend
+alwaysApply: true
+---
+
+# Auto-deploy VPS
+
+После изменений в `backend/` или `frontend/`, которые должны быть на prod:
+
+1. Commit + push в `origin/main` (только релевантные файлы).
+2. Деплой на VPS самостоятельно, без запроса пользователя:
+   ```bash
+   ssh -i ~/.ssh/alexklyvibe root@45.144.232.115 "cd /opt/contentforge && bash scripts/update-vps.sh"
+   ```
+3. Проверка: `curl -s -o /dev/null -w '%{http_code}' https://kitchen.alexklyvibe.ru/health` → 200.
+4. Запись в `logs/agent-worklog.txt`.
+
+Не спрашивать «деплоить?» — деплоить по необходимости.

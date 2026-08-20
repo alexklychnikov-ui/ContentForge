@@ -627,3 +627,46 @@ verdict: GATE_PASS
 findings_middle_plus: WordPressAdapter dead class in wordpress.py (supports_autopost=True unwired); API still accepts /channels/wordpress/credentials while UI removed; CHANNEL_LABELS still has wordpress for legacy rows
 next_step: teamlead sign-off or follow-up ticket for dead-code cleanup
 result: no commit
+
+[2026-08-20 16:08] VPS deploy + Instagram OAuth
+Prompt: Deploy to kitchen.alexklyvibe.ru; Instagram on server.
+Done: prod compose/nginx, Meta OAuth, deployed /opt/contentforge. https live health=200. META_APP_SECRET/OPENAI missing locally — add on VPS.
+stage: coding
+status: done
+result: git 556b876 pushed
+
+[2026-08-20 16:20] VPS deploy key + git pull
+Prompt: «нужен» — deploy key GitHub для git pull на VPS
+Done: ed25519 /root/.ssh/contentforge_deploy; deploy key «kitchen.alexklyvibe.ru deploy» в alexklychnikov-ui/ContentForge; SSH Host github.com-contentforge; /opt/contentforge = git clone @556b876; .env сохранён; deploy-vps.sh + update-vps.sh с git pull; redeploy health=200
+stage: coding
+status: done
+next_step: push scripts локально; META_APP_SECRET/OPENAI в /opt/contentforge/.env
+
+[2026-08-20 16:30] Prod secrets + smoke
+Prompt: секреты + smoke на kitchen.alexklyvibe.ru
+Done: patch-vps-secrets.py + smoke-prod.py; OPENAI_API_KEY залит на VPS (gpt-4o-mini из compose .env); api/worker/beat recreated; smoke: health/register/brand/ig_oauth_start/plan_generate 202 OK; plan_job иногда schema_invalid (OpenAI отвечает, pydantic); META_APP_SECRET всё ещё empty — IG callback не завершить
+stage: coding
+status: done
+checks: smoke-prod.py exit 0; worker openai 200 OK in logs
+next_step: user adds META_APP_SECRET to root .env → patch-vps-secrets.py; Meta Console redirect URI; manual IG/TG connect in UI
+
+[2026-08-20 17:05] Continue without META_APP_SECRET
+Prompt: Meta Developers недоступен; два app (Media 1382440990693447, ContentForge 1434904032019623); продолжай без secret
+Done: IG отложен; prod app = ContentForge Media; улучшен plan prompt + repair hint (schema_invalid); UI hint про callback без secret
+stage: coding
+status: done
+next_step: TG + plan smoke на prod; META secret когда checkpoint снимут; commit/deploy ai_jobs fix
+
+[2026-08-20 17:58] Telegram channels: channel_id -5477113632 validation UX
+Prompt: user changed Channel id to -5477113632, Save does nothing, old error "нужен @channel или -100…"
+Done: root cause — -5477113632 is bot user id with minus, not supergroup chat id (-100…). Backend: specific errors for positive bot id vs wrong negative id. Frontend: controlled inputs, save.reset() on edit. Tests: rejects 5477113632 and -5477113632.
+stage: coding
+status: done
+next_step: user get real chat_id via getUpdates after message in group with bot
+
+[2026-08-20 18:05] Fix: accept regular TG group id (-5477113632)
+Prompt: user showed getUpdates chat.id=-5477113632 type=group "Контент завод" — was rejected by -100-only validation
+Done: _TELEGRAM_GROUP_RE ^-\d{5,}$; accept alongside @channel and -100…; test_ac_channels accepts -5477113632; placeholder updated. Local fix, prod needs deploy.
+stage: coding
+status: done
+next_step: push+deploy channel_service.py to kitchen.alexklyvibe.ru

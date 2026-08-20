@@ -231,7 +231,11 @@ export function ChannelsPage() {
                 name="telegram_bot_token"
                 type="password"
                 autoComplete="off"
-                onChange={(e) => setForm((p) => ({ ...p, bot_token: e.target.value }))}
+                value={form.bot_token ?? ""}
+                onChange={(e) => {
+                  save.reset();
+                  setForm((p) => ({ ...p, bot_token: e.target.value }));
+                }}
               />
             </label>
             <label className="field">
@@ -239,8 +243,12 @@ export function ChannelsPage() {
               <input
                 name="telegram_channel_id"
                 autoComplete="off"
-                placeholder="@mychannel или -100…"
-                onChange={(e) => setForm((p) => ({ ...p, channel_id: e.target.value }))}
+                placeholder="@mychannel, -100… или -5477113632"
+                value={form.channel_id ?? ""}
+                onChange={(e) => {
+                  save.reset();
+                  setForm((p) => ({ ...p, channel_id: e.target.value }));
+                }}
               />
             </label>
           </>
@@ -273,7 +281,8 @@ export function ChannelsPage() {
         <h3>Instagram</h3>
         <p className="muted">
           Professional (Creator) + Facebook Page. OAuth redirect:{" "}
-          <code>/api/v1/channels/oauth/callback</code>
+          <code>/api/v1/channels/oauth/callback</code>. Пока на сервере нет META_APP_SECRET — вход
+          в Facebook откроется, но callback не завершится.
         </p>
         <label>
           <input type="checkbox" checked={form.pdn === "1"} onChange={(e) => setForm((p) => ({ ...p, pdn: e.target.checked ? "1" : "0" }))} />{" "}
