@@ -950,3 +950,5 @@ Prompt: да (implement autopilot)
 Done: migration 0007; prepare_plan_slots hourly; auto_schedule after generate; Settings UI; tests 9 passed
 stage: coding
 status: done
+[2026-08-26 18:57] Auto-pipeline deployed bcb4e38; alembic 0007 head; health=200
+How to use: Settings → enable Автоподготовка; approved plan; connected channel; within lead hours of slot
