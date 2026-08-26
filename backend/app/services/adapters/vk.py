@@ -31,17 +31,18 @@ AUTH_DENIED_CODES = frozenset({5, 15, 27, 203, 214})
 
 def variant_text(payload: dict | None) -> str:
     data = payload or {}
-    text = str(data.get("text") or "").strip()
-    if not text:
-        return ""
-    parts = [text]
-    cta = data.get("cta")
-    if cta:
-        parts.append(str(cta))
-    tags = data.get("hashtags") or []
-    if isinstance(tags, list) and tags:
-        parts.append(" ".join(f"#{str(tag).lstrip('#')}" for tag in tags if tag))
-    return "\n\n".join(part for part in parts if part)
+    if data.get("text"):
+        parts = [str(data["text"])]
+        cta = data.get("cta")
+        if cta:
+            parts.append(str(cta))
+        tags = data.get("hashtags") or []
+        if isinstance(tags, list) and tags:
+            parts.append(" ".join(f"#{str(tag).lstrip('#')}" for tag in tags if tag))
+        return "\n\n".join(part for part in parts if part)
+    title = data.get("title") or data.get("subject") or ""
+    body = data.get("body_markdown") or data.get("excerpt") or ""
+    return "\n\n".join(part for part in (str(title), str(body)) if part).strip()
 
 
 def wall_url(group_id: str, post_id: int | str) -> str:

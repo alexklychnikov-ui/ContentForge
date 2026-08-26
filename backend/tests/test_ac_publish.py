@@ -1109,7 +1109,9 @@ def test_manual_copy_channels_capability_error() -> None:
 
 def test_vk_wall_url_and_empty_variant_text() -> None:
     assert wall_url("1", 2) == "https://vk.com/wall-1_2"
-    assert variant_text({"text": "  "}) == ""
+    assert variant_text({"title": "Article", "body_markdown": "Body text"}) == "Article\n\nBody text"
+    assert variant_text({"title": "Only title"}) == "Only title"
+    assert variant_text({}) == ""
     assert variant_text({"text": "hi", "cta": "go"}) == "hi\n\ngo"
 
 

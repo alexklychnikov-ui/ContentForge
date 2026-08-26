@@ -866,3 +866,22 @@ Prompt: Добавь колонку по какому каналу работа�
 Done: PublicationPublic.channel_type + QueuePage column; joinedload channel
 stage: coding
 status: done
+[2026-08-26 15:30] VK error research: Пустой текст для VK
+Prompt: по VK ошибка, разбираться
+stage: research
+status: in_progress
+[2026-08-26 15:31] VK empty text: article scheduled to VK, adapter only reads text
+stage: research
+status: done
+next: align variant_text with telegram fallback
+[2026-08-26 15:32] VK variant_text fallback aligned with telegram
+Prompt: Fix VK «Пустой текст» — mirror telegram title/body_markdown/excerpt fallback
+Done: vk.py variant_text + test_vk_wall_url_and_empty_variant_text article asserts
+stage: coding
+status: done
+checks: pytest test_vk_wall_url_and_empty_variant_text passed
+handoff: devops
+[2026-08-26 15:32] Fix VK variant_text fallback for article/email payloads
+Done: mirror telegram title+body_markdown; user can Retry failed VK pub
+stage: coding
+status: done
