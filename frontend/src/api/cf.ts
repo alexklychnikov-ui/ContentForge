@@ -64,6 +64,8 @@ export const cf = {
   createPiece: (brandId: string, body: Record<string, unknown>) =>
     apiPost<PiecePublic>(`/brands/${brandId}/content`, body),
   getPiece: (pieceId: string) => apiGet<PiecePublic>(`/content/${pieceId}`),
+  patchPiece: (pieceId: string, body: { status?: string }) =>
+    apiPatch<PiecePublic>(`/content/${pieceId}`, body),
   generateContent: (pieceId: string, body: Record<string, unknown>) =>
     apiPost<JobAccepted>(`/content/${pieceId}/generate`, body),
   addVariant: (pieceId: string, body: Record<string, unknown>) =>

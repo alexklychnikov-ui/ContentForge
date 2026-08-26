@@ -885,3 +885,19 @@ handoff: devops
 Done: mirror telegram title+body_markdown; user can Retry failed VK pub
 stage: coding
 status: done
+[2026-08-26 15:33] Deployed d64cf11 VK article text fallback health=200
+[2026-08-26 15:42] Editor UX revive
+Prompt: delete drafts + RU labels + rewrite rename
+stage: coding
+status: in_progress
+[2026-08-26 15:43] Editor UX revive — coder done
+Prompt: delete drafts + RU labels + rewrite rename
+Done: PIECE_STATUS/FIELD_META/TYPE_FIELD_BLURB; cf.patchPiece; EditorPage list snippets+delete+RU fields+rewrite RU
+checks: npm run build (tsc+vite) exit 0
+stage: coding
+status: done
+handoff: devops
+[2026-08-26 15:45] Editor UX: archive delete, RU fields, rewrite rename
+Done: list snippet+status RU; Удалить→archived; FIELD_META; Переписать выделенное
+stage: coding
+status: done

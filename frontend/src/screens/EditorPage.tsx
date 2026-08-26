@@ -6,7 +6,15 @@ import { pollJob } from "../api/client";
 import type { BrandPublic, PiecePublic, VariantPublic } from "../api/types";
 import { pushRecentJob } from "../auth/session";
 import { EmptyState, ErrorBanner, JobBanner } from "../components/Status";
-import { CHANNEL_LABELS, CONTENT_LABELS, MVP_CHANNELS, label } from "../labels";
+import {
+  CHANNEL_LABELS,
+  CONTENT_LABELS,
+  FIELD_META,
+  MVP_CHANNELS,
+  PIECE_STATUS,
+  TYPE_FIELD_BLURB,
+  label,
+} from "../labels";
 
 type Shell = { brand: BrandPublic | null };
 
@@ -31,6 +39,28 @@ function formToPayload(form: Record<string, string>, type: PiecePublic["type"]):
     payload.hashtags = form.hashtags.split(/\s+/).filter(Boolean);
   }
   return payload;
+}
+
+function pieceSnippet(item: PiecePublic): string {
+  const payload = item.variants?.[0]?.payload ?? {};
+  const candidates = [payload.text, payload.title, payload.subject];
+  let raw = "";
+  for (const value of candidates) {
+    const text = Array.isArray(value) ? value.join(" ") : String(value ?? "").trim();
+    if (text) {
+      raw = text.replace(/\s+/g, " ");
+      break;
+    }
+  }
+  if (!raw) return "без текста";
+  return raw.length > 50 ? `${raw.slice(0, 50)}…` : raw;
+}
+
+function fieldCaption(type: PiecePublic["type"], key: string): string {
+  const meta = FIELD_META[type]?.[key];
+  if (!meta) return key;
+  if (meta.required) return `${meta.label} · обязательно`;
+  return meta.label;
 }
 
 export function EditorPage() {
@@ -63,6 +93,11 @@ export function EditorPage() {
     enabled: Boolean(brand),
   });
 
+  const visiblePieces = useMemo(
+    () => (listQuery.data ?? []).filter((item) => item.status !== "archived"),
+    [listQuery.data],
+  );
+
   const piece = pieceQuery.data;
   const variants = piece?.variants ?? [];
   const current = useMemo(
@@ -87,6 +122,19 @@ export function EditorPage() {
       navigate(`/content/${row.id}`);
     },
   });
+
+  const archivePiece = useMutation({
+    mutationFn: (id: string) => cf.patchPiece(id, { status: "archived" }),
+    onSuccess: (_row, id) => {
+      queryClient.invalidateQueries({ queryKey: ["content"] });
+      if (pieceId === id) navigate("/content");
+    },
+  });
+
+  function confirmArchive(id: string) {
+    if (!window.confirm("Удалить черновик? Он исчезнет из списка.")) return;
+    archivePiece.mutate(id);
+  }
 
   async function runJob(start: () => Promise<{ job_id: string }>, kind: string) {
     setJobError(null);
@@ -153,7 +201,16 @@ export function EditorPage() {
   return (
     <main className="page grid">
       <h1>Редактор контента</h1>
-      <ErrorBanner error={pieceQuery.error || generate.error || save.error || schedule.error || rewrite.error} />
+      <ErrorBanner
+        error={
+          pieceQuery.error ||
+          generate.error ||
+          save.error ||
+          schedule.error ||
+          rewrite.error ||
+          archivePiece.error
+        }
+      />
       <JobBanner status={jobStatus} error={jobError} label="AI-задача" />
       <div className="row">
         <label className="field">
@@ -173,15 +230,24 @@ export function EditorPage() {
       <div className="split">
         <div className="panel">
           <h3>Список</h3>
-          {(listQuery.data ?? []).length === 0 ? (
+          {visiblePieces.length === 0 ? (
             <p className="muted">Пока нет единиц контента.</p>
           ) : (
             <ul>
-              {(listQuery.data ?? []).map((item) => (
-                <li key={item.id}>
+              {visiblePieces.map((item) => (
+                <li key={item.id} className="row">
                   <Link to={`/content/${item.id}`}>
-                    {label(CONTENT_LABELS, item.type)} · {item.status}
+                    {label(CONTENT_LABELS, item.type)} · {pieceSnippet(item)}
+                    <span className="muted"> · {label(PIECE_STATUS, item.status)}</span>
                   </Link>
+                  <button
+                    className="btn secondary"
+                    type="button"
+                    disabled={archivePiece.isPending}
+                    onClick={() => confirmArchive(item.id)}
+                  >
+                    Удалить
+                  </button>
                 </li>
               ))}
             </ul>
@@ -189,7 +255,7 @@ export function EditorPage() {
         </div>
         <div className="panel grid">
           {!piece ? (
-            <EmptyState title="Выберите материал" hint="Или создайте черновик и сгенерируйте variant A." cta="Календарь" to="/calendar" />
+            <EmptyState title="Выберите материал" hint="Или создайте черновик и нажмите «Сгенерировать»." cta="Календарь" to="/calendar" />
           ) : (
             <>
               <div className="row">
@@ -200,24 +266,37 @@ export function EditorPage() {
                     type="button"
                     onClick={() => setLabelName(item.label)}
                   >
-                    {item.label} r{item.revision}
+                    Вариант {item.label} r{item.revision}
                   </button>
                 ))}
                 <button className="btn secondary" type="button" onClick={() => addB.mutate()} disabled={!current}>
-                  Variant B
+                  Вариант B
+                </button>
+                <button
+                  className="btn secondary"
+                  type="button"
+                  disabled={archivePiece.isPending}
+                  onClick={() => confirmArchive(piece.id)}
+                >
+                  Удалить
                 </button>
               </div>
-              {fieldsFor(piece.type).map((key) => (
-                <label className="field" key={key}>
-                  {key}
-                  <textarea
-                    ref={key === "text" || key === "body_markdown" ? textRef : undefined}
-                    value={form[key] ?? ""}
-                    onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))}
-                    disabled={current?.is_immutable}
-                  />
-                </label>
-              ))}
+              <p className="muted">{TYPE_FIELD_BLURB[piece.type]}</p>
+              {fieldsFor(piece.type).map((key) => {
+                const meta = FIELD_META[piece.type]?.[key];
+                return (
+                  <label className="field" key={key}>
+                    {fieldCaption(piece.type, key)}
+                    {meta?.hint && !meta.required ? <span className="muted"> — {meta.hint}</span> : null}
+                    <textarea
+                      ref={key === "text" || key === "body_markdown" ? textRef : undefined}
+                      value={form[key] ?? ""}
+                      onChange={(e) => setForm((prev) => ({ ...prev, [key]: e.target.value }))}
+                      disabled={current?.is_immutable}
+                    />
+                  </label>
+                );
+              })}
               <p className="muted">Лимит Telegram ~4096 символов. Хештеги — через пробел.</p>
               <div className="row">
                 <button className="btn" type="button" disabled={!current || current.is_immutable} onClick={() => save.mutate()}>
@@ -227,9 +306,10 @@ export function EditorPage() {
                   Сгенерировать
                 </button>
                 <button className="btn secondary" type="button" disabled={!current} onClick={() => rewrite.mutate()}>
-                  Rewrite selection
+                  Переписать выделенное
                 </button>
               </div>
+              <p className="muted">Выдели фрагмент в основном тексте и нажми</p>
               <label className="field">
                 Канал
                 <select value={channel} onChange={(e) => setChannel(e.target.value)}>
