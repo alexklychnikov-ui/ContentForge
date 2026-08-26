@@ -1,4 +1,5 @@
 import logging
+import re
 import smtplib
 from email.message import EmailMessage
 from email.utils import make_msgid
@@ -32,10 +33,30 @@ QUOTA_MARKERS = (
     "5.4.5",
     "rate limit",
 )
+_GREETING_LINE_RE = re.compile(
+    r"^(привет|здравствуй(?:те)?|добрый день|добрый вечер|hello|hi)\b",
+    re.IGNORECASE,
+)
 
 
 def escape_html(text: str) -> str:
     return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def with_recipient_greeting(body: str, name: str | None) -> str:
+    cleaned = (name or "").strip()
+    greeting = f"Привет, {cleaned}!" if cleaned else "Привет!"
+    text = body or ""
+    if "\n" in text:
+        first_line, rest = text.split("\n", 1)
+    else:
+        first_line, rest = text, ""
+    if _GREETING_LINE_RE.match(first_line.strip()):
+        remainder = rest.lstrip("\n")
+        return f"{greeting}\n\n{remainder}" if remainder else greeting
+    if text.strip():
+        return f"{greeting}\n\n{text}"
+    return f"{greeting}\n\n"
 
 
 def is_quota_error(exc: BaseException) -> bool:
@@ -60,12 +81,20 @@ def smtp_error_to_adapter(exc: BaseException, app_password: str | None) -> Adapt
     return AdapterError("adapter_error", safe or "Gmail SMTP error", retryable=retryable)
 
 
-def build_email_message(from_email: str, to_email: str, payload: dict | None) -> EmailMessage:
+def build_email_message(
+    from_email: str,
+    to_email: str,
+    payload: dict | None,
+    recipient_name: str | None = None,
+) -> EmailMessage:
     data = payload or {}
     subject = str(data.get("subject") or data.get("title") or "").strip()
     if not subject:
         raise AdapterError("bad_request", "Нет темы письма", retryable=False)
-    body = str(data.get("body_markdown") or data.get("body_html") or "")
+    body = with_recipient_greeting(
+        str(data.get("body_markdown") or data.get("body_html") or ""),
+        recipient_name,
+    )
     preheader = str(data.get("preheader") or "")
     msg = EmailMessage()
     msg["Subject"] = subject
@@ -151,7 +180,12 @@ class GmailAdapter(ChannelAdapter):
         first_id: str | None = None
         stop_error: AdapterError | None = None
         for recipient in recipients:
-            message = build_email_message(from_email, recipient.email, variant.payload)
+            message = build_email_message(
+                from_email,
+                recipient.email,
+                variant.payload,
+                recipient_name=recipient.name,
+            )
             try:
                 message_id = smtp_send_one(from_email, password, recipient.email, message)
             except AdapterError as exc:

@@ -831,3 +831,25 @@ Prompt: Долго жду перегенерацию — Проверь
 Done: root ai_job_missing (dispatch before commit); cleared stuck 50f9b160; commit-before-delay + 5x0.1s retry; QA GATE_PASS
 stage: coding
 status: done
+[2026-08-26 15:04] Deployed race fix 2b9242e health=200
+[2026-08-26 15:10] User Q: how to get texts + publish to channels
+stage: research
+status: done
+artifacts: CalendarPage, EditorPage, QueuePage, cf.ts APIs
+next_step: explain UI flow to user (no code)
+[2026-08-26 15:18] Gmail missing greeting/name
+Prompt: в письме нет имени и приветствия
+Fact: EmailRecipient.name unused in gmail.build_email_message; same body to all
+stage: coding
+status: in_progress
+[2026-08-26 15:20] coder: Gmail per-recipient greeting
+Prompt: EmailRecipient.name unused; identical body to all
+Done: with_recipient_greeting + build_email_message(recipient_name); publish passes recipient.name; CONTENT_SYSTEM no salutation; test_gmail_greeting.py 4 passed; ac23/ac22 ok
+stage: coding
+status: done
+role: coder
+handoff: qa
+[2026-08-26 15:21] Gmail per-recipient greeting (retry commit)
+Done: with_recipient_greeting from EmailRecipient.name at SMTP send; AI no salutation; tests 4 passed
+stage: coding
+status: done

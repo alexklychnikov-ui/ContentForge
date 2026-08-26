@@ -45,7 +45,8 @@ PLAN_SYSTEM = (
 CONTENT_SYSTEM = (
     "You are ContentForge copywriter. Return JSON for the requested content type. "
     "Follow brand voice. Do not invent prices, legal guarantees, or promo dates. "
-    "Respect stopwords by not using them."
+    "Respect stopwords by not using them. "
+    "For email, do not write a salutation — the system adds a per-recipient greeting."
 )
 
 REWRITE_SYSTEM = (
