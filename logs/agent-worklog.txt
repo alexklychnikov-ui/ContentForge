@@ -678,6 +678,42 @@ stage: coding
 status: done
 next_step: regenerate plan on prod
 
+[2026-08-26 11:41] Research: VK integration
+Prompt: изучить интеграцию VK; профиль https://id.vk.ru/account/#/main в Chrome
+Done: fact-log; код=ManualCopy+credentials API; UI без VK; TZ=community wall.post; id.vk.ru ≠ ключ сообщества; Cursor browser без сессии Chrome → login wall
+stage: research
+status: open
+artifacts: ai/workflow/research/vk-integration-fact-log.json
+next_step: уточнить community vs personal + есть ли группа; затем закрыть research / design
+
+[2026-08-26 12:06] Research VK: user decisions
+Prompt: 1 нет сообщества; 2 текст сейчас, фото в плане; 3 community key как ТЗ + пояснить UX
+Done: decisions logged; UX sketch community key path prepared for user ack; research close pending ack
+stage: research
+status: open
+artifacts: ai/workflow/research/vk-integration-fact-log.json
+next_step: user ack UX sketch → close research → design
+
+[2026-08-26 14:11] Design: VK community text autopost
+Prompt: «desing» — community key, text MVP, club241074885, photo later
+Done: closed research; design C4/DFD/Sequence + API/Migration/Security/NFR; VkAdapter wall.post text; UI vk in MVP_CHANNELS; phase2 photo backlog
+stage: design
+status: done
+artifacts: ai/workflow/design/vk-community-text-design.json, ai/workflow/research/vk-integration-fact-log.json
+verified_by: teamlead
+consistency_check: pass (text-only community key; no OAuth; photo deferred)
+next_step: planning (VK-1..N) then coding via subagents
+
+[2026-08-26 14:19] Planning: VK community text autopost
+Prompt: planning
+Done: VK-1 credentials harden → VK-2 VkAdapter → VK-3 UI → VK-4 qa → VK-5 security → VK-6 simplify → VK-7 deploy/smoke; photo/OAuth out of scope
+stage: planning
+status: done
+artifacts: ai/workflow/planning/vk-community-text-plan.json
+verified_by: teamlead
+next_step: coding start VK-1 via coder subagent
+risks: live smoke needs user token; VPS egress to api.vk.com unknown
+
 [2026-08-20 17:58] Telegram channels: channel_id -5477113632 validation UX
 Prompt: user changed Channel id to -5477113632, Save does nothing, old error "нужен @channel или -100…"
 Done: root cause — -5477113632 is bot user id with minus, not supergroup chat id (-100…). Backend: specific errors for positive bot id vs wrong negative id. Frontend: controlled inputs, save.reset() on edit. Tests: rejects 5477113632 and -5477113632.
@@ -698,3 +734,61 @@ Done: commit ad4575f pushed; VPS reset --hard + docker rebuild; health=200. Rule
 stage: devops
 status: done
 verified_by: command_executor
+
+[2026-08-26 14:21] VK-1: Harden VK credentials (coder)
+Prompt: VK-1 ONLY — require numeric group_id (422), strip access_token; no VkAdapter/frontend
+Done: _require_vk_group_id in channel_service; tests for missing/invalid/accept+strip; existing vk connects without group_id fixed
+stage: coding
+status: done
+task: VK-1
+checks: pytest tests/test_ac_channels.py — 24 passed
+next_step: VK-2 VkAdapter publish
+
+[2026-08-26 14:26] VK-2: VkAdapter wall.post + health (coder)
+Prompt: VK-2 ONLY — VkAdapter text community wall.post; wire get_adapter(vk); mocked tests; no frontend/commit
+Done: backend/app/services/adapters/vk.py (health groups.getById, publish wall.post, rate_limited/auth mapping, redact_secret); __init__ VkAdapter; vk_mock + conftest autouse; replaced test_vk_stays_manual_copy with autopost/empty/rate/auth tests; IG/WP stay ManualCopy
+stage: coding
+status: done
+task: VK-2
+checks: pytest tests/test_ac_publish.py tests/test_ac_channels.py — 63 passed, 1 skipped
+next_step: VK-3 UI MVP_CHANNELS + connect form
+
+[2026-08-26 14:28] VK-3: Frontend VK channel connect UI (coder)
+Prompt: VK-3 ONLY — MVP_CHANNELS +vk; ChannelsPage group_id/access_token; empty hint; vitest; no commit/backend
+Done: labels MVP_CHANNELS=[telegram,vk,gmail]; ChannelsPage vk fields+save body; empty-state hint; channels-secrets.test VK option+password+no leak
+stage: coding
+status: done
+task: VK-3
+checks: vitest channels-secrets 5 passed; tsc --noEmit exit 0
+next_step: VK-4 qa
+
+[2026-08-26 14:30] VK-4: QA verify community text autopost
+Prompt: VK-4 verify VK-1..3 — adapters, UI, pytest, vitest, TG/Gmail spot-check, no photo upload
+Done: GATE_PASS — vk supports_autopost True; IG/WP ManualCopy False; MVP_CHANNELS+ChannelsPage fields; pytest 63p/1s; vitest 5p; TG/Gmail tests present; vk.py only wall.post/groups.getById
+stage: coding
+status: done
+task: VK-4
+role: qa
+verdict: GATE_PASS
+handoff: security-expert
+
+[2026-08-26 14:31] VK-5: Security review VK community text autopost
+Prompt: VK-5 security-expert — token/GET/UI/logs/SSRF/pdn; read-only; tiny fixes ok
+Done: GATE_PASS — reviewed vk.py, channel_service, ChannelsPage, channels-secrets + ac_channels/ac_publish tests
+stage: coding
+status: done
+task: VK-5
+role: security-expert
+verdict: GATE_PASS
+findings_middle_plus: []
+handoff: code-simplify-assessor
+
+[2026-08-26 14:31] VK-6: code-simplify-assessor VK surface
+Prompt: VK-6 review NEW VK only — overengineering, dup HTTP vs TG, inline imports, unused abstractions; tiny cleanup ok; no commit
+Done: GATE_PASS — no middle+; removed unused flood_api_error_handler from vk_mock.py; HTTP client per-adapter (no shared client needed); no inline imports; variant_text dup left (TG richer, extract premature)
+stage: coding
+status: done
+task: VK-6
+role: code-simplify-assessor
+verdict: GATE_PASS
+handoff: devops / teamlead for VK-7

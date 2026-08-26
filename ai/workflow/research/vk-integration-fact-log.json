@@ -1,0 +1,12 @@
+{
+  "stage": "research",
+  "topic": "VK integration for ContentForge",
+  "status": "done",
+  "closed_at": "2026-08-26",
+  "user_decisions": [
+    "Community club241074885 (group_id 241074885) accepted as test target.",
+    "MVP publish: text-only wall.post. Photo and photo+text planned follow-ups.",
+    "Auth path: community access key as TZTech §13.3."
+  ],
+  "handoff": "design/vk-community-text-design.json"
+}

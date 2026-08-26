@@ -35,6 +35,7 @@ from app.services.adapters.telegram import (
     telegram_http_client,
     telegram_result_or_raise,
 )
+from app.services.adapters.vk import VkAdapter, variant_text, vk_result_or_raise, wall_url
 from app.services.adapters.wordpress import (
     build_wordpress_posts_url,
     wordpress_create_post,
@@ -50,6 +51,12 @@ from tests.telegram_mock import (
     install_telegram_mock,
     parse_error_handler,
     unauthorized_handler,
+)
+from tests.vk_mock import (
+    DEFAULT_POST_ID,
+    install_vk_mock,
+    rate_limited_handler,
+    unauthorized_handler as vk_unauthorized_handler,
 )
 
 
@@ -349,16 +356,69 @@ def test_parse_error_fails_without_retry_storm(
     assert row.attempt_count == 1
 
 
-def test_vk_stays_manual_copy_until_mark_manual(client: TestClient, db: Session) -> None:
+def _connect_vk(
+    client: TestClient,
+    headers: dict,
+    brand_id: str,
+    *,
+    token: str = "vk-community-token",
+    group_id: str = "1",
+):
+    created = client.post(
+        f"/api/v1/brands/{brand_id}/channels/vk/credentials",
+        json={"pdn_consent": True, "access_token": token, "group_id": group_id},
+        headers=headers,
+    )
+    assert created.status_code == 201, created.text
+    return created.json()
+
+
+def test_vk_autopost_sets_wall_url(client: TestClient, db: Session, monkeypatch) -> None:
+    calls = install_vk_mock(monkeypatch)
     owner = register_user(client).json()
     headers = auth_header(owner["tokens"])
     brand_id = create_brand(client, headers).json()["id"]
-    channel = client.post(
-        f"/api/v1/brands/{brand_id}/channels/vk/credentials",
-        json={"pdn_consent": True, "access_token": "vk-community-token", "group_id": "1"},
-        headers=headers,
-    ).json()
-    variant_id = _variant(client, headers, brand_id)
+    channel = _connect_vk(client, headers, brand_id, group_id="241074885")
+    variant_id = _variant(client, headers, brand_id, text="VK post body")
+    now = utc_now()
+    created = _schedule(
+        client,
+        headers,
+        brand_id,
+        variant_id,
+        channel["id"],
+        scheduled_at=now.isoformat(),
+        idempotency_key="vk-ac-key",
+    )
+    assert created.status_code == 201
+    run_publish_due(db, now=now + timedelta(minutes=1))
+    db.commit()
+    db.expire_all()
+    row = db.get(Publication, UUID(created.json()["id"]))
+    assert row is not None
+    assert row.status is PublicationStatus.published
+    assert row.external_id == str(DEFAULT_POST_ID)
+    assert row.external_url == f"https://vk.com/wall-241074885_{DEFAULT_POST_ID}"
+    posts = [item for item in calls if item["method"] == "wall.post"]
+    assert len(posts) == 1
+    assert posts[0]["params"]["owner_id"] == "-241074885"
+    assert posts[0]["params"]["from_group"] == 1
+    assert posts[0]["params"]["guid"] == "vk-ac-key"
+    assert "VK post body" in str(posts[0]["params"]["message"])
+    assert "vk-community-token" not in str(posts[0]["params"])
+    listed = client.get(f"/api/v1/brands/{brand_id}/publications", headers=headers)
+    assert listed.status_code == 200
+    assert listed.json()[0]["external_url"] == row.external_url
+    assert "vk-community-token" not in listed.text
+
+
+def test_vk_empty_text_no_http(client: TestClient, db: Session, monkeypatch) -> None:
+    calls = install_vk_mock(monkeypatch)
+    owner = register_user(client).json()
+    headers = auth_header(owner["tokens"])
+    brand_id = create_brand(client, headers).json()["id"]
+    channel = _connect_vk(client, headers, brand_id)
+    variant_id = _variant(client, headers, brand_id, text="   ")
     now = utc_now()
     created = _schedule(
         client,
@@ -374,16 +434,63 @@ def test_vk_stays_manual_copy_until_mark_manual(client: TestClient, db: Session)
     db.expire_all()
     row = db.get(Publication, UUID(created.json()["id"]))
     assert row is not None
-    assert row.status is PublicationStatus.scheduled
-    assert row.external_id is None
-    marked = client.post(
-        f"/api/v1/publications/{created.json()['id']}/mark-manual",
-        json={"external_url": "https://vk.com/wall-1_2"},
-        headers=headers,
+    assert row.status is PublicationStatus.failed
+    assert row.error_code == "bad_request"
+    assert row.attempt_count == 1
+    assert not any(item["method"] == "wall.post" for item in calls)
+
+
+def test_vk_rate_limited_is_retryable(client: TestClient, db: Session, monkeypatch) -> None:
+    install_vk_mock(monkeypatch, rate_limited_handler)
+    owner = register_user(client).json()
+    headers = auth_header(owner["tokens"])
+    brand_id = create_brand(client, headers).json()["id"]
+    channel = _connect_vk(client, headers, brand_id)
+    variant_id = _variant(client, headers, brand_id, text="flood me")
+    t0 = utc_now()
+    created = _schedule(
+        client,
+        headers,
+        brand_id,
+        variant_id,
+        channel["id"],
+        scheduled_at=t0.isoformat(),
     )
-    assert marked.status_code == 200
-    assert marked.json()["status"] == "published_manual"
-    assert marked.json()["external_url"] == "https://vk.com/wall-1_2"
+    run_publish_due(db, now=t0)
+    db.commit()
+    db.expire_all()
+    row = db.get(Publication, UUID(created.json()["id"]))
+    assert row is not None
+    assert row.status is PublicationStatus.scheduled
+    assert row.error_code == "rate_limited"
+    assert row.attempt_count == 1
+
+
+def test_vk_unauthorized_non_retryable(client: TestClient, db: Session, monkeypatch) -> None:
+    install_vk_mock(monkeypatch, vk_unauthorized_handler)
+    owner = register_user(client).json()
+    headers = auth_header(owner["tokens"])
+    brand_id = create_brand(client, headers).json()["id"]
+    channel = _connect_vk(client, headers, brand_id, token="vk-bad-token")
+    variant_id = _variant(client, headers, brand_id, text="auth fail")
+    t0 = utc_now()
+    created = _schedule(
+        client,
+        headers,
+        brand_id,
+        variant_id,
+        channel["id"],
+        scheduled_at=t0.isoformat(),
+    )
+    run_publish_due(db, now=t0)
+    db.commit()
+    db.expire_all()
+    row = db.get(Publication, UUID(created.json()["id"]))
+    assert row is not None
+    assert row.status is PublicationStatus.failed
+    assert row.error_code == "unauthorized"
+    assert row.attempt_count == 1
+    assert "vk-bad-token" not in (row.error_message or "")
 
 
 def test_watchdog_publishing_without_external_id(client: TestClient, db: Session) -> None:
@@ -986,7 +1093,7 @@ def test_gmail_quota_no_retry_storm(client: TestClient, db: Session, monkeypatch
 
 
 def test_manual_copy_channels_capability_error() -> None:
-    for channel_type in (ChannelType.vk, ChannelType.instagram, ChannelType.wordpress):
+    for channel_type in (ChannelType.instagram, ChannelType.wordpress):
         adapter = get_adapter(channel_type)
         assert isinstance(adapter, ManualCopyAdapter)
         assert adapter.supports_autopost is False
@@ -994,7 +1101,54 @@ def test_manual_copy_channels_capability_error() -> None:
             adapter.publish(None, None, None, None)  # type: ignore[arg-type]
         assert exc.value.code == "manual_copy_required"
         assert exc.value.retryable is False
+    vk = get_adapter(ChannelType.vk)
+    assert isinstance(vk, VkAdapter)
+    assert vk.supports_autopost is True
     assert get_adapter(ChannelType.gmail).supports_autopost is True
+
+
+def test_vk_wall_url_and_empty_variant_text() -> None:
+    assert wall_url("1", 2) == "https://vk.com/wall-1_2"
+    assert variant_text({"text": "  "}) == ""
+    assert variant_text({"text": "hi", "cta": "go"}) == "hi\n\ngo"
+
+
+def test_vk_result_maps_flood_and_auth(monkeypatch) -> None:
+    token = "vk-secret-TOKEN"
+
+    class FakeResponse:
+        def __init__(self, status_code: int, payload: dict) -> None:
+            self.status_code = status_code
+            self._payload = payload
+
+        def json(self) -> dict:
+            return self._payload
+
+    with pytest.raises(AdapterError) as flood:
+        vk_result_or_raise(
+            FakeResponse(200, {"error": {"error_code": 9, "error_msg": "Flood control: " + token}}),
+            token,
+        )
+    assert flood.value.code == "rate_limited"
+    assert flood.value.retryable is True
+    assert token not in flood.value.message
+
+    with pytest.raises(AdapterError) as auth:
+        vk_result_or_raise(
+            FakeResponse(200, {"error": {"error_code": 15, "error_msg": "Access denied: " + token}}),
+            token,
+        )
+    assert auth.value.code == "unauthorized"
+    assert auth.value.retryable is False
+    assert token not in auth.value.message
+
+    with pytest.raises(AdapterError) as captcha:
+        vk_result_or_raise(
+            FakeResponse(200, {"error": {"error_code": 14, "error_msg": "Captcha needed"}}),
+            token,
+        )
+    assert captcha.value.code == "rate_limited"
+    assert captcha.value.retryable is True
 
 
 def test_wordpress_url_pinned_rejects_ssrf_payloads() -> None:

@@ -1,0 +1,181 @@
+{
+  "stage": "planning",
+  "topic": "VK community text autopost",
+  "date": "2026-08-26",
+  "design_ref": "ai/workflow/design/vk-community-text-design.json",
+  "smoke_target": {
+    "community_url": "https://vk.ru/club241074885",
+    "group_id": "241074885",
+    "note": "Do not hardcode in product; use in live smoke only with user-provided token"
+  },
+  "out_of_scope": [
+    "Photo / photo+text upload",
+    "VK ID OAuth / id.vk.ru",
+    "stats.get metrics",
+    "Personal profile wall posting"
+  ],
+  "phases": [
+    {
+      "id": "VK-1",
+      "owner": "coder",
+      "goal": "Harden VK credentials: require numeric group_id; store meta.group_id",
+      "inputs": [
+        "backend/app/services/channel_service.py",
+        "backend/app/schemas.py ChannelCredentialsRequest",
+        "design API_Contract"
+      ],
+      "actions": [
+        "Require group_id for ChannelType.vk (non-empty digits)",
+        "Reject missing/invalid group_id with 422 validation_error field=group_id",
+        "Strip whitespace on access_token; keep Fernet encrypt path",
+        "Ensure GET public_meta exposes group_id, never access_token"
+      ],
+      "checks": [
+        "pytest: vk credentials without group_id → 422",
+        "pytest: vk with group_id+token → 201; GET has no token fields, has group_id in meta or public fields"
+      ],
+      "expected_result": "API accepts only complete VK connect payload",
+      "rollback": "Revert channel_service validation to optional group_id",
+      "gate": "pass checks before VK-2"
+    },
+    {
+      "id": "VK-2",
+      "owner": "coder",
+      "goal": "Implement VkAdapter text wall.post + health",
+      "inputs": [
+        "adapters/base.py",
+        "adapters/telegram.py as pattern",
+        "adapters/__init__.py",
+        "design Sequence uc_publish_text"
+      ],
+      "actions": [
+        "Add backend/app/services/adapters/vk.py: supports_autopost=True",
+        "health: GET api.vk.com/method/groups.getById group_id=meta.group_id + token; map errors to ChannelHealth",
+        "publish: wall.post owner_id=-{group_id} from_group=1 message=social_post text; guid=idempotency_key if set",
+        "external_url https://vk.com/wall-{gid}_{post_id}",
+        "Map flood/captcha/too many → rate_limited retryable; auth/access → non-retryable",
+        "Empty text → AdapterError validation non-retryable",
+        "redact_secret on all logged/returned error strings",
+        "Wire get_adapter(vk) → VkAdapter; remove ManualCopy for vk",
+        "httpx timeout; fixed host api.vk.com only; API version e.g. 5.199"
+      ],
+      "checks": [
+        "unit/mock: health ok and fail",
+        "unit/mock: publish success builds URL",
+        "unit/mock: empty text no HTTP call",
+        "get_adapter(vk).supports_autopost is True",
+        "pytest replace test_vk_stays_manual_copy with autopost expectations under mock"
+      ],
+      "expected_result": "Worker can autopost text to VK via mocked HTTP",
+      "rollback": "Restore ManualCopyAdapter for vk in __init__.py",
+      "contingency": "If VK error envelope unexpected, log error_code only and fail closed",
+      "gate": "pytest focused green before VK-3"
+    },
+    {
+      "id": "VK-3",
+      "owner": "coder",
+      "goal": "UI: VK in connect + plan/editor/calendar channel pickers",
+      "inputs": [
+        "frontend/src/labels.ts",
+        "ChannelsPage.tsx",
+        "PlanPage/EditorPage/CalendarPage MVP_CHANNELS"
+      ],
+      "actions": [
+        "MVP_CHANNELS include vk (order: telegram, vk, gmail or telegram, gmail, vk — prefer telegram, vk, gmail)",
+        "ChannelsPage form: group_id + access_token (password) when type=vk",
+        "Labels CHANNEL_LABELS.vk already exists",
+        "Empty-state hint mentions VK",
+        "vitest: secrets not rendered; vk option present"
+      ],
+      "checks": [
+        "vitest channels-secrets / related pass",
+        "tsc/build ok",
+        "Dropdown shows VK"
+      ],
+      "expected_result": "User can select VK in UI and save credentials fields",
+      "rollback": "Remove vk from MVP_CHANNELS",
+      "gate": "vitest green before VK-4"
+    },
+    {
+      "id": "VK-4",
+      "owner": "qa",
+      "goal": "Regression + AC mapping",
+      "inputs": ["VK-1..3", "test_ac_channels.py", "test_ac_publish.py"],
+      "actions": [
+        "Run pytest test_ac_channels + test_ac_publish (+ new vk tests)",
+        "Run vitest touched suites",
+        "Confirm TG/Gmail paths unchanged",
+        "Confirm wordpress/instagram still ManualCopy",
+        "Document: no live VK in CI (mock only)"
+      ],
+      "checks": [
+        "pytest suites green",
+        "vitest green",
+        "GATE_PASS|FAIL with findings_middle_plus"
+      ],
+      "expected_result": "QA gate pass",
+      "rollback": "Return failing phase to coder",
+      "gate": "GATE_PASS required"
+    },
+    {
+      "id": "VK-5",
+      "owner": "security-expert",
+      "goal": "Secrets and SSRF review",
+      "inputs": ["vk.py", "channel_service.py", "ChannelsPage"],
+      "actions": [
+        "Verify no token in GET/logs/UI",
+        "Verify only api.vk.com host",
+        "pdn_consent still required"
+      ],
+      "checks": ["GATE_PASS or middle+ fixes by coder"],
+      "expected_result": "No secret leak / no open URL SSRF",
+      "rollback": "n/a",
+      "gate": "GATE_PASS"
+    },
+    {
+      "id": "VK-6",
+      "owner": "code-simplify-assessor",
+      "goal": "Simplify pass on new VK surface",
+      "inputs": ["VK-2..3 diffs"],
+      "actions": ["Check duplication vs telegram http client; no over-abstraction"],
+      "checks": ["GATE_PASS; tiny cleanup ok"],
+      "expected_result": "Lean VkAdapter",
+      "rollback": "n/a",
+      "gate": "GATE_PASS"
+    },
+    {
+      "id": "VK-7",
+      "owner": "devops",
+      "goal": "Commit, push, deploy VPS; optional live smoke",
+      "inputs": ["passed gates VK-4..6", "scripts/update-vps.sh"],
+      "actions": [
+        "Commit relevant files only (no .env, no token)",
+        "Push origin/main",
+        "Deploy: ssh update-vps.sh or deploy-vps.sh",
+        "curl health 200",
+        "Manual smoke (user): connect VK with group_id 241074885 + token; Health ok; schedule one social_post; confirm wall post"
+      ],
+      "checks": [
+        "https://kitchen.alexklyvibe.ru/health → 200",
+        "UI dropdown contains VK",
+        "Live smoke: wall post appears OR document blocked if token invalid"
+      ],
+      "expected_result": "Prod has VK text autopost",
+      "rollback": "Revert commit or hotfix ManualCopy + hide vk from MVP_CHANNELS; redeploy",
+      "contingency": "If api.vk.com blocked from VPS — report; do not add random proxies without design",
+      "gate": "health 200 + UI VK visible"
+    }
+  ],
+  "acceptance": [
+    "Channels dropdown includes VK with group_id + access_token fields",
+    "get_adapter(vk).supports_autopost True",
+    "Mocked wall.post publish sets external_url",
+    "GET channels never returns access_token",
+    "Photo APIs not called",
+    "TG/Gmail regression green",
+    "Prod deploy health 200; user can connect club241074885"
+  ],
+  "coding_loop": "After each VK-1..3: coder → then continue; after VK-3 full loop qa → security → simplify → devops",
+  "status": "done",
+  "next_stage": "coding"
+}

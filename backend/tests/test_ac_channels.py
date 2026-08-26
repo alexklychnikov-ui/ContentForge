@@ -16,6 +16,7 @@ from app.services.token_crypto import (
 from tests.helpers import auth_header, create_brand, register_user
 from tests.openai_mock import install_openai_mock
 from tests.telegram_mock import install_telegram_mock, unauthorized_handler
+from tests.vk_mock import install_vk_mock, unauthorized_handler as vk_unauthorized_handler
 
 SECRET_KEYS = {
     "token",
@@ -161,7 +162,7 @@ def test_health_error_without_ciphertext_and_revoke(client: TestClient, db: Sess
         headers,
         brand_id,
         "vk",
-        {"pdn_consent": True, "access_token": "vk-secret"},
+        {"pdn_consent": True, "access_token": "vk-secret", "group_id": "1"},
     )
     channel_id = created.json()["id"]
     row = db.get(ChannelAccount, UUID(channel_id))
@@ -393,6 +394,92 @@ def test_telegram_bot_token_rejects_placeholder(client: TestClient) -> None:
     )
     assert denied.status_code == 422
     assert _error(denied)["code"] == "validation_error"
+
+
+def test_vk_credentials_require_numeric_group_id(client: TestClient) -> None:
+    owner = register_user(client).json()
+    headers = auth_header(owner["tokens"])
+    brand_id = create_brand(client, headers).json()["id"]
+    for body in (
+        {"pdn_consent": True, "access_token": "vk-community-token"},
+        {"pdn_consent": True, "access_token": "vk-community-token", "group_id": ""},
+        {"pdn_consent": True, "access_token": "vk-community-token", "group_id": "  "},
+        {"pdn_consent": True, "access_token": "vk-community-token", "group_id": "club1"},
+        {"pdn_consent": True, "access_token": "vk-community-token", "group_id": "-1"},
+    ):
+        denied = _connect(client, headers, brand_id, "vk", body)
+        assert denied.status_code == 422, body
+        err = _error(denied)
+        assert err["code"] == "validation_error"
+        assert err["details"]["field"] == "group_id"
+
+
+def test_vk_credentials_accept_group_id_and_strip_token(
+    client: TestClient, db: Session
+) -> None:
+    owner = register_user(client).json()
+    headers = auth_header(owner["tokens"])
+    brand_id = create_brand(client, headers).json()["id"]
+    created = _connect(
+        client,
+        headers,
+        brand_id,
+        "vk",
+        {
+            "pdn_consent": True,
+            "access_token": "  vk-community-token  ",
+            "group_id": " 241074885 ",
+        },
+    )
+    assert created.status_code == 201, created.text
+    body = created.json()
+    _assert_no_secrets(body)
+    assert body["meta"]["group_id"] == "241074885"
+    assert body.get("external_account_id") == "241074885"
+    row = db.get(ChannelAccount, UUID(body["id"]))
+    assert row is not None
+    assert decrypt_secret(row.token_ciphertext) == "vk-community-token"
+    assert row.meta["group_id"] == "241074885"
+    listed = client.get(f"/api/v1/brands/{brand_id}/channels", headers=headers)
+    assert listed.status_code == 200
+    listed_body = listed.json()
+    _assert_no_secrets(listed_body)
+    assert listed_body[0]["meta"]["group_id"] == "241074885"
+
+
+def test_vk_health_ok_and_unauthorized(client: TestClient, monkeypatch) -> None:
+    calls = install_vk_mock(monkeypatch)
+    owner = register_user(client).json()
+    headers = auth_header(owner["tokens"])
+    brand_id = create_brand(client, headers).json()["id"]
+    created = _connect(
+        client,
+        headers,
+        brand_id,
+        "vk",
+        {"pdn_consent": True, "access_token": "vk-community-token", "group_id": "1"},
+    )
+    assert created.status_code == 201
+    channel_id = created.json()["id"]
+    health = client.post(f"/api/v1/channels/{channel_id}/health", headers=headers)
+    assert health.status_code == 200
+    body = health.json()
+    assert body["ok"] is True
+    assert body["status"] == "connected"
+    assert any(item["method"] == "groups.getById" for item in calls)
+
+    install_vk_mock(monkeypatch, vk_unauthorized_handler)
+    denied = client.post(f"/api/v1/channels/{channel_id}/health", headers=headers)
+    assert denied.status_code == 200
+    fail = denied.json()
+    assert fail["ok"] is False
+    assert fail["status"] == "error"
+    assert "vk-community-token" not in str(fail)
+    listed = client.get(f"/api/v1/brands/{brand_id}/channels", headers=headers)
+    assert listed.status_code == 200
+    _assert_no_secrets(listed.json())
+    reason = str(listed.json()[0]["meta"].get("health_reason") or "")
+    assert "community token" in reason.lower() or "доступ" in reason.lower()
 
 
 def test_telegram_health_unauthorized_sets_error_reason(
@@ -650,7 +737,7 @@ def test_revoked_channel_excluded_from_list_even_if_status_error(
         headers,
         brand_id,
         "vk",
-        {"pdn_consent": True, "access_token": "vk-secret"},
+        {"pdn_consent": True, "access_token": "vk-secret", "group_id": "1"},
     ).json()["id"]
     revoked = client.delete(f"/api/v1/channels/{channel_id}", headers=headers)
     assert revoked.status_code == 204

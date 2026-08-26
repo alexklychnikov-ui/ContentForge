@@ -21,6 +21,7 @@ from app.main import app
 from app.services.catalog_service import seed_default_years
 from app.services.rate_limit import login_rate_limiter
 from tests.telegram_mock import install_telegram_mock
+from tests.vk_mock import install_vk_mock
 
 engine = create_engine(
     "sqlite://",
@@ -78,3 +79,10 @@ def _mock_telegram(monkeypatch) -> None:
     if os.environ.get("TELEGRAM_SMOKE") == "1":
         return
     install_telegram_mock(monkeypatch)
+
+
+@pytest.fixture(autouse=True)
+def _mock_vk(monkeypatch) -> None:
+    if os.environ.get("VK_SMOKE") == "1":
+        return
+    install_vk_mock(monkeypatch)

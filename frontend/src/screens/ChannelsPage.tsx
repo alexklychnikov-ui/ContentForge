@@ -91,6 +91,10 @@ export function ChannelsPage() {
         body.bot_token = form.bot_token;
         body.channel_id = form.channel_id;
       }
+      if (type === "vk") {
+        body.group_id = form.group_id;
+        body.access_token = form.access_token;
+      }
       if (type === "gmail") {
         body.from_email = form.from_email;
         body.app_password = form.app_password;
@@ -202,7 +206,7 @@ export function ChannelsPage() {
         })}
       </div>
       {channels.length === 0 ? (
-        <EmptyState title="Каналы не подключены" hint="Подключите Telegram или Gmail." cta="Онбординг" to="/onboarding" />
+        <EmptyState title="Каналы не подключены" hint="Подключите Telegram, VK или Gmail." cta="Онбординг" to="/onboarding" />
       ) : null}
       <form
         key={formKey}
@@ -252,6 +256,36 @@ export function ChannelsPage() {
                 onChange={(e) => {
                   save.reset();
                   setForm((p) => ({ ...p, channel_id: e.target.value }));
+                }}
+              />
+            </label>
+          </>
+        ) : null}
+        {type === "vk" ? (
+          <>
+            <label className="field">
+              Group id
+              <input
+                name="vk_group_id"
+                autoComplete="off"
+                placeholder="241074885"
+                value={form.group_id ?? ""}
+                onChange={(e) => {
+                  save.reset();
+                  setForm((p) => ({ ...p, group_id: e.target.value }));
+                }}
+              />
+            </label>
+            <label className="field">
+              Access token
+              <input
+                name="vk_access_token"
+                type="password"
+                autoComplete="off"
+                value={form.access_token ?? ""}
+                onChange={(e) => {
+                  save.reset();
+                  setForm((p) => ({ ...p, access_token: e.target.value }));
                 }}
               />
             </label>

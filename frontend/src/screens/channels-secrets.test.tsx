@@ -62,6 +62,8 @@ function renderChannels() {
 
 describe("SCR-CHN secrets", () => {
   it("does not render bot_token from GET meta and keeps connect inputs as password", async () => {
+    const user = userEvent.setup();
+    const VK_LEAK = "vk-access-token-LEAK-secret";
     vi.stubGlobal(
       "fetch",
       vi.fn(async (url: string) => {
@@ -77,7 +79,7 @@ describe("SCR-CHN secrets", () => {
               scopes: [],
               token_expires_at: null,
               external_account_id: null,
-              meta: { bot_token: LEAK, app_password: "wp-app-pass-LEAK" },
+              meta: { bot_token: LEAK, app_password: "wp-app-pass-LEAK", access_token: VK_LEAK },
               revoked_at: null,
             },
           ]);
@@ -89,7 +91,12 @@ describe("SCR-CHN secrets", () => {
     expect(await screen.findByText(/секрет/i)).toBeInTheDocument();
     expect(document.body.textContent).not.toContain(LEAK);
     expect(document.body.textContent).not.toContain("wp-app-pass-LEAK");
+    expect(document.body.textContent).not.toContain(VK_LEAK);
     expect(screen.getByLabelText("Bot token")).toHaveAttribute("type", "password");
+    expect(screen.getByRole("option", { name: "VK" })).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Тип"), "vk");
+    expect(screen.getByLabelText("Access token")).toHaveAttribute("type", "password");
+    expect(screen.getByLabelText("Group id")).toBeInTheDocument();
     expect(screen.queryByText("Viewer")).toBeNull();
   });
 

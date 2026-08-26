@@ -143,6 +143,18 @@ def _require_telegram_channel_id(value: str) -> str:
     )
 
 
+def _require_vk_group_id(value: str | None) -> str:
+    group_id = (value or "").strip()
+    if not group_id or not group_id.isdigit():
+        raise AppError(
+            422,
+            "validation_error",
+            "Неверный group_id: укажите числовой id сообщества",
+            {"field": "group_id"},
+        )
+    return group_id
+
+
 def _secret_and_meta(
     channel_type: ChannelType, payload: ChannelCredentialsRequest
 ) -> tuple[str, str | None, dict, str | None]:
@@ -179,9 +191,9 @@ def _secret_and_meta(
 
     if channel_type == ChannelType.vk:
         secret = _require_field(payload.access_token, "access_token")
-        if payload.group_id:
-            meta["group_id"] = payload.group_id.strip()
-        return secret, refresh, meta, external_id or meta.get("group_id")
+        group_id = _require_vk_group_id(payload.group_id)
+        meta["group_id"] = group_id
+        return secret, refresh, meta, external_id or group_id
 
     if channel_type == ChannelType.instagram:
         secret = _require_field(payload.access_token, "access_token")

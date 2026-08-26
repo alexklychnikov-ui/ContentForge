@@ -1,0 +1,153 @@
+{
+  "stage": "design",
+  "topic": "VK community text autopost (community key)",
+  "date": "2026-08-26",
+  "decision": "Replace ManualCopyAdapter for ChannelType.vk with VkAdapter that posts text via wall.post using community access token + group_id. MVP = text only. Photo / photo+text = phase 2 (out of this design's implementation scope). UI: add vk to MVP_CHANNELS connect form (group_id + access_token + pdn). Plan picker may include vk for social_post. Test community: club241074885 (group_id 241074885).",
+  "inputs_confirmed": {
+    "auth": "community key (TZ §13.3), not VK ID OAuth",
+    "mvp_payload": "text only (social_post.message / variant text)",
+    "phase2": "photo, photo+text",
+    "community": "https://vk.ru/club241074885",
+    "group_id": "241074885"
+  },
+  "C4": {
+    "containers_unchanged": ["Web", "API", "Worker", "Beat", "Postgres", "Redis"],
+    "new_component": "adapters.vk.VkAdapter (inside Worker/API process)",
+    "external_system": "VK API api.vk.com (wall.post, groups.getById health probe)",
+    "flows": [
+      "User/Web -> API POST channels/vk/credentials (token+group_id) -> Postgres ciphertext",
+      "User/Web -> API POST channel health -> VkAdapter.health -> api.vk.com",
+      "Beat -> Worker publish_due -> VkAdapter.publish -> wall.post -> wall URL stored on Publication"
+    ],
+    "assumptions": [
+      "Same ChannelAccount + Fernet pattern as Telegram/Gmail.",
+      "No new microservice.",
+      "api.vk.com reachable from VPS without proxy (unlike local Telegram SOCKS)."
+    ],
+    "constraints": [
+      "Do not store plaintext token in meta or GET responses.",
+      "owner_id always -{group_id}; from_group=1."
+    ],
+    "open_questions": [
+      "Exact health method: groups.getById vs wall.get — prefer groups.getById (read, low side effect)."
+    ]
+  },
+  "DFD": {
+    "processes": [
+      "P-cred: save VK credentials",
+      "P-health: validate community token",
+      "P-pub: publish text to community wall",
+      "P-manual-fallback: on permanent capability/auth failure surface manual_copy (existing)"
+    ],
+    "data_stores": ["ChannelAccount", "Publication", "ContentVariant"],
+    "external_entities": ["User", "VK API"],
+    "flows": [
+      "User -> P-cred: access_token, group_id, pdn_consent, display_name",
+      "P-cred -> ChannelAccount: ciphertext + meta.group_id",
+      "User -> P-health: channel_id",
+      "P-health -> VK: groups.getById",
+      "Beat/Worker -> P-pub: due Publication(social_post)",
+      "P-pub -> VK: wall.post(message, owner_id=-gid, from_group=1)",
+      "VK -> P-pub: post_id",
+      "P-pub -> Publication: external_id, external_url=https://vk.com/wall-{gid}_{post_id}"
+    ],
+    "out_of_scope_flows": [
+      "photos.getWallUploadServer / photo attachments",
+      "VK ID OAuth (id.vk.ru)",
+      "stats.get metrics (phase 2 / optional later)"
+    ],
+    "assumptions": ["Variant primary text field for social_post is sufficient message body."],
+    "constraints": ["Empty message without attachments → do not call wall.post; fail validation."],
+    "open_questions": ["Max text length clamp: use VK limit ~16384 or AdapterLimits — pick conservative 4096 like Telegram unless tests say otherwise."]
+  },
+  "Sequence": {
+    "uc_connect": [
+      "User opens Channels, type=vk",
+      "Enters group_id=241074885, access_token, display_name, pdn",
+      "API save_credentials -> encrypt token, meta.group_id, status=connected",
+      "User clicks Health",
+      "API stub_health/live -> VkAdapter.health -> groups.getById",
+      "Persist health_reason; UI shows ok/error"
+    ],
+    "uc_publish_text": [
+      "Plan/Editor produces social_post variant scheduled to vk channel",
+      "Beat marks due -> Worker claims Publication",
+      "get_adapter(vk) -> VkAdapter",
+      "Decrypt token; read meta.group_id",
+      "POST wall.post owner_id=-group_id from_group=1 message=text guid=idempotency_key",
+      "On success: published + external_url",
+      "On flood/captcha/rate: AdapterError rate_limited retryable",
+      "On auth/access denied: non-retryable; channel may flip error",
+      "On empty text: validation failed non-retryable"
+    ],
+    "uc_phase2_photo_deferred": [
+      "NOT in MVP coding",
+      "Future: upload photo -> attachments -> wall.post message+attachments"
+    ],
+    "assumptions": [
+      "Community token has wall scope.",
+      "guid = publication idempotency_key to reduce duplicate posts within 1h VK window."
+    ],
+    "constraints": ["No photo path in MVP sequences."],
+    "open_questions": ["Whether mark-manual remains available as user escape hatch (yes — keep existing manual_copy UI for failures)."]
+  },
+  "API_Contract": {
+    "existing": {
+      "POST /api/v1/brands/{brand_id}/channels/vk/credentials": {
+        "body": {
+          "pdn_consent": true,
+          "access_token": "string",
+          "group_id": "string digits",
+          "display_name": "optional",
+          "external_account_id": "optional"
+        },
+        "changes": "Require group_id for vk (today optional) — design decision: 422 if missing/non-numeric. Strip spaces on token."
+      },
+      "POST /api/v1/channels/{id}/health": "Live VkAdapter.health instead of ciphertext-only for vk",
+      "GET channels": "public meta may include group_id; never access_token"
+    },
+    "no_new_oauth_routes": true,
+    "assumptions": ["Credentials route already wired; harden validation only."],
+    "constraints": ["No VK App ID/Secret in env for MVP community key path."],
+    "open_questions": []
+  },
+  "Migration_plan": {
+    "alembic": "none",
+    "data": "Existing vk ChannelAccount rows (if any) stay; until token+group_id valid they health-fail. No auto-migrate.",
+    "ui_flag": "Add vk to MVP_CHANNELS alongside telegram,gmail",
+    "rollback": "Point get_adapter(vk) back to ManualCopyAdapter; hide vk from MVP_CHANNELS",
+    "assumptions": ["Prod has zero or few vk rows."],
+    "open_questions": []
+  },
+  "Security_notes": {
+    "secrets": "Fernet token_ciphertext; redact token in logs/errors via redact_secret",
+    "ssrf": "Fixed host api.vk.com only — no user-controlled URL",
+    "pdn": "pdn_consent required on credentials",
+    "token_leak": "Never echo VK error messages that embed token",
+    "assumptions": ["Community key treated as high-value secret equal to TG bot token"],
+    "constraints": ["Do not log full wall.post response if it could contain sensitive fields"],
+    "open_questions": []
+  },
+  "NFR": {
+    "latency": "wall.post timeout 15–30s; health timeout 10s",
+    "reliability": "Reuse publish retry policy (1/5/15 then dead) for retryable VK errors",
+    "idempotency": "Pass guid=idempotency_key when present",
+    "observability": "Log vk_wall_post ok/fail with group_id and error code only",
+    "assumptions": ["VPS egress to api.vk.com allowed"],
+    "constraints": ["Text MVP must not call photo upload APIs"],
+    "open_questions": []
+  },
+  "phase2_backlog": [
+    "Photo upload path; validate community token photo capabilities (error 27 risk)",
+    "photo+text attachments",
+    "stats.get / post metrics if scopes allow",
+    "Optional VK ID app — only if community key path insufficient"
+  ],
+  "consistency_check": {
+    "C4_DFD_Sequence": "All describe community key text wall.post only; photo deferred",
+    "API_matches_C4": "credentials+health+publish; no OAuth",
+    "TZ_13_3": "aligned (community wall.post, token in credentials, rate_limited, manual fallback)",
+    "test_community": "club241074885 / 241074885 documented as smoke target, not hardcoded in product"
+  },
+  "status": "done"
+}
