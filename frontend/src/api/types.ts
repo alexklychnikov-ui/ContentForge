@@ -139,6 +139,8 @@ export type PublicationPublic = {
   meta: Record<string, unknown>;
   created_at: string;
   updated_at: string;
+  channel_type: string;
+  channel_display_name?: string | null;
 };
 
 export type HolidayPublic = {

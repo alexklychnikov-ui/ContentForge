@@ -360,6 +360,8 @@ class PublicationPublic(BaseModel):
     meta: dict = Field(default_factory=dict)
     created_at: DateTime
     updated_at: DateTime
+    channel_type: ChannelType
+    channel_display_name: str | None = None
 
 
 class ChannelCredentialsRequest(BaseModel):

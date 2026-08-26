@@ -853,3 +853,16 @@ handoff: qa
 Done: with_recipient_greeting from EmailRecipient.name at SMTP send; AI no salutation; tests 4 passed
 stage: coding
 status: done
+[2026-08-26 15:22] Deployed cdbe6d4 Gmail greeting health=200
+[2026-08-26 15:25] coder: Queue column Kanal
+Prompt: Add Kanal column to publications queue UI (channel_type from Publication.channel)
+Done: PublicationPublic +channel_type/channel_display_name; publish._public from row.channel; joinedload in list_publications; QueuePage column Kanal; types.ts; tests ac11/ac15/auth ok
+stage: coding
+status: done
+role: coder
+handoff: devops
+[2026-08-26 15:24] Queue: column Канал from channel_type
+Prompt: Добавь колонку по какому каналу работала очередь
+Done: PublicationPublic.channel_type + QueuePage column; joinedload channel
+stage: coding
+status: done

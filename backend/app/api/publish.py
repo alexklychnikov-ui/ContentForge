@@ -22,7 +22,29 @@ router = APIRouter(tags=["publish"])
 
 
 def _public(row) -> PublicationPublic:
-    return PublicationPublic.model_validate(row)
+    channel = row.channel
+    return PublicationPublic.model_validate(
+        {
+            "id": row.id,
+            "variant_id": row.variant_id,
+            "channel_account_id": row.channel_account_id,
+            "scheduled_at": row.scheduled_at,
+            "status": row.status,
+            "external_id": row.external_id,
+            "external_url": row.external_url,
+            "error_code": row.error_code,
+            "error_message": row.error_message,
+            "attempt_count": row.attempt_count,
+            "idempotency_key": row.idempotency_key,
+            "experiment_id": row.experiment_id,
+            "published_at": row.published_at,
+            "meta": row.meta,
+            "created_at": row.created_at,
+            "updated_at": row.updated_at,
+            "channel_type": channel.type,
+            "channel_display_name": channel.display_name,
+        }
+    )
 
 
 @router.get("/brands/{brand_id}/publications", response_model=list[PublicationPublic])

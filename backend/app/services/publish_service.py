@@ -3,7 +3,7 @@ from uuid import UUID
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from app.errors import AppError
 from app.models import (
@@ -49,6 +49,7 @@ def list_publications(
     brand, _membership = require_brand(db, user, brand_id)
     stmt = (
         select(Publication)
+        .options(joinedload(Publication.channel))
         .join(ChannelAccount, Publication.channel_account_id == ChannelAccount.id)
         .where(ChannelAccount.brand_id == brand.id)
         .order_by(Publication.scheduled_at.desc())

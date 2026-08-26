@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cf } from "../api/cf";
 import type { BrandPublic } from "../api/types";
 import { EmptyState, ErrorBanner } from "../components/Status";
-import { PUB_STATUS, label } from "../labels";
+import { CHANNEL_LABELS, PUB_STATUS, label } from "../labels";
 
 type Shell = { brand: BrandPublic | null };
 
@@ -63,6 +63,7 @@ export function QueuePage() {
           <thead>
             <tr>
               <th>Время</th>
+              <th>Канал</th>
               <th>Статус</th>
               <th>Ошибка</th>
               <th></th>
@@ -72,6 +73,7 @@ export function QueuePage() {
             {rows.map((row) => (
               <tr key={row.id}>
                 <td>{new Date(row.scheduled_at).toLocaleString("ru")}</td>
+                <td>{label(CHANNEL_LABELS, row.channel_type)}</td>
                 <td>{label(PUB_STATUS, row.status)}</td>
                 <td>{row.error_message ?? row.error_code ?? ""}</td>
                 <td className="row">
