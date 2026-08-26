@@ -928,3 +928,9 @@ Prompt: точно также и по клику Контент со стран�
 Done: PublicationPublic.piece_id + QueuePage Link deep-link
 stage: coding
 status: done
+[2026-08-26 16:14] Deployed 8ad8932 queue content deep-link health=200
+[2026-08-26 18:25] Request: default schedule 12:00 from calendar + autopilot option
+stage: research
+status: in_progress
+facts: Plan!=Publication; no auto_generate in codebase; Settings only timezone/locale; publish_due exists for scheduled pubs
+[2026-08-26 18:27] Default schedule date+12:00 from calendar query

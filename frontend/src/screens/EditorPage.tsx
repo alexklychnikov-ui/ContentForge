@@ -73,12 +73,15 @@ export function EditorPage() {
   const [labelName, setLabelName] = useState("A");
   const [form, setForm] = useState<Record<string, string>>({});
   const channelParam = searchParams.get("channel");
+  const dateParam = searchParams.get("date");
   const [channel, setChannel] = useState(() =>
     channelParam && (MVP_CHANNELS as readonly string[]).includes(channelParam)
       ? channelParam
       : "telegram",
   );
-  const [scheduledAt, setScheduledAt] = useState("");
+  const [scheduledAt, setScheduledAt] = useState(() =>
+    dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? `${dateParam}T12:00` : "",
+  );
   const [jobStatus, setJobStatus] = useState<string | null>(null);
   const [jobError, setJobError] = useState<string | null>(null);
   const textRef = useRef<HTMLTextAreaElement | null>(null);
@@ -127,6 +130,11 @@ export function EditorPage() {
       setChannel(channelParam);
     }
   }, [channelParam]);
+
+  useEffect(() => {
+    if (!dateParam || !/^\d{4}-\d{2}-\d{2}$/.test(dateParam)) return;
+    setScheduledAt((prev) => (prev ? prev : `${dateParam}T12:00`));
+  }, [dateParam]);
 
   useEffect(() => {
     autogenStarted.current = false;
@@ -376,6 +384,7 @@ export function EditorPage() {
                 Расписание
                 <input type="datetime-local" value={scheduledAt} onChange={(e) => setScheduledAt(e.target.value)} />
               </label>
+              <p className="muted">Из календаря подставляется дата слота и 12:00. Пустое поле = отправить сразу.</p>
               <button className="btn" type="button" disabled={!current} onClick={() => schedule.mutate()}>
                 Поставить в очередь
               </button>

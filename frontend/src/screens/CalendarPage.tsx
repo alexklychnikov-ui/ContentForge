@@ -53,7 +53,12 @@ export function CalendarPage() {
         try {
           const existing = await cf.getPiece(item.content_piece_id);
           const empty = (existing.variants ?? []).length === 0;
-          return { pieceId: existing.id, autogen: empty, channel: item.channel_type };
+      return {
+        pieceId: existing.id,
+        autogen: empty,
+        channel: item.channel_type,
+        date: item.date,
+      };
         } catch (error) {
           if (!(error instanceof ApiError) || error.status !== 404) throw error;
         }
@@ -64,10 +69,15 @@ export function CalendarPage() {
       });
       await queryClient.invalidateQueries({ queryKey: ["plans"] });
       await queryClient.invalidateQueries({ queryKey: ["content"] });
-      return { pieceId: piece.id, autogen: true, channel: item.channel_type };
+      return {
+        pieceId: piece.id,
+        autogen: true,
+        channel: item.channel_type,
+        date: item.date,
+      };
     },
-    onSuccess: ({ pieceId, autogen, channel: channelType }) => {
-      const params = new URLSearchParams({ channel: channelType });
+    onSuccess: ({ pieceId, autogen, channel: channelType, date }) => {
+      const params = new URLSearchParams({ channel: channelType, date });
       if (autogen) params.set("autogen", "1");
       navigate(`/content/${pieceId}?${params}`);
     },
