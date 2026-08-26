@@ -141,6 +141,7 @@ export type PublicationPublic = {
   updated_at: string;
   channel_type: string;
   channel_display_name?: string | null;
+  piece_id?: string | null;
 };
 
 export type HolidayPublic = {

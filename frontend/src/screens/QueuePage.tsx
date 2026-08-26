@@ -77,7 +77,13 @@ export function QueuePage() {
                 <td>{label(PUB_STATUS, row.status)}</td>
                 <td>{row.error_message ?? row.error_code ?? ""}</td>
                 <td className="row">
-                  <Link to={`/content`}>Контент</Link>
+                  {row.piece_id ? (
+                    <Link to={`/content/${row.piece_id}?channel=${encodeURIComponent(row.channel_type)}`}>
+                      Контент
+                    </Link>
+                  ) : (
+                    <Link to="/content">Контент</Link>
+                  )}
                   {row.status === "scheduled" ? (
                     <button className="btn secondary" type="button" onClick={() => cancel.mutate(row.id)}>
                       Cancel

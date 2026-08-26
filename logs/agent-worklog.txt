@@ -922,3 +922,9 @@ Prompt: Открыть редактор не открывает конкретн
 Done: getPiece/create + navigate /content/:id?channel&autogen; Editor applies channel/autogen; empty linked piece also autogen
 stage: coding
 status: done
+[2026-08-26 16:11] Deployed 68d2311 calendar deep-link health=200
+[2026-08-26 16:13] Queue «Контент» → /content/{piece_id}?channel=
+Prompt: точно также и по клику Контент со страницы Очередь
+Done: PublicationPublic.piece_id + QueuePage Link deep-link
+stage: coding
+status: done

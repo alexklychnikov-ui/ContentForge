@@ -49,7 +49,7 @@ def list_publications(
     brand, _membership = require_brand(db, user, brand_id)
     stmt = (
         select(Publication)
-        .options(joinedload(Publication.channel))
+        .options(joinedload(Publication.channel), joinedload(Publication.variant))
         .join(ChannelAccount, Publication.channel_account_id == ChannelAccount.id)
         .where(ChannelAccount.brand_id == brand.id)
         .order_by(Publication.scheduled_at.desc())

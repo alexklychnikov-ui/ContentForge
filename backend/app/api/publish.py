@@ -23,6 +23,7 @@ router = APIRouter(tags=["publish"])
 
 def _public(row) -> PublicationPublic:
     channel = row.channel
+    variant = row.variant
     return PublicationPublic.model_validate(
         {
             "id": row.id,
@@ -43,6 +44,7 @@ def _public(row) -> PublicationPublic:
             "updated_at": row.updated_at,
             "channel_type": channel.type,
             "channel_display_name": channel.display_name,
+            "piece_id": variant.piece_id if variant is not None else None,
         }
     )
 

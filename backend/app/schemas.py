@@ -362,6 +362,7 @@ class PublicationPublic(BaseModel):
     updated_at: DateTime
     channel_type: ChannelType
     channel_display_name: str | None = None
+    piece_id: UUID | None = None
 
 
 class ChannelCredentialsRequest(BaseModel):
