@@ -901,3 +901,9 @@ handoff: devops
 Done: list snippet+status RU; Удалить→archived; FIELD_META; Переписать выделенное
 stage: coding
 status: done
+[2026-08-26 15:45] Deployed d549225 editor UX health=200
+[2026-08-26 15:54] Explain variants A/B + RU AbPage
+Prompt: чем отличаются Ar1/Br1; перевести A/B и объяснить
+Done: AbPage RU labels+howto; Editor «Добавить вариант B»; deploy next
+stage: coding
+status: in_progress

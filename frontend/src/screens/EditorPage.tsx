@@ -269,8 +269,13 @@ export function EditorPage() {
                     Вариант {item.label} r{item.revision}
                   </button>
                 ))}
-                <button className="btn secondary" type="button" onClick={() => addB.mutate()} disabled={!current}>
-                  Вариант B
+                <button
+                  className="btn secondary"
+                  type="button"
+                  onClick={() => addB.mutate()}
+                  disabled={!current || variants.some((item) => item.label === "B")}
+                >
+                  Добавить вариант B
                 </button>
                 <button
                   className="btn secondary"

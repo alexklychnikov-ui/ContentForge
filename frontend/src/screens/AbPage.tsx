@@ -1,17 +1,47 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cf } from "../api/cf";
-import type { BrandPublic } from "../api/types";
+import type { BrandPublic, PiecePublic } from "../api/types";
 import { EmptyState, ErrorBanner } from "../components/Status";
+import { CHANNEL_LABELS, CONTENT_LABELS, label } from "../labels";
 
 type Shell = { brand: BrandPublic | null };
 
+const EXP_STATUS: Record<string, string> = {
+  draft: "черновик",
+  running: "идёт",
+  completed: "завершён",
+  cancelled: "отменён",
+  tie: "ничья",
+};
+
+const EXP_MODE: Record<string, string> = {
+  sequential: "по очереди",
+  split: "сплит",
+};
+
 function localInput(offsetMin: number): string {
-  const date = new Date(Date.now() + offsetMin * 60 * 1000);
+  const date = new Date(Date.now() + offsetMin * 60_000);
   date.setSeconds(0, 0);
-  const iso = new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString();
+  const iso = new Date(date.getTime() - date.getTimezoneOffset() * 60_000).toISOString();
   return iso.slice(0, 16);
+}
+
+function pieceOptionLabel(row: PiecePublic): string {
+  const payload = row.variants?.[0]?.payload ?? {};
+  const candidates = [payload.subject, payload.title, payload.text];
+  let snippet = "";
+  for (const value of candidates) {
+    const text = Array.isArray(value) ? value.join(" ") : String(value ?? "").trim();
+    if (text) {
+      snippet = text.replace(/\s+/g, " ");
+      break;
+    }
+  }
+  if (snippet.length > 40) snippet = `${snippet.slice(0, 40)}…`;
+  const typeName = label(CONTENT_LABELS, row.type);
+  return snippet ? `${typeName} · ${snippet}` : `${typeName} · ${row.id.slice(0, 8)}`;
 }
 
 export function AbPage() {
@@ -30,6 +60,12 @@ export function AbPage() {
     queryFn: () => cf.experiments(brand!.id),
     enabled: Boolean(brand),
   });
+
+  const pieces = useMemo(
+    () => (contentQuery.data ?? []).filter((row) => row.status !== "archived"),
+    [contentQuery.data],
+  );
+
   const create = useMutation({
     mutationFn: () =>
       cf.createExperiment(brand!.id, {
@@ -60,7 +96,7 @@ export function AbPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["experiments"] }),
   });
 
-  const piece = (contentQuery.data ?? []).find((row) => row.id === pieceId);
+  const piece = pieces.find((row) => row.id === pieceId);
 
   if (!brand) {
     return (
@@ -73,7 +109,14 @@ export function AbPage() {
   return (
     <main className="page grid">
       <h1>A/B эксперименты</h1>
-      <p className="muted">Только sequential Telegram. Gmail split / WP title — 409.</p>
+      <p className="muted">
+        MVP: только Telegram, режим «по очереди». Сначала публикуется вариант A, через несколько минут — B.
+        Сплит Gmail / WordPress пока недоступны.
+      </p>
+      <p className="muted">
+        Как пользоваться: в Редакторе сделай два варианта текста (A и B) у одного поста → выбери материал здесь →
+        «Создать тест» → «Запустить» → по метрикам или вручную отметь победителя.
+      </p>
       <ErrorBanner error={expQuery.error || create.error || start.error || winner.error} />
       <form
         className="panel grid"
@@ -88,67 +131,92 @@ export function AbPage() {
             value={pieceId}
             onChange={(e) => {
               setPieceId(e.target.value);
-              const next = (contentQuery.data ?? []).find((row) => row.id === e.target.value);
+              const next = pieces.find((row) => row.id === e.target.value);
               setVariantA(next?.variants[0]?.id ?? "");
               setVariantB(next?.variants[1]?.id ?? "");
             }}
           >
             <option value="">выберите</option>
-            {(contentQuery.data ?? []).map((row) => (
+            {pieces.map((row) => (
               <option key={row.id} value={row.id}>
-                {row.type} · {row.id.slice(0, 8)}
+                {pieceOptionLabel(row)}
               </option>
             ))}
           </select>
         </label>
         <label className="field">
-          Variant A
+          Вариант A
           <select value={variantA} onChange={(e) => setVariantA(e.target.value)}>
             {(piece?.variants ?? []).map((row) => (
               <option key={row.id} value={row.id}>
-                {row.label}
+                Вариант {row.label} (правка {row.revision})
               </option>
             ))}
           </select>
         </label>
         <label className="field">
-          Variant B
+          Вариант B
           <select value={variantB} onChange={(e) => setVariantB(e.target.value)}>
             {(piece?.variants ?? []).map((row) => (
               <option key={row.id} value={row.id}>
-                {row.label}
+                Вариант {row.label} (правка {row.revision})
               </option>
             ))}
           </select>
         </label>
-        <button className="btn" type="submit" disabled={!pieceId || !variantA || !variantB}>
-          Создать sequential TG
+        <button className="btn" type="submit" disabled={!pieceId || !variantA || !variantB || variantA === variantB}>
+          Создать тест (Telegram по очереди)
         </button>
       </form>
       {(expQuery.data ?? []).length === 0 ? (
-        <EmptyState title="Нет экспериментов" hint="Нужны variant A и B одного поста." cta="Редактор" to="/content" />
+        <EmptyState
+          title="Нет экспериментов"
+          hint="Нужны два разных варианта (A и B) у одного поста в Редакторе."
+          cta="Редактор"
+          to="/content"
+        />
       ) : (
         (expQuery.data ?? []).map((row) => (
           <div className="card" key={row.id}>
             <h3>
-              {row.status} · {row.mode} · {row.channel_type}
+              {label(EXP_STATUS, row.status)} · {label(EXP_MODE, row.mode)} ·{" "}
+              {label(CHANNEL_LABELS, row.channel_type)}
             </h3>
             <p className="muted">
-              окно {new Date(row.window_start).toLocaleString("ru")} — {new Date(row.window_end).toLocaleString("ru")}
+              Окно наблюдения: {new Date(row.window_start).toLocaleString("ru")} —{" "}
+              {new Date(row.window_end).toLocaleString("ru")}
             </p>
+            {row.winner_variant_id ? (
+              <p className="muted">
+                Победитель:{" "}
+                {row.winner_variant_id === row.variant_a_id
+                  ? "вариант A"
+                  : row.winner_variant_id === row.variant_b_id
+                    ? "вариант B"
+                    : row.winner_variant_id.slice(0, 8)}
+              </p>
+            ) : null}
             {row.metrics ? <pre>{JSON.stringify(row.metrics, null, 2)}</pre> : null}
             <div className="row">
               <button className="btn" type="button" onClick={() => start.mutate(row.id)}>
-                Start
+                Запустить
               </button>
               <button className="btn secondary" type="button" onClick={() => stop.mutate(row.id)}>
-                Stop early
+                Остановить досрочно
               </button>
-              <button className="btn" type="button" onClick={() => winner.mutate({ id: row.id, variant_id: row.variant_a_id })}>
-                Winner A
+              <button
+                className="btn"
+                type="button"
+                onClick={() => winner.mutate({ id: row.id, variant_id: row.variant_a_id })}
+              >
+                Победитель A
               </button>
-              <button className="btn" type="button" onClick={() => winner.mutate({ id: row.id, variant_id: row.variant_b_id })}>
-                Winner B
+              <button
+                className="btn"
+                type="button"
+                onClick={() => winner.mutate({ id: row.id, variant_id: row.variant_b_id })}
+              >
+                Победитель B
               </button>
             </div>
           </div>
