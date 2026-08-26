@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useOutletContext } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { ApiError } from "../api/client";
 import { cf } from "../api/cf";
 import type { BrandPublic, PlanItemPublic } from "../api/types";
 import { EmptyState, ErrorBanner } from "../components/Status";
@@ -49,15 +50,27 @@ export function CalendarPage() {
   const openPiece = useMutation({
     mutationFn: async (item: PlanItemPublic) => {
       if (item.content_piece_id) {
-        return item.content_piece_id;
+        try {
+          const existing = await cf.getPiece(item.content_piece_id);
+          const empty = (existing.variants ?? []).length === 0;
+          return { pieceId: existing.id, autogen: empty, channel: item.channel_type };
+        } catch (error) {
+          if (!(error instanceof ApiError) || error.status !== 404) throw error;
+        }
       }
       const piece = await cf.createPiece(brand!.id, {
         type: item.content_type,
         plan_item_id: item.id,
       });
-      return piece.id;
+      await queryClient.invalidateQueries({ queryKey: ["plans"] });
+      await queryClient.invalidateQueries({ queryKey: ["content"] });
+      return { pieceId: piece.id, autogen: true, channel: item.channel_type };
     },
-    onSuccess: (pieceId) => navigate(`/content/${pieceId}`),
+    onSuccess: ({ pieceId, autogen, channel: channelType }) => {
+      const params = new URLSearchParams({ channel: channelType });
+      if (autogen) params.set("autogen", "1");
+      navigate(`/content/${pieceId}?${params}`);
+    },
   });
 
   if (!brand) {
@@ -123,8 +136,15 @@ export function CalendarPage() {
                 </div>
                 <strong>{item.theme}</strong>
                 <p className="muted">{item.hook}</p>
-                <button className="btn" type="button" onClick={() => openPiece.mutate(item)}>
-                  Открыть редактор
+                <button
+                  className="btn"
+                  type="button"
+                  disabled={openPiece.isPending}
+                  onClick={() => openPiece.mutate(item)}
+                >
+                  {openPiece.isPending && openPiece.variables?.id === item.id
+                    ? "Открываю…"
+                    : "Открыть редактор"}
                 </button>
               </div>
             ))}

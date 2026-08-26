@@ -907,3 +907,18 @@ Prompt: чем отличаются Ar1/Br1; перевести A/B и объя�
 Done: AbPage RU labels+howto; Editor «Добавить вариант B»; deploy next
 stage: coding
 status: in_progress
+[2026-08-26 15:56] Deployed 9efb5f6 AbPage RU health=200
+stage: coding
+status: done
+[2026-08-26 16:09] Calendar openPiece → concrete editor
+Prompt: Calendar «Открыть редактор» lands on piece; getPiece/404→create; channel+autogen; plans invalidate
+Done: CalendarPage openPiece verify/create+nav query; EditorPage channel/autogen/active/error panel
+checks: npx tsc --noEmit exit 0
+stage: coding
+status: done
+handoff: devops
+[2026-08-26 16:06] Fix calendar→editor deep link + autogen empty slot
+Prompt: Открыть редактор не открывает конкретный пост
+Done: getPiece/create + navigate /content/:id?channel&autogen; Editor applies channel/autogen; empty linked piece also autogen
+stage: coding
+status: done

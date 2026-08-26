@@ -78,6 +78,10 @@ button {
   background: #1b2b48;
 }
 
+.panel a.active {
+  font-weight: 600;
+}
+
 .topbar-right {
   display: flex;
   gap: 0.75rem;

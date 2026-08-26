@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useOutletContext, useParams } from "react-router-dom";
+import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cf } from "../api/cf";
 import { pollJob } from "../api/client";
@@ -66,16 +66,23 @@ function fieldCaption(type: PiecePublic["type"], key: string): string {
 export function EditorPage() {
   const { brand } = useOutletContext<Shell>();
   const { pieceId } = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [type, setType] = useState<PiecePublic["type"]>("social_post");
   const [labelName, setLabelName] = useState("A");
   const [form, setForm] = useState<Record<string, string>>({});
-  const [channel, setChannel] = useState("telegram");
+  const channelParam = searchParams.get("channel");
+  const [channel, setChannel] = useState(() =>
+    channelParam && (MVP_CHANNELS as readonly string[]).includes(channelParam)
+      ? channelParam
+      : "telegram",
+  );
   const [scheduledAt, setScheduledAt] = useState("");
   const [jobStatus, setJobStatus] = useState<string | null>(null);
   const [jobError, setJobError] = useState<string | null>(null);
   const textRef = useRef<HTMLTextAreaElement | null>(null);
+  const autogenStarted = useRef(false);
 
   const listQuery = useQuery({
     queryKey: ["content", brand?.id],
@@ -115,6 +122,16 @@ export function EditorPage() {
     }
   }, [piece, current]);
 
+  useEffect(() => {
+    if (channelParam && (MVP_CHANNELS as readonly string[]).includes(channelParam)) {
+      setChannel(channelParam);
+    }
+  }, [channelParam]);
+
+  useEffect(() => {
+    autogenStarted.current = false;
+  }, [pieceId]);
+
   const createPiece = useMutation({
     mutationFn: () => cf.createPiece(brand!.id, { type }),
     onSuccess: (row) => {
@@ -150,6 +167,32 @@ export function EditorPage() {
     mutationFn: () =>
       runJob(() => cf.generateContent(piece!.id, { variant_label: labelName, channel_type: channel }), "generate_content"),
   });
+
+  useEffect(() => {
+    if (searchParams.get("autogen") !== "1") return;
+    if (!piece || !pieceQuery.isSuccess) return;
+
+    const stripAutogen = () => {
+      setSearchParams(
+        (prev) => {
+          const next = new URLSearchParams(prev);
+          next.delete("autogen");
+          return next;
+        },
+        { replace: true },
+      );
+    };
+
+    if (variants.length > 0) {
+      stripAutogen();
+      return;
+    }
+    if (generate.isPending || autogenStarted.current) return;
+    autogenStarted.current = true;
+    stripAutogen();
+    generate.mutate();
+  }, [piece, pieceQuery.isSuccess, variants.length, searchParams, generate, setSearchParams]);
+
   const save = useMutation({
     mutationFn: () =>
       cf.patchVariant(piece!.id, current!.id, { payload: formToPayload(form, piece!.type) }),
@@ -236,7 +279,7 @@ export function EditorPage() {
             <ul>
               {visiblePieces.map((item) => (
                 <li key={item.id} className="row">
-                  <Link to={`/content/${item.id}`}>
+                  <Link to={`/content/${item.id}`} className={item.id === pieceId ? "active" : undefined}>
                     {label(CONTENT_LABELS, item.type)} · {pieceSnippet(item)}
                     <span className="muted"> · {label(PIECE_STATUS, item.status)}</span>
                   </Link>
@@ -254,8 +297,12 @@ export function EditorPage() {
           )}
         </div>
         <div className="panel grid">
-          {!piece ? (
+          {!pieceId ? (
             <EmptyState title="Выберите материал" hint="Или создайте черновик и нажмите «Сгенерировать»." cta="Календарь" to="/calendar" />
+          ) : pieceQuery.isError ? (
+            <p className="muted">Материал не загружен — см. ошибку выше.</p>
+          ) : !piece ? (
+            <p className="muted">Загрузка…</p>
           ) : (
             <>
               <div className="row">
