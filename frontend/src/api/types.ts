@@ -46,6 +46,9 @@ export type BrandPublic = {
   example_posts: string[];
   default_locale: "ru" | "en";
   timezone: string;
+  auto_pipeline_enabled: boolean;
+  auto_pipeline_lead_hours: number;
+  default_slot_hour: number;
   onboarding_completed_at: string | null;
   onboarding_completed: boolean;
   created_at: string;

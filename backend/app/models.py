@@ -217,6 +217,9 @@ class BrandProfile(Base):
         Enum(Locale, native_enum=False, length=8), nullable=False, default=Locale.ru
     )
     timezone: Mapped[str] = mapped_column(String(64), nullable=False, default="Europe/Moscow")
+    auto_pipeline_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    auto_pipeline_lead_hours: Mapped[int] = mapped_column(Integer, nullable=False, default=24)
+    default_slot_hour: Mapped[int] = mapped_column(Integer, nullable=False, default=12)
     onboarding_completed_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )

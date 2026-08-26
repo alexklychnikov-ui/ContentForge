@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 
 from app.errors import AppError
 from app.models import (
+    BrandProfile,
     ChannelAccount,
     ChannelStatus,
     ChannelType,
@@ -80,6 +81,65 @@ def require_publication(
             raise AppError(404, "not_found", "Публикация не найдена") from exc
         raise
     return row
+
+
+def schedule_publication_internal(
+    db: Session,
+    *,
+    brand: BrandProfile,
+    variant: ContentVariant,
+    channel: ChannelAccount,
+    scheduled_at: datetime,
+    actor_id: UUID | None = None,
+    idempotency_key: str | None = None,
+) -> tuple[Publication, bool]:
+    """Create scheduled publication without HTTP auth / stopword gates (autopilot)."""
+    key = (idempotency_key or "").strip() or None
+    if key:
+        existing = db.scalar(select(Publication).where(Publication.idempotency_key == key))
+        if existing is not None:
+            return existing, False
+    active = db.scalar(
+        select(Publication).where(
+            Publication.variant_id == variant.id,
+            Publication.status != PublicationStatus.cancelled,
+        )
+    )
+    if active is not None:
+        return active, False
+    if channel.brand_id != brand.id:
+        raise AppError(404, "not_found", "Канал не найден")
+    if channel.status is ChannelStatus.revoked or channel.revoked_at is not None:
+        raise AppError(409, "channel_revoked", "Канал отозван")
+    assert_gmail_recipients(db, brand.id, variant, channel)
+    when = as_utc(scheduled_at)
+    row = Publication(
+        variant_id=variant.id,
+        channel_account_id=channel.id,
+        scheduled_at=when,
+        status=PublicationStatus.scheduled,
+        idempotency_key=key,
+        meta={},
+    )
+    try:
+        with db.begin_nested():
+            db.add(row)
+            db.flush()
+    except IntegrityError as exc:
+        if key:
+            existing = db.scalar(select(Publication).where(Publication.idempotency_key == key))
+            if existing is not None:
+                return existing, False
+        raise AppError(409, "conflict", "Не удалось создать публикацию") from exc
+    write_audit(
+        db,
+        actor_id=actor_id,
+        action="schedule_publication",
+        entity_type="publication",
+        entity_id=row.id,
+        data={"channel_type": channel.type.value, "variant_id": str(variant.id), "auto": True},
+    )
+    return row, True
 
 
 def schedule_publication(

@@ -1,6 +1,7 @@
 import calendar
 import json
-from datetime import date
+import logging
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
@@ -8,8 +9,11 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
+from app.errors import AppError
 from app.models import (
     BrandProfile,
+    ChannelAccount,
+    ChannelStatus,
     ChannelType,
     ContentPiece,
     ContentPlan,
@@ -23,6 +27,7 @@ from app.models import (
     TrendSignal,
     TrendStatus,
 )
+from app.security import as_utc
 from app.services.ai_client import AIJobError, PROMPT_VERSION, complete_json
 from app.services.ai_schemas import (
     CONTENT_SCHEMA_BY_TYPE,
@@ -31,7 +36,10 @@ from app.services.ai_schemas import (
     RewriteAI,
 )
 from app.services.catalog_service import list_holidays
+from app.services.publish_service import schedule_publication_internal
 from app.services.stopwords import find_stopwords, payload_text
+
+logger = logging.getLogger(__name__)
 
 PLAN_SYSTEM = (
     "You are ContentForge planner. Return JSON {\"items\":[...]}. "
@@ -282,7 +290,7 @@ def execute_generate_content(db: Session, job: Job, brand: BrandProfile) -> dict
     db.flush()
     hits = find_stopwords(payload_text(variant_payload), list(brand.stopwords or []))
     settings = get_settings()
-    return {
+    result: dict[str, Any] = {
         "piece_id": str(piece.id),
         "variant_id": str(variant.id),
         "variant_label": label,
@@ -293,6 +301,83 @@ def execute_generate_content(db: Session, job: Job, brand: BrandProfile) -> dict
         "repaired": bool(meta.get("repaired")),
         "model": settings.openai_model,
     }
+    if payload.get("auto_schedule") is True:
+        _maybe_auto_schedule(db, job, brand, variant, hits, result)
+    return result
+
+
+def _maybe_auto_schedule(
+    db: Session,
+    job: Job,
+    brand: BrandProfile,
+    variant: ContentVariant,
+    stopword_hits: list[str],
+    result: dict[str, Any],
+) -> None:
+    if stopword_hits:
+        result["auto_schedule_error"] = "stopword_violation"
+        result["auto_schedule_warning"] = "stopwords blocked schedule"
+        logger.warning(
+            "auto_schedule_skipped_stopwords job_id=%s variant_id=%s hits=%s",
+            job.id,
+            variant.id,
+            stopword_hits,
+        )
+        return
+    raw_when = job.payload.get("scheduled_at") if isinstance(job.payload, dict) else None
+    if not raw_when:
+        result["auto_schedule_error"] = "missing_scheduled_at"
+        return
+    try:
+        scheduled_at = as_utc(datetime.fromisoformat(str(raw_when)))
+    except ValueError:
+        result["auto_schedule_error"] = "invalid_scheduled_at"
+        return
+    channel_raw = job.payload.get("channel_type") if isinstance(job.payload, dict) else None
+    if not channel_raw:
+        result["auto_schedule_error"] = "missing_channel_type"
+        return
+    try:
+        channel_type = ChannelType(str(channel_raw))
+    except ValueError:
+        result["auto_schedule_error"] = "invalid_channel_type"
+        return
+    channel = db.scalar(
+        select(ChannelAccount).where(
+            ChannelAccount.brand_id == brand.id,
+            ChannelAccount.type == channel_type,
+            ChannelAccount.status == ChannelStatus.connected,
+            ChannelAccount.revoked_at.is_(None),
+        )
+    )
+    if channel is None:
+        result["auto_schedule_error"] = "no_channel"
+        logger.warning(
+            "auto_schedule_no_channel job_id=%s brand_id=%s channel_type=%s",
+            job.id,
+            brand.id,
+            channel_type.value,
+        )
+        return
+    try:
+        pub, _created = schedule_publication_internal(
+            db,
+            brand=brand,
+            variant=variant,
+            channel=channel,
+            scheduled_at=scheduled_at,
+            actor_id=job.created_by,
+            idempotency_key=f"auto-job:{job.id}",
+        )
+    except AppError as exc:
+        result["auto_schedule_error"] = exc.code
+        logger.warning(
+            "auto_schedule_failed job_id=%s code=%s",
+            job.id,
+            exc.code,
+        )
+        return
+    result["publication_id"] = str(pub.id)
 
 
 def execute_rewrite(db: Session, job: Job, brand: BrandProfile) -> dict[str, Any]:

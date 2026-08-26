@@ -1,0 +1,46 @@
+{
+  "feature": "auto_pipeline",
+  "stage": "design",
+  "date": "2026-08-26",
+  "goal": "Optional hands-off: approved plan slots auto get content generated and queued before publish time",
+  "assumptions": [
+    "Only approved plans",
+    "Default publish local time = brand setting hour (default 12:00) on plan item.date",
+    "Requires connected channel for item.channel_type",
+    "Off by default"
+  ],
+  "C4": {
+    "containers": ["api", "worker", "beat", "postgres", "redis", "openai"],
+    "new": ["beat task contentforge.prepare_plan_slots", "brand settings fields"]
+  },
+  "DFD": [
+    "beat -> prepare_plan_slots",
+    "prepare -> create piece if missing",
+    "prepare -> enqueue generate_content if empty variants",
+    "generate_content success + auto_schedule -> create Publication scheduled_at=slot 12:00",
+    "existing publish_due -> channel adapters"
+  ],
+  "Sequence": [
+    "T-lead: beat finds slot date approaching",
+    "create/link ContentPiece",
+    "Job generate_content (payload.auto_schedule=true, channel_type, scheduled_at)",
+    "worker finishes text",
+    "worker schedules Publication if none exists",
+    "T=slot: publish_due posts"
+  ],
+  "API": {
+    "BrandUpdate/Public": {
+      "auto_pipeline_enabled": "bool default false",
+      "auto_pipeline_lead_hours": "int default 24 (1-168)",
+      "default_slot_hour": "int default 12 (0-23)"
+    }
+  },
+  "Migration": "0007 brand auto_pipeline columns",
+  "NFR": ["idempotent: skip if publication exists", "cap N slots per beat tick", "no silent overwrite of immutable variants"],
+  "Security": ["same brand scope as manual schedule", "stopwords still apply"],
+  "open_questions": [
+    "Should autopilot require plan approved only, or also draft?",
+    "Lead hours: 24 vs 48 default?"
+  ],
+  "out_of_scope_mvp": ["A/B auto", "manual review gate before send", "per-channel hours"]
+}

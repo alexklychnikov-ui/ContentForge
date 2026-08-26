@@ -1,0 +1,32 @@
+{
+  "feature": "auto_pipeline",
+  "stage": "planning",
+  "date": "2026-08-26",
+  "steps": [
+    {
+      "id": "AP-1",
+      "goal": "Brand settings + migration",
+      "actions": ["add columns", "BrandUpdate/Public", "Settings UI toggle+lead+hour"],
+      "verify": "patch brand persists; UI roundtrip"
+    },
+    {
+      "id": "AP-2",
+      "goal": "prepare_plan_slots service",
+      "actions": ["select approved items in lead window", "create piece", "enqueue generate with auto_schedule"],
+      "verify": "unit/integration with TESTING=1"
+    },
+    {
+      "id": "AP-3",
+      "goal": "generate_content auto_schedule hook",
+      "actions": ["on success schedule Publication at scheduled_at if channel connected and no existing pub"],
+      "verify": "job result includes publication_id when scheduled"
+    },
+    {
+      "id": "AP-4",
+      "goal": "Celery beat registration",
+      "actions": ["hourly task", "deploy"],
+      "verify": "worker logs prepare tick; health 200"
+    }
+  ],
+  "rollback": "set auto_pipeline_enabled=false; remove beat entry if needed"
+}

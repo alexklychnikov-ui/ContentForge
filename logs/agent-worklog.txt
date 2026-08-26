@@ -934,3 +934,19 @@ stage: research
 status: in_progress
 facts: Plan!=Publication; no auto_generate in codebase; Settings only timezone/locale; publish_due exists for scheduled pubs
 [2026-08-26 18:27] Default schedule date+12:00 from calendar query
+[2026-08-26 18:28] Schedule default 12:00 deployed f466fe5
+[2026-08-26 18:28] Autopilot design+plan written (auto-pipeline-*.json)
+stage: design/planning
+status: done for schedule UX; autopilot awaiting coding go
+[2026-08-26 18:55] Auto-pipeline MVP coding (AP-1..AP-4)
+Prompt: Implement ContentForge auto-pipeline MVP — migration brand fields, prepare_plan_slots, auto_schedule after generate, celery hourly beat, tests
+Done: 0007 migration; BrandProfile/BrandPublic/BrandUpdate/Settings; auto_pipeline.py; schedule_publication_internal; execute_generate_content auto_schedule; celery prepare_plan_slots + task_registry (break cycle); test_auto_pipeline.py; openai_mock **kwargs
+checks: pytest test_auto_pipeline+test_worker_import 9 passed; tsc --noEmit ok; alembic head 0007
+stage: coding
+status: done
+handoff: devops (commit/push/deploy + alembic upgrade)
+[2026-08-26 18:50] Auto-pipeline MVP AP-1..AP-4 implemented
+Prompt: да (implement autopilot)
+Done: migration 0007; prepare_plan_slots hourly; auto_schedule after generate; Settings UI; tests 9 passed
+stage: coding
+status: done

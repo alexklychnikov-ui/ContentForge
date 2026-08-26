@@ -59,7 +59,7 @@ def build_plan_payload(context: dict) -> dict:
     return {"items": items}
 
 
-def openai_ok(model_cls, messages, extra_validator=None):
+def openai_ok(model_cls, messages, extra_validator=None, **_kwargs):
     context = parse_context(messages)
     if model_cls is PlanAIResult:
         data = build_plan_payload(context)
@@ -102,11 +102,11 @@ def openai_ok(model_cls, messages, extra_validator=None):
     }
 
 
-def openai_invalid(_model_cls, _messages, extra_validator=None):
+def openai_invalid(_model_cls, _messages, extra_validator=None, **_kwargs):
     raise AIJobError("schema_invalid", "Модель вернула не JSON")
 
 
-def openai_count_mismatch(model_cls, messages, extra_validator=None):
+def openai_count_mismatch(model_cls, messages, extra_validator=None, **_kwargs):
     if model_cls is not PlanAIResult:
         return openai_ok(model_cls, messages, extra_validator)
     parsed = PlanAIResult.model_validate({"items": []})

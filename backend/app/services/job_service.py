@@ -4,19 +4,11 @@ from uuid import UUID
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.celery_app import generate_content as generate_content_task
-from app.celery_app import generate_plan as generate_plan_task
-from app.celery_app import rewrite as rewrite_task
 from app.errors import AppError
 from app.models import BrandProfile, Job, JobStatus, JobType, User
 from app.services.brand_service import require_brand
 from app.services.job_runner import run_job_in_session
-
-_TASKS = {
-    JobType.generate_plan: generate_plan_task,
-    JobType.generate_content: generate_content_task,
-    JobType.rewrite: rewrite_task,
-}
+from app.task_registry import TASKS
 
 
 def create_job(
@@ -51,7 +43,10 @@ def dispatch_job(db: Session, job: Job) -> None:
         run_job_in_session(db, job.id)
         return
     db.commit()
-    _TASKS[job.type].delay(str(job.id))
+    task = TASKS.get(job.type)
+    if task is None:
+        raise RuntimeError(f"Celery task not registered for {job.type}")
+    task.delay(str(job.id))
 
 
 def get_job(db: Session, user: User, job_id: UUID) -> Job:

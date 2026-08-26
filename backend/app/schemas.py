@@ -111,6 +111,9 @@ class BrandPublic(BaseModel):
     example_posts: list[str]
     default_locale: Locale
     timezone: str
+    auto_pipeline_enabled: bool
+    auto_pipeline_lead_hours: int
+    default_slot_hour: int
     onboarding_completed_at: DateTime | None
     onboarding_completed: bool
     created_at: DateTime
@@ -138,6 +141,9 @@ class BrandUpdate(BaseModel):
     example_posts: list[str] | None = None
     default_locale: Locale | None = None
     timezone: str | None = Field(default=None, min_length=1, max_length=64)
+    auto_pipeline_enabled: bool | None = None
+    auto_pipeline_lead_hours: int | None = Field(default=None, ge=1, le=168)
+    default_slot_hour: int | None = Field(default=None, ge=0, le=23)
 
 
 class HolidayPublic(BaseModel):
@@ -502,6 +508,9 @@ def brand_to_public(brand: BrandProfile) -> BrandPublic:
         example_posts=list(brand.example_posts or []),
         default_locale=brand.default_locale,
         timezone=brand.timezone,
+        auto_pipeline_enabled=bool(brand.auto_pipeline_enabled),
+        auto_pipeline_lead_hours=int(brand.auto_pipeline_lead_hours),
+        default_slot_hour=int(brand.default_slot_hour),
         onboarding_completed_at=brand.onboarding_completed_at,
         onboarding_completed=brand.onboarding_completed_at is not None,
         created_at=brand.created_at,

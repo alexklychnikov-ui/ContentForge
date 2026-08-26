@@ -3,6 +3,7 @@ from app.celery_app import (
     generate_content,
     generate_plan,
     ping,
+    prepare_plan_slots,
     publish_due,
     rewrite,
     sync_analytics,
@@ -33,3 +34,6 @@ def test_ai_queue_tasks_registered() -> None:
     assert "contentforge.sync_analytics" in celery_app.tasks
     assert sync_analytics.name == "contentforge.sync_analytics"
     assert "sync-analytics" in celery_app.conf.beat_schedule
+    assert "contentforge.prepare_plan_slots" in celery_app.tasks
+    assert prepare_plan_slots.name == "contentforge.prepare_plan_slots"
+    assert "prepare-plan-slots" in celery_app.conf.beat_schedule
