@@ -56,13 +56,23 @@ def enqueue_generate_plan(
     existing = _active_plan(db, brand.id, payload.year, payload.month)
     if existing is not None:
         if existing.status is PlanStatus.generating:
-            raise AppError(409, "plan_active_exists", "Генерация плана уже выполняется")
+            stuck = inflight_generate_plan(db, brand, payload.year, payload.month)
+            if stuck is not None:
+                raise AppError(
+                    409,
+                    "plan_active_exists",
+                    "Генерация плана уже выполняется",
+                    {"plan_id": str(existing.id), "job_id": str(stuck.id)},
+                )
+            # Зависший generating без queued/running job — разблокируем.
+            existing.status = PlanStatus.archived
+            db.flush()
         if existing.status is PlanStatus.draft:
             if not payload.confirm:
                 raise AppError(
                     409,
-                    "plan_active_exists",
-                    "Черновик плана на этот месяц уже есть",
+                    "plan_draft_exists",
+                    "Черновик плана на этот месяц уже есть — нажмите «Перегенерировать»",
                     {"plan_id": str(existing.id)},
                 )
             existing.status = PlanStatus.archived
@@ -71,15 +81,20 @@ def enqueue_generate_plan(
             if not payload.create_revision:
                 raise AppError(
                     409,
-                    "plan_active_exists",
-                    "Утверждённый план на этот месяц уже есть",
+                    "plan_approved_exists",
+                    "Утверждённый план на этот месяц уже есть — нажмите «Перегенерировать»",
                     {"plan_id": str(existing.id)},
                 )
             existing.status = PlanStatus.archived
             db.flush()
     inflight = inflight_generate_plan(db, brand, payload.year, payload.month)
     if inflight is not None:
-        raise AppError(409, "plan_active_exists", "Генерация плана уже выполняется")
+        raise AppError(
+            409,
+            "plan_active_exists",
+            "Генерация плана уже выполняется",
+            {"job_id": str(inflight.id)},
+        )
     job = create_job(
         db,
         user=user,

@@ -712,7 +712,18 @@ status: done
 artifacts: ai/workflow/planning/vk-community-text-plan.json
 verified_by: teamlead
 next_step: coding start VK-1 via coder subagent
-risks: live smoke needs user token; VPS egress to api.vk.com unknown
+
+[2026-08-26 14:45] Coding CLOSED: VK community text autopost
+Prompt: coding VK-1..7
+Done: coder VK-1..3; qa/security/simplify GATE_PASS; commit 129e91a pushed; VPS reset+deploy health=200
+stage: coding
+status: done
+verified_by: teamlead
+artifacts: adapters/vk.py, ChannelsPage VK form, tests, design/plan/research json
+checks: pytest 63+1skip; vitest 5; health 200
+next_step: user connect VK on /channels group_id=241074885 + token → Проверить → schedule social_post
+result: GATE_PASS | prod live
+risks: live wall.post smoke pending user token
 
 [2026-08-20 17:58] Telegram channels: channel_id -5477113632 validation UX
 Prompt: user changed Channel id to -5477113632, Save does nothing, old error "нужен @channel или -100…"
@@ -792,3 +803,8 @@ task: VK-6
 role: code-simplify-assessor
 verdict: GATE_PASS
 handoff: devops / teamlead for VK-7
+[2026-08-26 14:49] Plan UX: busy button + 409 job_id attach
+Prompt: нажал Сгенерировать - Статус «уже» и кнопка Сгенерировать активна
+Done: PlanPage busy=pending|queued|running; 409 plan_active_exists + details.job_id → poll; plan_service returns job_id / heal stale generating; clearer draft/approved 409 codes
+stage: coding
+status: in_progress
