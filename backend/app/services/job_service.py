@@ -50,6 +50,7 @@ def dispatch_job(db: Session, job: Job) -> None:
     if os.environ.get("TESTING") == "1":
         run_job_in_session(db, job.id)
         return
+    db.commit()
     _TASKS[job.type].delay(str(job.id))
 
 

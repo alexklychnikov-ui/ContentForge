@@ -808,3 +808,26 @@ Prompt: нажал Сгенерировать - Статус «уже» и кн�
 Done: PlanPage busy=pending|queued|running; 409 plan_active_exists + details.job_id → poll; plan_service returns job_id / heal stale generating; clearer draft/approved 409 codes
 stage: coding
 status: in_progress
+[2026-08-26 14:51] Plan UX deploy 689de18
+Done: VPS reset+update health=200; heal stale generating; UI busy on queued/running; cleared stuck jobs if any
+stage: coding
+status: done
+[2026-08-26 14:52] Cleared stuck generate_plan job 30a648cd (queued since 06:39 UTC)
+status: done
+[2026-08-26 14:58] Diagnose hung regenerate
+Prompt: Долго жду перегенерацию — Проверь
+Done: job 50f9b160 queued forever; worker ai_job_missing (celery ran, DB miss); cleared stuck; first gen db2cc119 succeeded ~3.5s
+stage: research
+status: in_progress
+[2026-08-26 15:01] coder: fix Celery ai_job_missing race
+Prompt: commit Job before .delay + worker visibility retry
+Done: job_service.dispatch_job db.commit() before delay (non-TESTING); job_runner.run_job_in_worker 5x0.1s retry before ai_job_missing
+stage: coding
+status: done
+role: coder
+handoff: qa
+[2026-08-26 14:59] Fix Celery race: commit before delay + worker retry
+Prompt: Долго жду перегенерацию — Проверь
+Done: root ai_job_missing (dispatch before commit); cleared stuck 50f9b160; commit-before-delay + 5x0.1s retry; QA GATE_PASS
+stage: coding
+status: done

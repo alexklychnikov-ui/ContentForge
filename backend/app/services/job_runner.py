@@ -1,4 +1,5 @@
 import logging
+import time
 from typing import assert_never
 from uuid import UUID
 
@@ -13,11 +14,25 @@ from app.services.brand_kit import is_brand_kit_complete
 
 logger = logging.getLogger(__name__)
 
+_JOB_VISIBLE_ATTEMPTS = 5
+_JOB_VISIBLE_SLEEP_S = 0.1
+
 
 def run_job_in_worker(job_id: str) -> None:
     db = get_session_factory()()
     try:
-        run_job_in_session(db, UUID(job_id))
+        job_uuid = UUID(job_id)
+        job = None
+        for attempt in range(_JOB_VISIBLE_ATTEMPTS):
+            job = db.get(Job, job_uuid)
+            if job is not None:
+                break
+            if attempt + 1 < _JOB_VISIBLE_ATTEMPTS:
+                time.sleep(_JOB_VISIBLE_SLEEP_S)
+        if job is None:
+            logger.warning("ai_job_missing job_id=%s", job_id)
+            return
+        run_job_in_session(db, job_uuid)
         db.commit()
     except Exception:
         db.rollback()
