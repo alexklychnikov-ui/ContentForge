@@ -963,3 +963,15 @@ Prompt: да (add brand button)
 Done: Settings + Onboarding createBrand mode; cancel back to edit current
 stage: coding
 status: done
+[2026-08-27 14:20] Deployed 5b22ded «Новый бренд»; health=200
+How: Settings → Новый бренд | /onboarding?new=1 → create → switch in header
+[2026-08-27 14:49] README.md: для кого / что сделано / план
+Prompt: Напиши readme для кого, что сделано, что в плане
+Done: корневой README.md (audience, MVP features, roadmap, stack, deploy)
+stage: docs
+status: done
+[2026-08-27 18:09] README split: GitHub README + readmeSummary
+Prompt: rename readme → readmeSummary.md; write normal README for github
+Done: readmeSummary.md (ЦА/MVP/roadmap); README.md (install, stack, structure, tests)
+stage: docs
+status: done
