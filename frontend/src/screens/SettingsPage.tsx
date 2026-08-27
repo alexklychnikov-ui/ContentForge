@@ -5,6 +5,7 @@ import { cf } from "../api/cf";
 import type { BrandPublic } from "../api/types";
 import { getSession, setBrandId } from "../auth/session";
 import { EmptyState, ErrorBanner } from "../components/Status";
+import { timezoneSelectOptions } from "../labels";
 
 type Shell = { brand: BrandPublic | null; brands: BrandPublic[] };
 
@@ -61,7 +62,13 @@ export function SettingsPage() {
         <h3>Бренд</h3>
         <label className="field">
           Таймзона
-          <input value={timezone} onChange={(e) => setTimezone(e.target.value)} />
+          <select value={timezone} onChange={(e) => setTimezone(e.target.value)}>
+            {timezoneSelectOptions(timezone).map((item) => (
+              <option key={item.value} value={item.value}>
+                {item.label}
+              </option>
+            ))}
+          </select>
         </label>
         <label className="field">
           Язык контента (UI остаётся русским)

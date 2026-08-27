@@ -7,6 +7,7 @@ import { cf } from "../api/cf";
 import type { BrandPublic } from "../api/types";
 import { setBrandId } from "../auth/session";
 import { ErrorBanner } from "../components/Status";
+import { timezoneSelectOptions } from "../labels";
 import { useQueryClient } from "@tanstack/react-query";
 
 const schema = z.object({
@@ -122,7 +123,13 @@ export function OnboardingPage() {
             </label>
             <label className="field">
               Таймзона
-              <input {...form.register("timezone")} />
+              <select {...form.register("timezone")}>
+                {timezoneSelectOptions(form.watch("timezone")).map((item) => (
+                  <option key={item.value} value={item.value}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
             </label>
             <label className="field">
               Язык контента

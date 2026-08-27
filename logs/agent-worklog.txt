@@ -952,3 +952,8 @@ stage: coding
 status: done
 [2026-08-26 18:57] Auto-pipeline deployed bcb4e38; alembic 0007 head; health=200
 How to use: Settings → enable Автоподготовка; approved plan; connected channel; within lead hours of slot
+[2026-08-27 14:09] Timezone dropdown in Settings (+ onboarding)
+Prompt: Сделай выбор таймзоны в настройках с выпадающим списком
+Done: TIMEZONE_OPTIONS RU/CIS first; select in SettingsPage and OnboardingPage
+stage: coding
+status: done
