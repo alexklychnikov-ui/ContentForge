@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useOutletContext } from "react-router-dom";
+import { useNavigate, useOutletContext, useSearchParams } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -27,6 +27,18 @@ type Shell = { brand: BrandPublic | null; brands: BrandPublic[] };
 
 const STEPS = ["О бренде", "ЦА и голос", "Офферы", "Эталоны", "Каналы"];
 
+const EMPTY_VALUES: Values = {
+  name: "",
+  niche: "",
+  timezone: "Europe/Moscow",
+  default_locale: "ru",
+  audience: "",
+  voice_tone: "",
+  stopwords: "",
+  offers: "",
+  example_posts: "",
+};
+
 function lines(value: string): string[] {
   return value
     .split("\n")
@@ -34,43 +46,54 @@ function lines(value: string): string[] {
     .filter(Boolean);
 }
 
+function valuesFromBrand(brand: BrandPublic): Values {
+  return {
+    name: brand.name,
+    niche: brand.niche,
+    timezone: brand.timezone,
+    default_locale: brand.default_locale,
+    audience: brand.audience,
+    voice_tone: brand.voice_tone,
+    stopwords: brand.stopwords.join("\n"),
+    offers: brand.offers.join("\n"),
+    example_posts: brand.example_posts.join("\n"),
+  };
+}
+
 export function OnboardingPage() {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const queryClient = useQueryClient();
   const { brand } = useOutletContext<Shell>();
+  const isNewBrand = searchParams.get("new") === "1" || !brand;
   const [step, setStep] = useState(0);
   const [error, setError] = useState<unknown>(null);
   const [skipWarn, setSkipWarn] = useState(false);
+
   const form = useForm<Values>({
     resolver: zodResolver(schema),
-    defaultValues: {
-      name: brand?.name ?? "",
-      niche: brand?.niche ?? "",
-      timezone: brand?.timezone ?? "Europe/Moscow",
-      default_locale: brand?.default_locale ?? "ru",
-      audience: brand?.audience ?? "",
-      voice_tone: brand?.voice_tone ?? "",
-      stopwords: (brand?.stopwords ?? []).join("\n"),
-      offers: (brand?.offers ?? []).join("\n"),
-      example_posts: (brand?.example_posts ?? []).join("\n"),
-    },
+    defaultValues: EMPTY_VALUES,
   });
 
   useEffect(() => {
-    if (brand) {
-      form.reset({
-        name: brand.name,
-        niche: brand.niche,
-        timezone: brand.timezone,
-        default_locale: brand.default_locale,
-        audience: brand.audience,
-        voice_tone: brand.voice_tone,
-        stopwords: brand.stopwords.join("\n"),
-        offers: brand.offers.join("\n"),
-        example_posts: brand.example_posts.join("\n"),
-      });
+    if (isNewBrand) {
+      form.reset(EMPTY_VALUES);
+      setStep(0);
+      setSkipWarn(false);
+      return;
     }
-  }, [brand, form]);
+    if (brand) {
+      form.reset(valuesFromBrand(brand));
+    }
+  }, [brand, form, isNewBrand]);
+
+  function startNewBrand() {
+    setSearchParams({ new: "1" }, { replace: true });
+  }
+
+  function cancelNewBrand() {
+    setSearchParams({}, { replace: true });
+  }
 
   async function save(values: Values, goChannels: boolean) {
     setError(null);
@@ -86,7 +109,8 @@ export function OnboardingPage() {
       example_posts: lines(values.example_posts),
     };
     try {
-      const saved = brand ? await cf.patchBrand(brand.id, body) : await cf.createBrand(body);
+      const saved =
+        isNewBrand || !brand ? await cf.createBrand(body) : await cf.patchBrand(brand.id, body);
       setBrandId(saved.id);
       await queryClient.invalidateQueries({ queryKey: ["brands"] });
       if (goChannels) {
@@ -101,7 +125,22 @@ export function OnboardingPage() {
 
   return (
     <main className="page">
-      <h1>Онбординг Brand Kit</h1>
+      <div className="row" style={{ justifyContent: "space-between", alignItems: "center" }}>
+        <h1>{isNewBrand ? "Новый бренд" : "Онбординг Brand Kit"}</h1>
+        {brand && !isNewBrand ? (
+          <button className="btn secondary" type="button" onClick={startNewBrand}>
+            Новый бренд
+          </button>
+        ) : null}
+        {brand && isNewBrand ? (
+          <button className="btn secondary" type="button" onClick={cancelNewBrand}>
+            Редактировать текущий
+          </button>
+        ) : null}
+      </div>
+      {isNewBrand ? (
+        <p className="muted">Заполни Brand Kit — создастся отдельный бренд в этом воркспейсе.</p>
+      ) : null}
       <div className="steps">
         {STEPS.map((name, index) => (
           <span key={name} className={index === step ? "on" : ""}>
@@ -171,7 +210,9 @@ export function OnboardingPage() {
         {step === 4 ? (
           <div className="empty">
             <p>Каналы можно подключить сейчас или пропустить — без каналов автопостинг недоступен.</p>
-            {skipWarn ? <p className="muted">План сгенерировать можно, публикация потребует Telegram / WP / Gmail.</p> : null}
+            {skipWarn ? (
+              <p className="muted">План сгенерировать можно, публикация потребует Telegram / WP / Gmail.</p>
+            ) : null}
             <div className="row">
               <button className="btn" type="button" onClick={form.handleSubmit((v) => save(v, true))}>
                 К каналам
@@ -202,7 +243,7 @@ export function OnboardingPage() {
           ) : null}
           {step === 3 ? (
             <button className="btn secondary" type="button" onClick={form.handleSubmit((v) => save(v, false))}>
-              Сохранить черновик
+              {isNewBrand ? "Создать бренд" : "Сохранить черновик"}
             </button>
           ) : null}
         </div>

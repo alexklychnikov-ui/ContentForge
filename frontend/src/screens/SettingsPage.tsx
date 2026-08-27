@@ -59,6 +59,13 @@ export function SettingsPage() {
         <p>Роль: {session?.workspace.role}</p>
       </div>
       <div className="panel grid">
+        <h3>Бренды</h3>
+        <p className="muted">Активный бренд переключается в шапке. Здесь можно завести ещё один.</p>
+        <button className="btn" type="button" onClick={() => navigate("/onboarding?new=1")}>
+          Новый бренд
+        </button>
+      </div>
+      <div className="panel grid">
         <h3>Бренд</h3>
         <label className="field">
           Таймзона

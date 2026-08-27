@@ -957,3 +957,9 @@ Prompt: Сделай выбор таймзоны в настройках с вы
 Done: TIMEZONE_OPTIONS RU/CIS first; select in SettingsPage and OnboardingPage
 stage: coding
 status: done
+[2026-08-27 14:11] Deployed 437da38 timezone dropdown health=200
+[2026-08-27 14:18] Add «Новый бренд» flow (/onboarding?new=1)
+Prompt: да (add brand button)
+Done: Settings + Onboarding createBrand mode; cancel back to edit current
+stage: coding
+status: done
