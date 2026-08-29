@@ -1,7 +1,7 @@
 # ContentForge — продуктовое summary
 
 Кратко: для кого, что сделано, что в плане.  
-Обычный GitHub README (установка, стек, структура): [`README.md`](README.md).
+Обычный GitHub README (реализация по ТЗ, перспективы, установка): [`README.md`](README.md).
 
 ---
 
@@ -63,7 +63,6 @@
 - VK: фото к посту
 - UI для media upload в редакторе (API уже есть)
 - UI добавления holidays / trends (API есть)
-- Alembic в `update-vps.sh` (сейчас миграции вручную на VPS)
 
 ### Дальше / фаза 3
 - CSV export аналитики, CSV import получателей

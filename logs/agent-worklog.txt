@@ -975,3 +975,15 @@ Prompt: rename readme → readmeSummary.md; write normal README for github
 Done: readmeSummary.md (ЦА/MVP/roadmap); README.md (install, stack, structure, tests)
 stage: docs
 status: done
+[2026-08-29 13:22] VPS OPENAI_MODEL patched from local OPENAI_MODEL_TEXT
+Done: patch-vps-secrets.py; api/worker/beat recreated; container OPENAI_MODEL=gpt-5.4-mini-2026-03-17; health=200
+[2026-08-29 13:29] Alembic in deploy-vps.sh
+Prompt: добавь explicit migration step
+Done: deploy-vps.sh runs 'docker compose run --rm api alembic upgrade head' before up -d; README/readmeSummary updated
+stage: devops
+status: done (local; push+deploy to activate on VPS)
+[2026-08-29 13:33] README expanded with TZTech mapping + roadmap
+Prompt: README скучный — распиши реализованное из TZTech и перспективы
+Done: README.md tables UC/FR status, user flow, phases 2-3, kept quickstart/deploy
+stage: docs
+status: done

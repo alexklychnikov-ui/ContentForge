@@ -17,6 +17,8 @@ fi
 
 docker compose -f docker-compose.prod.yml pull postgres redis 2>/dev/null || true
 docker compose -f docker-compose.prod.yml build --pull
+echo "Running Alembic migrations..."
+docker compose -f docker-compose.prod.yml run --rm api alembic upgrade head
 docker compose -f docker-compose.prod.yml up -d
 
 install -m 644 deploy/nginx/kitchen.alexklyvibe.ru.conf /etc/nginx/sites-available/kitchen.alexklyvibe.ru
