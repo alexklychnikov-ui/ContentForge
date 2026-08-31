@@ -1,3 +1,5 @@
+export const PRODUCT_TITLE = "AI-платформа контент-маркетинга";
+
 export const CHANNEL_LABELS: Record<string, string> = {
   telegram: "Telegram",
   wordpress: "WordPress",

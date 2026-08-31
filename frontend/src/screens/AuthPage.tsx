@@ -7,6 +7,7 @@ import { cf } from "../api/cf";
 import { ApiError } from "../api/client";
 import { applyAuth } from "../auth/session";
 import { ErrorBanner } from "../components/Status";
+import { PRODUCT_TITLE } from "../labels";
 
 const loginSchema = z.object({
   email: z.string().email("Укажите email"),
@@ -60,7 +61,7 @@ export function AuthPage() {
   return (
     <main className="auth-box panel">
       <div className="brand-mark">NODEX</div>
-      <h1>ContentForge</h1>
+      <h1 className="auth-title">{PRODUCT_TITLE}</h1>
       <p className="muted">Вход в рабочее пространство</p>
       <div className="row">
         <button
