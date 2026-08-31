@@ -987,3 +987,18 @@ Prompt: README скучный — распиши реализованное из
 Done: README.md tables UC/FR status, user flow, phases 2-3, kept quickstart/deploy
 stage: docs
 status: done
+[2026-08-29 14:05] Docs/demo screenshots+video (admin account, BrowserMCP+Playwright)
+Prompt: admin@testfullcrm login; filled channels; video plan creation
+Done: Docs/demo/screenshots 01-10; videos/plan-create.webm; scripts/capture-demo-assets.py
+stage: docs
+status: done
+[2026-08-31 18:10] Demo overview video + README Docs links
+Prompt: video from screenshots transitions; README links to Docs/demo
+Done: scripts/build-demo-slideshow.py; Docs/demo/videos/demo-overview.mp4; README section Демонстрация
+stage: docs
+status: done
+[2026-08-31 18:52] UI rename ContentForge → AI-платформа контент-маркетинга
+Prompt: переименовать отображение ContentForge на всех страницах
+Done: PRODUCT_TITLE в labels.ts; AuthPage h1; index.html + main.tsx document.title; auth-title CSS; commit 760eb27; VPS deploy health=200
+stage: frontend
+status: done
