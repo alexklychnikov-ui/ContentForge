@@ -1,5 +1,10 @@
 # ContentForge (NODEX)
 
+
+<!-- MOCKUPS:START -->
+![Mockup](Docs/mockups/mockup-20260831-190921.png)
+<!-- MOCKUPS:END -->
+
 **AI-платформа контент-маркетинга:** Brand Kit → план на месяц → черновики → очередь → автопост → аналитика — в одном рабочем месте.
 
 Демо: **[kitchen.alexklyvibe.ru](https://kitchen.alexklyvibe.ru)**  
