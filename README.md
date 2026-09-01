@@ -1,4 +1,4 @@
-# ContentForge (NODEX)
+# AI-платформа контент-маркетинга
 
 
 <!-- MOCKUPS:START -->
