@@ -2,7 +2,7 @@
 
 
 <!-- MOCKUPS:START -->
-![Mockup](Docs/mockups/generated-2-20260831-191838.png)
+![Mockup](Docs/mockups/mockup-20260810-164203.png)
 <!-- MOCKUPS:END -->
 
 **AI-платформа контент-маркетинга:** Brand Kit → план на месяц → черновики → очередь → автопост → аналитика — в одном рабочем месте.
