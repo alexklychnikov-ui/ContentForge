@@ -76,7 +76,7 @@ export const CHANNEL_STATUS: Record<string, string> = {
   revoked: "отозван",
 };
 
-export const MVP_CHANNELS = ["telegram", "vk", "gmail"] as const;
+export const MVP_CHANNELS = ["telegram", "vk", "gmail", "instagram"] as const;
 
 /** IANA ids; RU/CIS first. */
 export const TIMEZONE_OPTIONS: { value: string; label: string }[] = [
