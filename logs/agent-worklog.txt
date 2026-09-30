@@ -1185,3 +1185,10 @@ done:
 - content_service._quality_out aligned; test fixtures updated
 - test_ac_publish._variant: optional cta/hashtags; empty-text case cta=" \ hashtags=[]
 checks: pytest 107 passed, 1 skipped (live telegram)
+[2026-09-30 12:08] Personal pipeline coding MVP complete + deploy
+stage: coding
+status: done (e0-e6)
+verified_by: coder + qa + simplify (after fixes) + deploy
+artifacts: commit a47b892; alembic 0008 on VPS; LIGHTRAG_* set on ContentForge .env
+checks: pytest 107 passed 1 skipped; update-vps OK health=200
+next_step: user applies alexander_personal preset in Settings; connect TenChat channel; generate with approve
