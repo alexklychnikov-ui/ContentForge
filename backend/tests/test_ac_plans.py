@@ -6,6 +6,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.models import ContentPlan
+from app.services.ai_schemas import PlanItemAI
 from tests.helpers import auth_header, create_brand, register_user
 from tests.openai_mock import PLAN_JAN, install_openai_mock, openai_count_mismatch, openai_invalid
 
@@ -14,6 +15,20 @@ def _error(response) -> dict:
     body = response.json()
     assert "error" in body
     return body["error"]
+
+
+def test_plan_item_ai_accepts_tenchat() -> None:
+    item = PlanItemAI.model_validate(
+        {
+            "date": "2026-09-01",
+            "channel_type": "tenchat",
+            "content_type": "social_post",
+            "theme": "практика",
+            "goal": "awareness",
+            "hook": "короткий тезис",
+        }
+    )
+    assert item.channel_type.value == "tenchat"
 
 
 @pytest.fixture(autouse=True)

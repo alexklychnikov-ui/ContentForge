@@ -6,6 +6,7 @@ export const CHANNEL_LABELS: Record<string, string> = {
   gmail: "Gmail",
   vk: "VK",
   instagram: "Instagram",
+  tenchat: "TenChat",
 };
 
 export const CONTENT_LABELS: Record<string, string> = {
@@ -76,7 +77,7 @@ export const CHANNEL_STATUS: Record<string, string> = {
   revoked: "отозван",
 };
 
-export const MVP_CHANNELS = ["telegram", "vk", "gmail", "instagram"] as const;
+export const MVP_CHANNELS = ["telegram", "vk", "gmail", "instagram", "tenchat"] as const;
 
 /** IANA ids; RU/CIS first. */
 export const TIMEZONE_OPTIONS: { value: string; label: string }[] = [

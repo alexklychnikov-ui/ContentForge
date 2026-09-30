@@ -2,9 +2,12 @@ import { apiDelete, apiGet, apiPatch, apiPost } from "./client";
 import type {
   AnalyticsSummary,
   AuthResponse,
+  BrandContentProfile,
+  BrandContentProfileUpdate,
   BrandPublic,
   ChannelPublic,
   ExperimentPublic,
+  GroundingResult,
   HolidayPublic,
   JobAccepted,
   JobPublic,
@@ -12,6 +15,7 @@ import type {
   PlanItemPublic,
   PlanPublic,
   PublicationPublic,
+  QualityReview,
   RecipientPublic,
   TokenPair,
   TrendPublic,
@@ -33,6 +37,14 @@ export const cf = {
   patchBrand: (id: string, body: Record<string, unknown>) =>
     apiPatch<BrandPublic>(`/brands/${id}`, body),
   deleteBrand: (id: string) => apiDelete(`/brands/${id}`),
+  getContentProfile: (brandId: string) =>
+    apiGet<BrandContentProfile>(`/brands/${brandId}/content-profile`),
+  patchContentProfile: (brandId: string, body: BrandContentProfileUpdate) =>
+    apiPatch<BrandContentProfile>(`/brands/${brandId}/content-profile`, body),
+  applyContentProfilePreset: (brandId: string, presetId: string) =>
+    apiPost<BrandContentProfile>(`/brands/${brandId}/content-profile/preset/${presetId}`, {}),
+  previewKnowledge: (brandId: string, body: { query: string; mode?: string }) =>
+    apiPost<GroundingResult>(`/brands/${brandId}/knowledge/preview`, body),
   generatePlan: (brandId: string, body: Record<string, unknown>) =>
     apiPost<JobAccepted>(`/brands/${brandId}/plans/generate`, body),
   plans: (brandId: string, year?: number, month?: number) => {
@@ -74,6 +86,10 @@ export const cf = {
     apiPatch<VariantPublic>(`/content/${pieceId}/variants/${variantId}`, body),
   rewrite: (pieceId: string, variantId: string, body: Record<string, unknown>) =>
     apiPost<JobAccepted>(`/content/${pieceId}/variants/${variantId}/rewrite`, body),
+  reviewVariant: (pieceId: string, variantId: string, body?: { run_ai?: boolean }) =>
+    apiPost<QualityReview>(`/content/${pieceId}/variants/${variantId}/review`, body ?? { run_ai: true }),
+  approveVariant: (pieceId: string, variantId: string) =>
+    apiPost<PiecePublic>(`/content/${pieceId}/variants/${variantId}/approve`, {}),
   channels: (brandId: string) => apiGet<ChannelPublic[]>(`/brands/${brandId}/channels`),
   saveChannel: (brandId: string, type: string, body: Record<string, unknown>) =>
     apiPost<ChannelPublic>(`/brands/${brandId}/channels/${type}/credentials`, body),

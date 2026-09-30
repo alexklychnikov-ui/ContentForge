@@ -1,7 +1,7 @@
 from datetime import date
 from typing import Any
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models import ChannelType, ContentType, PlanGoal
 
@@ -53,6 +53,10 @@ class PlanAIResult(BaseModel):
 
 class SocialPostAI(BaseModel):
     text: str = Field(min_length=1)
+    headline: str = ""
+    lead: str = ""
+    scene: str = ""
+    takeaway: str = ""
     cta: str = ""
     hashtags: list[str] = Field(default_factory=list)
     alt_text: str = ""
@@ -75,6 +79,23 @@ class EmailAI(BaseModel):
 
 class RewriteAI(BaseModel):
     replacement: str
+
+
+class QualityReviewAI(BaseModel):
+    model_config = ConfigDict(populate_by_name=True)
+
+    clarity: int = Field(ge=1, le=5)
+    audience_pain: int = Field(ge=1, le=5)
+    scene: int = Field(ge=1, le=5)
+    practical_value: int = Field(ge=1, le=5)
+    tone: int = Field(ge=1, le=5)
+    uniqueness: int = Field(ge=1, le=5)
+    cta: int = Field(ge=1, le=5)
+    formatting: int = Field(ge=1, le=5)
+    overall: int = Field(ge=1, le=5)
+    blocking_issues: list[str] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
+    passed: bool = Field(alias="pass")
 
 
 CONTENT_SCHEMA_BY_TYPE = {

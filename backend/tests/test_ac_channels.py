@@ -140,6 +140,10 @@ def test_credentials_all_types_and_health_stub(client: TestClient) -> None:
             "ig_user_id": "1784",
             "refresh_token": "ig-refresh",
         },
+        "tenchat": {
+            "pdn_consent": True,
+            "display_name": "TenChat copy",
+        },
     }
     ids = []
     for channel_type, body in payloads.items():
@@ -147,6 +151,14 @@ def test_credentials_all_types_and_health_stub(client: TestClient) -> None:
         assert response.status_code == 201, response.text
         _assert_no_secrets(response.json())
         ids.append(response.json()["id"])
+    tenchat_row = next(
+        row for row in client.get(f"/api/v1/brands/{brand_id}/channels", headers=headers).json()
+        if row["type"] == "tenchat"
+    )
+    assert tenchat_row["meta"].get("manual_copy") is True
+    tenchat_health = client.post(f"/api/v1/channels/{tenchat_row['id']}/health", headers=headers)
+    assert tenchat_health.status_code == 200
+    assert tenchat_health.json()["ok"] is True
     health = client.post(f"/api/v1/channels/{ids[0]}/health", headers=headers)
     assert health.status_code == 200
     assert health.json()["status"] == "connected"

@@ -57,6 +57,13 @@ class ChannelType(str, enum.Enum):
     telegram = "telegram"
     wordpress = "wordpress"
     gmail = "gmail"
+    tenchat = "tenchat"
+
+
+class KnowledgeMode(str, enum.Enum):
+    off = "off"
+    optional = "optional"
+    required = "required"
 
 
 class ChannelStatus(str, enum.Enum):
@@ -236,6 +243,43 @@ class BrandProfile(Base):
     channels: Mapped[list["ChannelAccount"]] = relationship(back_populates="brand")
     recipients: Mapped[list["EmailRecipient"]] = relationship(back_populates="brand")
     media_assets: Mapped[list["MediaAsset"]] = relationship(back_populates="brand")
+    content_profile: Mapped["BrandContentProfile | None"] = relationship(
+        back_populates="brand", uselist=False
+    )
+
+
+class BrandContentProfile(Base):
+    __tablename__ = "brand_content_profiles"
+
+    brand_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("brand_profiles.id", ondelete="CASCADE"),
+        primary_key=True,
+    )
+    positioning: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    audience_segments: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    audience_pains: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    content_pillars: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    proof_facts: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    preferred_cta_styles: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    banned_openers: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    structure_rules: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    platform_policies: Mapped[dict[str, str]] = mapped_column(JSON, nullable=False, default=dict)
+    knowledge_mode: Mapped[KnowledgeMode] = mapped_column(
+        Enum(KnowledgeMode, native_enum=False, length=16),
+        nullable=False,
+        default=KnowledgeMode.off,
+    )
+    knowledge_filters: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
+    require_human_approval: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=utc_now
+    )
+
+    brand: Mapped[BrandProfile] = relationship(back_populates="content_profile")
 
 
 class Holiday(Base):

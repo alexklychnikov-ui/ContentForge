@@ -29,6 +29,9 @@ class Settings(BaseSettings):
     telegram_https_proxy: str = ""
     meta_app_id: str = ""
     meta_app_secret: str = ""
+    lightrag_url: str = "https://lightrag.alexklyvibe.ru"
+    lightrag_api_key: str = ""
+    lightrag_timeout_seconds: int = 180
 
 
 @lru_cache

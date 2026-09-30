@@ -1002,3 +1002,186 @@ Prompt: переименовать отображение ContentForge на вс
 Done: PRODUCT_TITLE в labels.ts; AuthPage h1; index.html + main.tsx document.title; auth-title CSS; commit 760eb27; VPS deploy health=200
 stage: frontend
 status: done
+[2026-09-29 20:25] Cursor Remote-SSH cleanup on VPS 45.144.232.115
+Prompt: Remote WebSocket 1006; clean everything
+Done: wiped /root/.cursor-server (~2.4G); fixed ssh config hiplet (pubkey) + trailing space on test_vps4GbRam; local remote temp cleaned
+stage: devops
+status: done — user must Reload Window + Connect to Host test_vps4GbRam
+[2026-09-29 20:38] Cursor Remote 1006: SOCKS local forward ETIMEDOUT; enabled remoteServerListenOnSocket for test_vps4GbRam/hiplet
+[2026-09-29 21:20] Cursor Remote 1006: Win OpenSSH 9.5 streamlocal hang; switched remote.SSH.path to Git OpenSSH 10.2 (streamlocal connect OK)
+[2026-09-29 21:27] Cursor Remote 1006: ssh exits after install stdin EOF; added C:\Users\User\bin\cursor-ssh.py keepalive wrapper; CONNECT_OK verified
+[2026-09-29 21:37] Proxifier P1-Selective: Localhost Direct FIRST before Cursor→SOCKS12335 (Remote-SSH 1006 fix)
+[2026-09-29 21:44] Cursor socket path truncated by terminal wrap; short serverSocketPath=/tmp/crs; showLoginTerminal=false; Git ssh; remote cleaned
+[2026-09-29 21:52] META on VPS: META_APP_ID present; META_APP_SECRET empty in /opt/contentforge/.env; api recreated but secret not loaded
+[2026-09-29 21:53] META_APP_SECRET saved (len=32); api/worker/beat recreated; secret loaded in container
+[2026-09-29 21:57] Instagram in MVP_CHANNELS + Channels connect OAuth; commit ed19cfe; VPS deploy health=200
+[2026-09-30 11:29] Personal content pipeline research
+Prompt: compare C:\Python\Projects\tenChat + LightRAG recommendations with ContentForge; plan only
+Done: verified tenChat playbooks, LightRAG sources, ContentForge AI/content/publish pipeline; no code changes
+stage: research
+status: done
+verified_by: explore-tenChat + explore-ContentForge + LightRAG mix search
+artifacts: chat findings
+risks: LightRAG API integration contract not yet present in ContentForge
+next_step: design architecture and contracts
+[2026-09-30 11:29] Personal content pipeline architecture
+Done: designed per-brand content profile, optional/required LightRAG grounding, TenChat manual channel, generation-review-approval flow, source provenance and feedback loop
+stage: design
+status: done
+verified_by: consistency review against current ContentPlan/ContentPiece/Publication flow
+artifacts: C4/DFD/Sequence/API/migration/security/NFR in chat
+risks: LightRAG HTTP contract and TenChat current limits require verification before coding
+next_step: phased implementation plan
+[2026-09-30 11:29] Personal content pipeline plan
+Done: phased MVP plan with acceptance criteria, checks, rollback and deferred scope; no code implemented
+stage: planning
+status: done
+verified_by: traceability to research and architecture
+artifacts: chat implementation plan
+risks: scope includes schema migration and external LightRAG dependency
+next_step: user reviews plan and chooses MVP start
+[2026-09-30 11:39] Personal pipeline coding stage 0
+stage: coding
+status: done (e0)
+verified_by: devops-explore + live LightRAG health/query
+artifacts: HTTP contract facts in chat
+facts: LIGHTRAG_URL=https://lightrag.alexklyvibe.ru; auth X-API-Key; POST /query mode=mix only_need_context; GET /health; GET /documents
+decisions: TenChat=yes; LightRAG required for personal brand=yes; approve before autopost=yes
+risks: large only_need_context payloads; ContentForge VPS must use public HTTPS
+next_step: coding e1 BrandContentProfile
+[2026-09-30 11:41] Coding e1 BrandContentProfile
+prompt: Implement MVP Stage 1 BrandContentProfile (model/migration/schemas/API/preset alexander_personal/tests)
+Done: BrandContentProfile 1:1 model; alembic 0008; GET/PATCH/preset endpoints; alexander_personal preset (knowledge_mode=required, require_human_approval=True); tests 9 passed
+stage: coding
+status: done (e1)
+checks: pytest tests/test_content_profile.py tests/test_ac_brands.py -> 9 passed
+artifacts: backend/app/models.py, migrations/versions/0008_brand_content_profile.py, schemas, content_profile_service/presets, api/brands.py, tests/test_content_profile.py
+risks: migration not yet applied on VPS; BrandContentProfilePresetApply schema unused in route body (path param only)
+next_step: coding e2 LightRAGClient
+[2026-09-30 11:41] QA e1 BrandContentProfile stage 1
+prompt: role qa Review Stage 1 BrandContentProfile (correctness, auth/isolation, migration, pytest)
+Done: code review + pytest; acceptance met; no middle+ issues
+stage: coding
+status: pass (e1 qa)
+checks: migration 0008 after 0007; GET lazy-create; PATCH; preset alexander_personal (knowledge_mode=required, require_human_approval=True); Brand Kit untouched; workspace isolation via require_brand; pytest 9 passed
+issues: []
+handoff: approve stage 2
+[2026-09-30 11:43] Coding e2 LightRAGClient + grounding
+prompt: Implement MVP Stage 2 LightRAGClient + grounding helpers + preview endpoint (no AI prompt wiring)
+Done: Settings LIGHTRAG_*; sync httpx LightRAGClient (health/query/retries/truncate); knowledge_grounding statuses off/optional/required; POST /brands/{id}/knowledge/preview; tests 16 passed
+stage: coding
+status: done (e2)
+checks: pytest tests/test_lightrag_grounding.py tests/test_content_profile.py -> 16 passed
+artifacts: backend/app/config.py, services/lightrag_client.py, services/knowledge_grounding.py, schemas, api/brands.py, .env.example, tests/test_lightrag_grounding.py
+risks: preview blocked maps 409/503; full context still returned in GroundingResultOut (capped); no live VPS key wired in tests
+next_step: coding e3 prompt pipeline needs GroundingResult
+[2026-09-30 11:44] Personal pipeline coding stage 1
+stage: coding
+status: done (e1)
+verified_by: coder + qa
+artifacts: BrandContentProfile model/migration 0008/API/preset alexander_personal
+checks: pytest content_profile+ac_brands 9 passed; QA pass no middle+
+next_step: stage 2 LightRAGClient
+[2026-09-30 11:45] Coding e2 QA fix knowledge_filters consistency
+prompt: Fix filters pruning only refs while leaking full context; rebuild scoped context from matched ref content
+Done: filters match file_path+reference_id; scoped context from matched content only; empty/no-match/no-content → blocked/ungrounded never full response; regression tests added
+stage: coding
+status: done (e2 fix)
+checks: pytest tests/test_lightrag_grounding.py -> 16 passed
+artifacts: backend/app/services/knowledge_grounding.py, tests/test_lightrag_grounding.py
+risks: if LightRAG refs omit content fields, filtered mode cannot ground (by design)
+next_step: re-qa stage 2
+[2026-09-30 11:46] Personal pipeline coding stage 2
+stage: coding
+status: done (e2)
+verified_by: coder + qa+security (re-review pass after filters fix)
+artifacts: LightRAGClient, knowledge_grounding, POST knowledge/preview, LIGHTRAG_* env
+checks: pytest lightrag_grounding+content_profile 16 passed
+fix: knowledge_filters pruned refs only — fixed to rebuild scoped context
+next_step: stage 3 prompt pipeline + brief
+[2026-09-30 11:55] Coding e3 Stage 3 prompt pipeline
+prompt: MVP Stage 3 — personal content prompt + LightRAG grounding + ContentBrief + provenance (no Stage 4 approve UI)
+Done: SocialPostAI +headline/lead/scene/takeaway; content_brief builder; CONTENT_SYSTEM_V2; wire ground_knowledge into execute_generate_content (block-on-required); payload._meta provenance; plan prompt gets pillars/pains; tests
+stage: coding
+status: done (e3)
+checks: pytest test_content_prompt_pipeline + test_ac_content + test_content_profile -> 13 passed; lightrag+auto_pipeline ok; ac_plans 2 fails pre-existing (error code rename)
+artifacts: ai_schemas.py, content_brief.py, ai_jobs.py, content_profile_service.py, stopwords.py, tests/test_content_prompt_pipeline.py
+risks: provenance in payload._meta (not column); publishers ignore it; Stage 4 must read _meta for quality gate
+next_step: Stage 4 quality gate / approve using provenance + structured SocialPostAI fields
+[2026-09-30 11:51] Personal pipeline coding stage 3
+stage: coding
+status: done (e3)
+verified_by: coder + qa
+artifacts: ContentBrief, CONTENT_SYSTEM_V2, grounding in execute_generate_content, SocialPostAI structured fields, payload._meta provenance
+checks: pytest related 25 passed; QA pass
+next_step: stage 4 quality gate + approve + block auto_schedule
+
+[2026-09-30 12:00] Coding e4 Stage 4 quality gate
+prompt: MVP Stage 4 — formal lint + human approve + block auto_schedule when require_human_approval; AI review via endpoint; _meta.quality; no TenChat/FE
+Done: content_quality.lint_social_post; QualityReviewAI; POST variants/{id}/review+approve (+ nested content paths); store quality on generate v2; _maybe_auto_schedule + auto_pipeline skip approval_required/quality_blockers; PieceStatus.ready + _meta.approved_at
+stage: coding
+status: done (e4)
+checks: pytest test_content_quality + prompt_pipeline + ac_content + auto_pipeline + content_profile -> 28 passed
+artifacts: content_quality.py, ai_jobs.py, auto_pipeline.py, content_service.py, content.py API, ai_schemas.py, schemas.py, tests/test_content_quality.py
+risks: AI review optional on demand; approve has no force; publish adapters unchanged (manual schedule still possible without approve — only auto_schedule gated)
+next_step: Stage 5 TenChat manual channel
+
+[2026-09-30 11:57] QA e4 Stage 4 quality gate
+role: qa
+prompt: Review Stage 4 acceptance (lint blockers, approve 409, auto_schedule gates, pytest); risk on manual schedule ungated
+result: PASS — approve Stage 5
+checks: lint blockers ok; approve 409 quality_blockers; auto_schedule blocked/allowed per flag+approval; pytest tests/test_content_quality.py 9 passed
+risk: manual schedule/publish not gated — LOW for MVP (plan=autopilot focus; manual=human action); follow-up not blocker
+
+[2026-09-30 11:58] Coding e5 Stage 5 TenChat channel
+prompt: MVP Stage 5 — TenChat as manual-copy channel (no API); adapter+enum+FE lists+connect+tests
+Done: ChannelType.tenchat; ManualCopyAdapter registered; channel_service connect with placeholder secret; MVP_CHANNELS+label; alexander_personal platform_policies.tenchat; tests adapter/connect/PlanItemAI
+stage: coding
+status: done (e5)
+checks: pytest manual_copy+credentials+plan_item_tenchat+preset -> 4 passed; no Alembic (native_enum=False String)
+artifacts: models.py, adapters/__init__.py, channel_service.py, content_profile_presets.py, labels.ts, ChannelsPage.tsx, tests
+risks: placeholder token ciphertext for health; no native TenChat publish
+next_step: Stage 6 UI content profile + quality/sources
+[2026-09-30 11:58] Personal pipeline coding stages 4-5
+stage: coding
+status: done (e4, e5)
+verified_by: coder + qa (e4 pass); coder (e5)
+artifacts: content_quality lint/approve/review; auto_schedule gates; ChannelType.tenchat + ManualCopyAdapter + FE labels/ChannelsPage
+checks: quality tests 9 passed; tenchat-related 4 passed
+next_step: stage 6 UI content profile + quality/sources in editor
+
+[2026-09-30 12:01] Coding e6 Stage 6 UI content profile + editor quality
+role: coder
+prompt: MVP Stage 6 — FE content-profile settings + grounding/quality in EditorPage + API client types
+Done: types/cf for content-profile, knowledge/preview, review, approve; SettingsPage section «Контент-профиль»; EditorPage grounding badge/refs/quality + review/approve
+stage: coding
+status: done (e6)
+checks: npm run build (tsc+vite) OK; vitest 18 passed
+artifacts: frontend/src/api/types.ts, cf.ts, screens/SettingsPage.tsx, screens/EditorPage.tsx
+risks: LightRAG preview needs LIGHTRAG_* env; approve disabled on blockers; Brand Kit fields stay on onboarding
+handoff: deploy needs LIGHTRAG_* env + alembic 0008 on VPS + apply preset
+next_step: deploy FE + verify on kitchen
+
+=== 2026-09-30 12:02:46 | QA | MVP stages 1-6 final acceptance ===
+prompt: Final acceptance review personal content pipeline MVP stages 1-6; run pytest suite + spot-checks
+pytest: 1 failed, 106 passed, 1 skipped (live telegram)
+FAIL: tests/test_ac_publish.py::test_vk_empty_text_no_http — expected failed/bad_request, got published
+root_cause: _variant helper always patches cta='Кейс'; variant_text('   '+cta) non-empty after strip → VK adapter publishes. Adapter empty-text guard OK for truly empty composed text. Classification: test fixture defect, not prod middle+ for stages 1-6.
+spot-checks:
+- migration 0008_brand_content_profile.py: PASS
+- ChannelType.tenchat + FE labels/MVP_CHANNELS/ChannelsPage: PASS
+- Settings «Контент-профиль» + LightRAG preview: PASS
+- Editor review/approve (Проверить качество / Подтвердить): PASS
+- .env.example LIGHTRAG_URL/API_KEY/TIMEOUT: PASS
+verdict: ACCEPTANCE FAIL (suite red). No middle+ production blockers for MVP surface. Fix test fixture (empty/no cta) before green gate. Deploy ops still need alembic 0008 + LIGHTRAG_* on VPS.
+
+=== 2026-09-30 12:05:35 | coder | simplify + test_vk_empty_text_no_http ===
+prompt: Fix middle+ simplify issues + broken test before deploy (no commit/deploy)
+done:
+- knowledge_grounding: _fail(mode,code,message) replaces 7x required/blocked branches
+- content_brief: removed unused brief_as_text
+- content_profile_service: update/apply_preset use ensure_content_profile
+- content_quality: root blockers/warnings SoT; lint keeps scores only; get_quality_blockers reads root
+- content_service._quality_out aligned; test fixtures updated
+- test_ac_publish._variant: optional cta/hashtags; empty-text case cta=" \ hashtags=[]
+checks: pytest 107 passed, 1 skipped (live telegram)

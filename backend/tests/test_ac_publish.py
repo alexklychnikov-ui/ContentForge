@@ -86,7 +86,15 @@ def _connect_telegram(client: TestClient, headers: dict, brand_id: str, token: s
     return created.json()
 
 
-def _variant(client: TestClient, headers: dict, brand_id: str, text: str | None = None) -> str:
+def _variant(
+    client: TestClient,
+    headers: dict,
+    brand_id: str,
+    text: str | None = None,
+    *,
+    cta: str | None = "Кейс",
+    hashtags: list | None = None,
+) -> str:
     piece = client.post(
         f"/api/v1/brands/{brand_id}/content",
         json={"type": "social_post"},
@@ -103,9 +111,14 @@ def _variant(client: TestClient, headers: dict, brand_id: str, text: str | None 
         f"/api/v1/jobs/{generated.json()['job_id']}", headers=headers
     ).json()["result"]["variant_id"]
     if text is not None:
+        payload: dict = {"text": text}
+        if cta is not None:
+            payload["cta"] = cta
+        if hashtags is not None:
+            payload["hashtags"] = hashtags
         patched = client.patch(
             f"/api/v1/content/{piece.json()['id']}/variants/{variant_id}",
-            json={"payload": {"text": text, "cta": "Кейс"}},
+            json={"payload": payload},
             headers=headers,
         )
         assert patched.status_code == 200
@@ -418,7 +431,7 @@ def test_vk_empty_text_no_http(client: TestClient, db: Session, monkeypatch) -> 
     headers = auth_header(owner["tokens"])
     brand_id = create_brand(client, headers).json()["id"]
     channel = _connect_vk(client, headers, brand_id)
-    variant_id = _variant(client, headers, brand_id, text="   ")
+    variant_id = _variant(client, headers, brand_id, text="   ", cta="", hashtags=[])
     now = utc_now()
     created = _schedule(
         client,
@@ -1093,7 +1106,7 @@ def test_gmail_quota_no_retry_storm(client: TestClient, db: Session, monkeypatch
 
 
 def test_manual_copy_channels_capability_error() -> None:
-    for channel_type in (ChannelType.instagram, ChannelType.wordpress):
+    for channel_type in (ChannelType.instagram, ChannelType.wordpress, ChannelType.tenchat):
         adapter = get_adapter(channel_type)
         assert isinstance(adapter, ManualCopyAdapter)
         assert adapter.supports_autopost is False
@@ -1105,6 +1118,7 @@ def test_manual_copy_channels_capability_error() -> None:
     assert isinstance(vk, VkAdapter)
     assert vk.supports_autopost is True
     assert get_adapter(ChannelType.gmail).supports_autopost is True
+    assert get_adapter(ChannelType.tenchat).supports_autopost is False
 
 
 def test_vk_wall_url_and_empty_variant_text() -> None:

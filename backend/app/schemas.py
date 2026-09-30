@@ -14,6 +14,7 @@ from app.models import (
     HolidaySource,
     JobStatus,
     JobType,
+    KnowledgeMode,
     Locale,
     MediaKind,
     MembershipRole,
@@ -144,6 +145,64 @@ class BrandUpdate(BaseModel):
     auto_pipeline_enabled: bool | None = None
     auto_pipeline_lead_hours: int | None = Field(default=None, ge=1, le=168)
     default_slot_hour: int | None = Field(default=None, ge=0, le=23)
+
+
+class BrandContentProfileOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    brand_id: UUID
+    positioning: str
+    audience_segments: list[str]
+    audience_pains: list[str]
+    content_pillars: list[str]
+    proof_facts: list[str]
+    preferred_cta_styles: list[str]
+    banned_openers: list[str]
+    structure_rules: str
+    platform_policies: dict[str, str]
+    knowledge_mode: KnowledgeMode
+    knowledge_filters: list[str]
+    require_human_approval: bool
+    created_at: DateTime
+    updated_at: DateTime
+
+
+class BrandContentProfileUpdate(BaseModel):
+    positioning: str | None = None
+    audience_segments: list[str] | None = None
+    audience_pains: list[str] | None = None
+    content_pillars: list[str] | None = None
+    proof_facts: list[str] | None = None
+    preferred_cta_styles: list[str] | None = None
+    banned_openers: list[str] | None = None
+    structure_rules: str | None = None
+    platform_policies: dict[str, str] | None = None
+    knowledge_mode: KnowledgeMode | None = None
+    knowledge_filters: list[str] | None = None
+    require_human_approval: bool | None = None
+
+
+class BrandContentProfilePresetApply(BaseModel):
+    preset_id: str | None = None
+
+
+class KnowledgePreviewRequest(BaseModel):
+    query: str = Field(min_length=3, max_length=4000)
+    mode: str | None = Field(default="mix", max_length=32)
+
+
+class GroundingReferenceOut(BaseModel):
+    id: str
+    file_path: str
+
+
+class GroundingResultOut(BaseModel):
+    status: str
+    context: str = ""
+    references: list[GroundingReferenceOut] = Field(default_factory=list)
+    error_message: str | None = None
+    warning: str | None = None
+    error_code: str | None = None
 
 
 class HolidayPublic(BaseModel):
@@ -321,6 +380,42 @@ class VariantCreate(BaseModel):
 
 class VariantPatch(BaseModel):
     payload: dict | None = None
+
+
+class QualityLintOut(BaseModel):
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    scores: dict[str, float] | None = None
+
+
+class QualityAiReviewOut(BaseModel):
+    clarity: int
+    audience_pain: int
+    scene: int
+    practical_value: int
+    tone: int
+    uniqueness: int
+    cta: int
+    formatting: int
+    overall: int
+    blocking_issues: list[str] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
+    passed: bool = Field(alias="pass")
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+class QualityReviewOut(BaseModel):
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    scores: dict[str, float] | None = None
+    lint: QualityLintOut
+    ai_review: QualityAiReviewOut | None = None
+    approved: bool = False
+
+
+class VariantReviewRequest(BaseModel):
+    run_ai: bool = True
 
 
 class RewriteSelection(BaseModel):

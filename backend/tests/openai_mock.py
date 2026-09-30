@@ -7,6 +7,7 @@ from app.services.ai_schemas import (
     ArticleAI,
     EmailAI,
     PlanAIResult,
+    QualityReviewAI,
     RewriteAI,
     SocialPostAI,
 )
@@ -68,7 +69,11 @@ def openai_ok(model_cls, messages, extra_validator=None, **_kwargs):
         data = {"replacement": f"NEW:{selected}"}
     elif model_cls is SocialPostAI:
         data = {
-            "text": "Пост про оффер без запрещённых формулировок",
+            "text": "Пост про оффер без запрещённых формулировок\nВторая строка хука",
+            "headline": "Оффер без воды",
+            "lead": "Клиент ждёт ясный следующий шаг",
+            "scene": "Разбор брифа на созвоне",
+            "takeaway": "Сначала зафиксировать критерий успеха",
             "cta": "Написать нам",
             "hashtags": ["b2b"],
             "alt_text": "обложка",
@@ -87,6 +92,21 @@ def openai_ok(model_cls, messages, extra_validator=None, **_kwargs):
             "subject": "Письмо клиентам",
             "preheader": "pre",
             "body_markdown": "Текст письма",
+        }
+    elif model_cls is QualityReviewAI:
+        data = {
+            "clarity": 4,
+            "audience_pain": 4,
+            "scene": 4,
+            "practical_value": 4,
+            "tone": 4,
+            "uniqueness": 3,
+            "cta": 4,
+            "formatting": 4,
+            "overall": 4,
+            "blocking_issues": [],
+            "recommendations": ["Tighten CTA"],
+            "pass": True,
         }
     else:
         raise AssertionError(f"unexpected schema {model_cls}")
@@ -127,4 +147,5 @@ def install_openai_mock(monkeypatch, impl=openai_ok) -> None:
 
     monkeypatch.setattr("app.services.ai_jobs.complete_json", impl)
     monkeypatch.setattr("app.services.ai_client.complete_json", impl)
+    monkeypatch.setattr("app.services.content_service.complete_json", impl)
     monkeypatch.setattr("app.services.ai_client._call_openai", _no_live)

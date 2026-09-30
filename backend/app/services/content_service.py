@@ -19,14 +19,26 @@ from app.schemas import (
     ContentCreate,
     GenerateContentRequest,
     PiecePatch,
+    QualityReviewOut,
     RewriteRequest,
     VariantCreate,
     VariantPatch,
+    VariantReviewRequest,
 )
-from app.services.ai_schemas import PRIMARY_TEXT_FIELD
+from app.security import utc_now
+from app.services.ai_client import complete_json
+from app.services.ai_schemas import PRIMARY_TEXT_FIELD, QualityReviewAI
 from app.services.audit import write_audit
 from app.services.brand_kit import assert_can_generate_plan
 from app.services.brand_service import MUTATE_BRAND_ROLES, require_brand
+from app.services.content_profile_service import ensure_content_profile
+from app.services.content_quality import (
+    is_variant_approved,
+    quality_payload_from_lint,
+    run_formal_lint_for_variant,
+    store_approval_on_payload,
+    store_quality_on_payload,
+)
 from app.services.job_service import create_job, dispatch_job
 
 
@@ -206,3 +218,121 @@ def enqueue_rewrite(
         return job
     dispatch_job(db, job)
     return job
+
+
+def _quality_out(variant: ContentVariant, piece: ContentPiece) -> QualityReviewOut:
+    meta = (variant.payload or {}).get("_meta") or {}
+    quality = meta.get("quality") if isinstance(meta, dict) else None
+    if not isinstance(quality, dict):
+        quality = {"blockers": [], "warnings": [], "lint": {}}
+    blockers = list(quality.get("blockers") or [])
+    warnings = list(quality.get("warnings") or [])
+    lint_raw = quality.get("lint") if isinstance(quality.get("lint"), dict) else {}
+    scores = quality.get("scores")
+    if scores is None:
+        scores = lint_raw.get("scores")
+    lint = {
+        "blockers": blockers,
+        "warnings": warnings,
+        "scores": scores,
+    }
+    return QualityReviewOut(
+        blockers=blockers,
+        warnings=warnings,
+        scores=scores,
+        lint=lint,
+        ai_review=quality.get("ai_review"),
+        approved=is_variant_approved(variant, piece),
+    )
+
+
+def review_variant(
+    db: Session,
+    user: User,
+    piece_id: UUID,
+    variant_id: UUID,
+    payload: VariantReviewRequest | None = None,
+) -> QualityReviewOut:
+    variant = get_variant(db, user, piece_id, variant_id)
+    piece = variant.piece
+    brand, _membership = require_brand(db, user, piece.brand_id, MUTATE_BRAND_ROLES)
+    profile = ensure_content_profile(db, brand.id)
+    lint = run_formal_lint_for_variant(variant, piece, profile, brand)
+    ai_review_data = None
+    run_ai = True if payload is None else bool(payload.run_ai)
+    if run_ai and piece.type is ContentType.social_post:
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are a content quality reviewer. Return JSON with scores 1-5 for "
+                    "clarity, audience_pain, scene, practical_value, tone, uniqueness, cta, "
+                    "formatting; overall 1-5; blocking_issues[]; recommendations[]; pass bool."
+                ),
+            },
+            {
+                "role": "user",
+                "content": (
+                    "Review this social post JSON. Formal lint blockers: "
+                    f"{lint.blockers}. Formal warnings: {lint.warnings}.\n"
+                    f"Post: {variant.payload}"
+                ),
+            },
+        ]
+        result, _meta = complete_json(QualityReviewAI, messages, temperature=0.2)
+        assert isinstance(result, QualityReviewAI)
+        ai_review_data = result.model_dump(by_alias=True)
+        if ai_review_data.get("blocking_issues"):
+            for issue in ai_review_data["blocking_issues"]:
+                code = f"ai:{issue}"
+                if code not in lint.blockers:
+                    lint.blockers.append(code)
+    quality = quality_payload_from_lint(lint, ai_review=ai_review_data)
+    variant.payload = store_quality_on_payload(variant.payload or {}, quality)
+    db.flush()
+    return _quality_out(variant, piece)
+
+
+def approve_variant(
+    db: Session,
+    user: User,
+    piece_id: UUID,
+    variant_id: UUID,
+) -> ContentPiece:
+    variant = get_variant(db, user, piece_id, variant_id)
+    piece = variant.piece
+    brand, _membership = require_brand(db, user, piece.brand_id, MUTATE_BRAND_ROLES)
+    profile = ensure_content_profile(db, brand.id)
+    lint = run_formal_lint_for_variant(variant, piece, profile, brand)
+    quality = quality_payload_from_lint(lint)
+    existing_meta = (variant.payload or {}).get("_meta") or {}
+    existing_quality = existing_meta.get("quality") if isinstance(existing_meta, dict) else None
+    if isinstance(existing_quality, dict) and existing_quality.get("ai_review"):
+        quality["ai_review"] = existing_quality["ai_review"]
+    variant.payload = store_quality_on_payload(variant.payload or {}, quality)
+    blockers = list(lint.blockers)
+    if blockers:
+        db.flush()
+        raise AppError(
+            409,
+            "quality_blockers",
+            "Материал не проходит quality gate",
+            {"blockers": blockers},
+        )
+    now = utc_now().isoformat()
+    variant.payload = store_approval_on_payload(
+        variant.payload or {},
+        approved_at=now,
+        approved_by=str(user.id),
+    )
+    piece.status = PieceStatus.ready
+    db.flush()
+    write_audit(
+        db,
+        actor_id=user.id,
+        action="approve_content",
+        entity_type="content_variant",
+        entity_id=variant.id,
+        data={"piece_id": str(piece.id)},
+    )
+    return piece

@@ -5,20 +5,24 @@ from sqlalchemy.orm import Session
 
 from app.db import get_db
 from app.deps import client_ip, get_current_user
-from app.models import ContentType, PieceStatus, User
+from app.errors import AppError
+from app.models import ContentType, ContentVariant, PieceStatus, User
 from app.schemas import (
     ContentCreate,
     GenerateContentRequest,
     JobAccepted,
     PiecePatch,
     PiecePublic,
+    QualityReviewOut,
     RewriteRequest,
     VariantCreate,
     VariantPatch,
     VariantPublic,
+    VariantReviewRequest,
 )
 from app.services.content_service import (
     add_variant,
+    approve_variant,
     create_piece,
     enqueue_generate_content,
     enqueue_rewrite,
@@ -26,6 +30,7 @@ from app.services.content_service import (
     list_pieces,
     patch_piece,
     patch_variant,
+    review_variant,
 )
 
 router = APIRouter(tags=["content"])
@@ -129,3 +134,63 @@ def rewrite_variant(
 ) -> JobAccepted:
     job = enqueue_rewrite(db, user, piece_id, variant_id, payload)
     return JobAccepted(job_id=job.id)
+
+
+@router.post(
+    "/content/{piece_id}/variants/{variant_id}/review",
+    response_model=QualityReviewOut,
+)
+def review_variant_endpoint(
+    piece_id: UUID,
+    variant_id: UUID,
+    payload: VariantReviewRequest | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> QualityReviewOut:
+    return review_variant(db, user, piece_id, variant_id, payload)
+
+
+@router.post(
+    "/content/{piece_id}/variants/{variant_id}/approve",
+    response_model=PiecePublic,
+)
+def approve_variant_endpoint(
+    piece_id: UUID,
+    variant_id: UUID,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> PiecePublic:
+    piece = approve_variant(db, user, piece_id, variant_id)
+    return PiecePublic.model_validate(get_piece(db, user, piece.id))
+
+
+@router.post(
+    "/variants/{variant_id}/review",
+    response_model=QualityReviewOut,
+)
+def review_variant_by_id(
+    variant_id: UUID,
+    payload: VariantReviewRequest | None = None,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> QualityReviewOut:
+    variant = db.get(ContentVariant, variant_id)
+    if variant is None:
+        raise AppError(404, "not_found", "Вариант не найден")
+    return review_variant(db, user, variant.piece_id, variant_id, payload)
+
+
+@router.post(
+    "/variants/{variant_id}/approve",
+    response_model=PiecePublic,
+)
+def approve_variant_by_id(
+    variant_id: UUID,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> PiecePublic:
+    variant = db.get(ContentVariant, variant_id)
+    if variant is None:
+        raise AppError(404, "not_found", "Вариант не найден")
+    piece = approve_variant(db, user, variant.piece_id, variant_id)
+    return PiecePublic.model_validate(get_piece(db, user, piece.id))

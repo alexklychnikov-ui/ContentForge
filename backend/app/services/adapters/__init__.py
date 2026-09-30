@@ -11,6 +11,7 @@ _TELEGRAM = TelegramAdapter()
 _VK = VkAdapter()
 _IG = ManualCopyAdapter(ChannelType.instagram)
 _WP = ManualCopyAdapter(ChannelType.wordpress)
+_TENCHAT = ManualCopyAdapter(ChannelType.tenchat)
 _GMAIL = GmailAdapter()
 
 
@@ -25,4 +26,6 @@ def get_adapter(channel_type: ChannelType) -> ChannelAdapter:
         return _WP
     if channel_type is ChannelType.gmail:
         return _GMAIL
+    if channel_type is ChannelType.tenchat:
+        return _TENCHAT
     assert_never(channel_type)

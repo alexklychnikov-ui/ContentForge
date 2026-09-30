@@ -22,7 +22,9 @@ def payload_text(payload: dict[str, Any] | None) -> str:
     if not payload:
         return ""
     parts: list[str] = []
-    for value in payload.values():
+    for key, value in payload.items():
+        if key == "_meta":
+            continue
         if isinstance(value, str):
             parts.append(value)
         elif isinstance(value, list):

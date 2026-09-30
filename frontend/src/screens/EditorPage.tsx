@@ -3,7 +3,7 @@ import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cf } from "../api/cf";
 import { pollJob } from "../api/client";
-import type { BrandPublic, PiecePublic, VariantPublic } from "../api/types";
+import type { BrandPublic, PiecePublic, QualityReview, VariantMeta, VariantPublic } from "../api/types";
 import { pushRecentJob } from "../auth/session";
 import { EmptyState, ErrorBanner, JobBanner } from "../components/Status";
 import {
@@ -17,6 +17,37 @@ import {
 } from "../labels";
 
 type Shell = { brand: BrandPublic | null };
+
+function readVariantMeta(payload: Record<string, unknown> | undefined): VariantMeta | null {
+  const raw = payload?._meta;
+  if (!raw || typeof raw !== "object") return null;
+  return raw as VariantMeta;
+}
+
+function qualityLists(meta: VariantMeta | null): { blockers: string[]; warnings: string[] } {
+  const quality = meta?.quality;
+  if (!quality) return { blockers: [], warnings: [] };
+  const blockers =
+    (Array.isArray(quality.blockers) && quality.blockers.length > 0
+      ? quality.blockers
+      : quality.lint?.blockers) ?? [];
+  const warnings =
+    (Array.isArray(quality.warnings) && quality.warnings.length > 0
+      ? quality.warnings
+      : quality.lint?.warnings) ?? [];
+  return {
+    blockers: blockers.map(String),
+    warnings: warnings.map(String),
+  };
+}
+
+function groundingStatusLabel(status: string): string {
+  if (status === "grounded") return "с опорой";
+  if (status === "ungrounded") return "без опоры";
+  if (status === "skipped") return "пропущено";
+  if (status === "blocked") return "блокировано";
+  return status;
+}
 
 function fieldsFor(type: PiecePublic["type"]): string[] {
   if (type === "social_post") return ["text", "cta", "hashtags", "alt_text"];
@@ -84,6 +115,7 @@ export function EditorPage() {
   );
   const [jobStatus, setJobStatus] = useState<string | null>(null);
   const [jobError, setJobError] = useState<string | null>(null);
+  const [reviewResult, setReviewResult] = useState<QualityReview | null>(null);
   const textRef = useRef<HTMLTextAreaElement | null>(null);
   const autogenStarted = useRef(false);
 
@@ -114,6 +146,15 @@ export function EditorPage() {
     () => variants.find((item) => item.label === labelName) ?? variants[0] ?? null,
     [variants, labelName],
   );
+  const variantMeta = useMemo(() => readVariantMeta(current?.payload), [current]);
+  const qualityFromMeta = useMemo(() => qualityLists(variantMeta), [variantMeta]);
+  const liveBlockers = reviewResult ? reviewResult.blockers : qualityFromMeta.blockers;
+  const liveWarnings = reviewResult ? reviewResult.warnings : qualityFromMeta.warnings;
+  const isApproved = Boolean(variantMeta?.approved_at) || piece?.status === "ready";
+
+  useEffect(() => {
+    setReviewResult(null);
+  }, [current?.id]);
 
   useEffect(() => {
     if (piece) {
@@ -240,6 +281,21 @@ export function EditorPage() {
       });
     },
   });
+  const review = useMutation({
+    mutationFn: () => cf.reviewVariant(piece!.id, current!.id, { run_ai: true }),
+    onSuccess: (row) => {
+      setReviewResult(row);
+      queryClient.invalidateQueries({ queryKey: ["piece", pieceId] });
+    },
+  });
+  const approve = useMutation({
+    mutationFn: () => cf.approveVariant(piece!.id, current!.id),
+    onSuccess: () => {
+      setReviewResult(null);
+      queryClient.invalidateQueries({ queryKey: ["piece", pieceId] });
+      queryClient.invalidateQueries({ queryKey: ["content", brand?.id] });
+    },
+  });
 
   if (!brand) {
     return (
@@ -259,7 +315,9 @@ export function EditorPage() {
           save.error ||
           schedule.error ||
           rewrite.error ||
-          archivePiece.error
+          archivePiece.error ||
+          review.error ||
+          approve.error
         }
       />
       <JobBanner status={jobStatus} error={jobError} label="AI-задача" />
@@ -342,6 +400,100 @@ export function EditorPage() {
                 </button>
               </div>
               <p className="muted">{TYPE_FIELD_BLURB[piece.type]}</p>
+              {variantMeta ? (
+                <div className="grid">
+                  <div className="row" style={{ flexWrap: "wrap", gap: "0.35rem" }}>
+                    {variantMeta.grounding_status ? (
+                      <span className="chip">
+                        Grounding: {groundingStatusLabel(variantMeta.grounding_status)}
+                      </span>
+                    ) : null}
+                    {isApproved ? <span className="chip">подтверждён</span> : null}
+                    {liveBlockers.length > 0 ? (
+                      <span className="chip">блокеры: {liveBlockers.length}</span>
+                    ) : null}
+                  </div>
+                  {variantMeta.warning ? (
+                    <p className="muted">Grounding warning: {variantMeta.warning}</p>
+                  ) : null}
+                  {(variantMeta.references ?? []).length > 0 ? (
+                    <p className="muted">
+                      Источники:{" "}
+                      {(variantMeta.references ?? [])
+                        .map((ref) => ref.file_path || ref.id)
+                        .filter(Boolean)
+                        .slice(0, 6)
+                        .join(" · ")}
+                    </p>
+                  ) : null}
+                  {liveBlockers.length > 0 ? (
+                    <ul>
+                      {liveBlockers.map((item) => (
+                        <li key={`b-${item}`} className="muted">
+                          Блокер: {item}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {liveWarnings.length > 0 ? (
+                    <ul>
+                      {liveWarnings.map((item) => (
+                        <li key={`w-${item}`} className="muted">
+                          Warning: {item}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                  {reviewResult?.ai_review ? (
+                    <p className="muted">
+                      AI review: overall {reviewResult.ai_review.overall}/5
+                      {reviewResult.ai_review.pass ? " · pass" : " · fail"}
+                    </p>
+                  ) : null}
+                  <div className="row">
+                    <button
+                      className="btn secondary"
+                      type="button"
+                      disabled={!current || review.isPending}
+                      onClick={() => review.mutate()}
+                    >
+                      Проверить качество
+                    </button>
+                    <button
+                      className="btn"
+                      type="button"
+                      disabled={
+                        !current ||
+                        approve.isPending ||
+                        liveBlockers.length > 0 ||
+                        isApproved
+                      }
+                      onClick={() => approve.mutate()}
+                    >
+                      Подтвердить
+                    </button>
+                  </div>
+                </div>
+              ) : current ? (
+                <div className="row">
+                  <button
+                    className="btn secondary"
+                    type="button"
+                    disabled={review.isPending}
+                    onClick={() => review.mutate()}
+                  >
+                    Проверить качество
+                  </button>
+                  <button
+                    className="btn"
+                    type="button"
+                    disabled={approve.isPending || liveBlockers.length > 0 || isApproved}
+                    onClick={() => approve.mutate()}
+                  >
+                    Подтвердить
+                  </button>
+                </div>
+              ) : null}
               {fieldsFor(piece.type).map((key) => {
                 const meta = FIELD_META[piece.type]?.[key];
                 return (

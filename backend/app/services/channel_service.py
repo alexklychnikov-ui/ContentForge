@@ -203,6 +203,11 @@ def _secret_and_meta(
             refresh = payload.refresh_token.strip()
         return secret, refresh, meta, external_id or ig_user_id
 
+    if channel_type == ChannelType.tenchat:
+        # Manual copy only — no external API credentials
+        meta["manual_copy"] = True
+        return "manual-copy", refresh, meta, external_id or "tenchat"
+
     _never: ChannelType = channel_type
     raise AppError(400, "unsupported_channel", "Неизвестный тип канала", {"type": _never.value})
 

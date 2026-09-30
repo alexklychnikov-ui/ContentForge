@@ -54,6 +54,102 @@ export type BrandPublic = {
   created_at: string;
 };
 
+export type KnowledgeMode = "off" | "optional" | "required";
+
+export type BrandContentProfile = {
+  brand_id: string;
+  positioning: string;
+  audience_segments: string[];
+  audience_pains: string[];
+  content_pillars: string[];
+  proof_facts: string[];
+  preferred_cta_styles: string[];
+  banned_openers: string[];
+  structure_rules: string;
+  platform_policies: Record<string, string>;
+  knowledge_mode: KnowledgeMode;
+  knowledge_filters: string[];
+  require_human_approval: boolean;
+  created_at: string;
+  updated_at: string;
+};
+
+export type BrandContentProfileUpdate = {
+  positioning?: string;
+  audience_segments?: string[];
+  audience_pains?: string[];
+  content_pillars?: string[];
+  proof_facts?: string[];
+  preferred_cta_styles?: string[];
+  banned_openers?: string[];
+  structure_rules?: string;
+  platform_policies?: Record<string, string>;
+  knowledge_mode?: KnowledgeMode;
+  knowledge_filters?: string[];
+  require_human_approval?: boolean;
+};
+
+export type GroundingReference = {
+  id: string;
+  file_path: string;
+};
+
+export type GroundingResult = {
+  status: string;
+  context: string;
+  references: GroundingReference[];
+  error_message: string | null;
+  warning: string | null;
+  error_code: string | null;
+};
+
+export type QualityLint = {
+  blockers: string[];
+  warnings: string[];
+  scores?: Record<string, number> | null;
+};
+
+export type QualityAiReview = {
+  clarity: number;
+  audience_pain: number;
+  scene: number;
+  practical_value: number;
+  tone: number;
+  uniqueness: number;
+  cta: number;
+  formatting: number;
+  overall: number;
+  blocking_issues: string[];
+  recommendations: string[];
+  pass: boolean;
+};
+
+export type QualityReview = {
+  blockers: string[];
+  warnings: string[];
+  scores?: Record<string, number> | null;
+  lint: QualityLint;
+  ai_review?: QualityAiReview | null;
+  approved: boolean;
+};
+
+export type VariantMeta = {
+  grounding_status?: string;
+  references?: GroundingReference[];
+  warning?: string;
+  knowledge_mode?: KnowledgeMode | string;
+  prompt_version?: string;
+  quality?: {
+    blockers?: string[];
+    warnings?: string[];
+    scores?: Record<string, number> | null;
+    lint?: QualityLint;
+    ai_review?: QualityAiReview | null;
+  };
+  approved_at?: string;
+  approved_by?: string;
+};
+
 export type JobAccepted = { job_id: string };
 
 export type JobPublic = {

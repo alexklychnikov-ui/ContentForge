@@ -160,7 +160,7 @@ export function ChannelsPage() {
   return (
     <main className="page grid">
       <h1>Каналы</h1>
-      <p className="muted">Instagram: OAuth через Facebook (Professional + Page). Reels и Mailchimp не в MVP. Токены в GET не показываем.</p>
+      <p className="muted">Instagram: OAuth через Facebook (Professional + Page). TenChat: только копирование вручную. Reels и Mailchimp не в MVP. Токены в GET не показываем.</p>
       {leaked ? <div className="error">В ответе каналов есть секрет — это баг API.</div> : null}
       <ErrorBanner error={channelsQuery.error || save.error || health.error || revoke.error || recipientsQuery.error || addRecipient.error || removeRecipient.error || instagramOAuth.error} />
       {oauthBanner ? <div className="job succeeded">{oauthBanner}</div> : null}
@@ -206,7 +206,7 @@ export function ChannelsPage() {
         })}
       </div>
       {channels.length === 0 ? (
-        <EmptyState title="Каналы не подключены" hint="Подключите Telegram, VK, Gmail или Instagram." cta="Онбординг" to="/onboarding" />
+        <EmptyState title="Каналы не подключены" hint="Подключите Telegram, VK, Gmail, Instagram или TenChat." cta="Онбординг" to="/onboarding" />
       ) : null}
       <form
         key={formKey}
@@ -315,6 +315,9 @@ export function ChannelsPage() {
             Professional (Creator/Business) + Facebook Page. Redirect:{" "}
             <code>/api/v1/channels/oauth/callback</code>
           </p>
+        ) : null}
+        {type === "tenchat" ? (
+          <p className="muted">Автопост недоступен — копируйте текст вручную в TenChat. API-ключей не требуется.</p>
         ) : null}
         <label>
           <input type="checkbox" checked={form.pdn === "1"} onChange={(e) => setForm((p) => ({ ...p, pdn: e.target.checked ? "1" : "0" }))} />{" "}

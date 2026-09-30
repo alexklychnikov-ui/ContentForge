@@ -24,6 +24,8 @@ from app.models import (
 )
 from app.security import as_utc, utc_now
 from app.services.ai_schemas import PRIMARY_TEXT_FIELD
+from app.services.content_profile_service import ensure_content_profile
+from app.services.content_quality import get_quality_blockers, is_variant_approved
 from app.services.job_service import create_job, dispatch_job
 from app.services.publish_service import schedule_publication_internal
 from app.services.stopwords import find_stopwords, payload_text
@@ -194,6 +196,22 @@ def _prepare_item(
             "prepare_plan_slots_stopwords item_id=%s hits=%s",
             item.id,
             hits,
+        )
+        return "skipped"
+    blockers = get_quality_blockers(variant.payload)
+    if blockers:
+        logger.warning(
+            "prepare_plan_slots_quality item_id=%s blockers=%s",
+            item.id,
+            blockers,
+        )
+        return "skipped"
+    profile = ensure_content_profile(db, brand.id)
+    if profile.require_human_approval and not is_variant_approved(variant, piece):
+        logger.info(
+            "prepare_plan_slots_approval_required item_id=%s variant_id=%s",
+            item.id,
+            variant.id,
         )
         return "skipped"
     try:
