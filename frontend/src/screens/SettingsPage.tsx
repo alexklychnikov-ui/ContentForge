@@ -94,14 +94,21 @@ export function SettingsPage() {
   });
 
   useEffect(() => {
-    if (profileQuery.data) {
-      setProfileForm(profileToForm(profileQuery.data));
-    }
-  }, [profileQuery.data]);
-
-  useEffect(() => {
+    if (!brand) return;
+    setTimezone(brand.timezone ?? "Europe/Moscow");
+    setLocale(brand.default_locale ?? "ru");
+    setAutoPipeline(brand.auto_pipeline_enabled ?? false);
+    setLeadHours(String(brand.auto_pipeline_lead_hours ?? 24));
+    setSlotHour(String(brand.default_slot_hour ?? 12));
+    setProfileForm(EMPTY_PROFILE);
     setPreview(null);
   }, [brand?.id]);
+
+  useEffect(() => {
+    if (profileQuery.data && profileQuery.data.brand_id === brand?.id) {
+      setProfileForm(profileToForm(profileQuery.data));
+    }
+  }, [profileQuery.data, brand?.id]);
 
   const save = useMutation({
     mutationFn: () =>
@@ -112,7 +119,14 @@ export function SettingsPage() {
         auto_pipeline_lead_hours: Number(leadHours),
         default_slot_hour: Number(slotHour),
       }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["brands"] }),
+    onSuccess: (updated) => {
+      queryClient.invalidateQueries({ queryKey: ["brands"] });
+      setTimezone(updated.timezone ?? "Europe/Moscow");
+      setLocale(updated.default_locale ?? "ru");
+      setAutoPipeline(updated.auto_pipeline_enabled ?? false);
+      setLeadHours(String(updated.auto_pipeline_lead_hours ?? 24));
+      setSlotHour(String(updated.default_slot_hour ?? 12));
+    },
   });
 
   const saveProfile = useMutation({
@@ -199,13 +213,25 @@ export function SettingsPage() {
       </div>
       <div className="panel grid">
         <h3>Бренды</h3>
-        <p className="muted">Активный бренд переключается в шапке. Здесь можно завести ещё один.</p>
+        <p className="muted">
+          Активный: <strong>{brand.name}</strong>. Переключается в шапке.
+          {brands.length > 1 ? ` Всего брендов: ${brands.length}.` : ""}
+        </p>
+        <ul className="muted">
+          {brands.map((item) => (
+            <li key={item.id}>
+              {item.name}
+              {item.id === brand.id ? " ← сейчас" : ""}
+              {` · ${item.timezone}`}
+            </li>
+          ))}
+        </ul>
         <button className="btn" type="button" onClick={() => navigate("/onboarding?new=1")}>
           Новый бренд
         </button>
       </div>
       <div className="panel grid">
-        <h3>Бренд</h3>
+        <h3>Настройки бренда: {brand.name}</h3>
         <label className="field">
           Таймзона
           <select value={timezone} onChange={(e) => setTimezone(e.target.value)}>
@@ -263,7 +289,7 @@ export function SettingsPage() {
         </button>
       </div>
       <div className="panel grid">
-        <h3>Контент-профиль</h3>
+        <h3>Контент-профиль: {brand.name}</h3>
         {profileQuery.isLoading ? <p className="muted">Загрузка профиля…</p> : null}
         <label className="field">
           Позиционирование

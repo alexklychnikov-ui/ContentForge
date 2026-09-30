@@ -1192,3 +1192,7 @@ verified_by: coder + qa + simplify (after fixes) + deploy
 artifacts: commit a47b892; alembic 0008 on VPS; LIGHTRAG_* set on ContentForge .env
 checks: pytest 107 passed 1 skipped; update-vps OK health=200
 next_step: user applies alexander_personal preset in Settings; connect TenChat channel; generate with approve
+[2026-09-30 12:10] Deploy fix: wrong compose file caused PG auth fail; restored via docker-compose.prod.yml; health=200; LIGHTRAG_* present
+[2026-09-30 12:29] Seeded brand Nodex on prod under admin@testfullcrm.alexklyvibe.ru with Brand Kit + alexander_personal content profile (knowledge_mode=required, approve required). Soft-deleted mistaken smoke Nodex.
+[2026-09-30 12:40] Renamed workspace Kitchen Lab → Nodex for admin@testfullcrm; brands in WS: Nodex + Kitchen Lab
+[2026-09-30 18:53] Fix SettingsPage: sync timezone/locale/autopipeline/content-profile form when brand selector changes; show brand name + timezone list
