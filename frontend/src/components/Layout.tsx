@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { cf } from "../api/cf";
 import { ApiError } from "../api/client";
 import { clearSession, getBrandId, getSession, setBrandId, subscribe } from "../auth/session";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useSyncExternalStore } from "react";
 
 const LINKS = [
   ["/", "Дашборд"],
@@ -20,10 +20,8 @@ const LINKS = [
 export function Layout() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [, setTick] = useState(0);
-  useEffect(() => subscribe(() => setTick((n) => n + 1)), []);
-  const session = getSession();
-  const selected = getBrandId();
+  const session = useSyncExternalStore(subscribe, getSession, () => null);
+  const selected = useSyncExternalStore(subscribe, getBrandId, () => null);
 
   const brandsQuery = useQuery({
     queryKey: ["brands"],
@@ -59,7 +57,7 @@ export function Layout() {
   return (
     <div className="app-shell">
       <header className="topbar">
-        <div className="brand-mark">NODEX</div>
+        <div className="brand-mark">{current?.name?.toUpperCase() || "NODEX"}</div>
         <nav className="nav">
           {LINKS.map(([to, label]) => (
             <NavLink key={to} to={to} end={to === "/"}>
@@ -100,7 +98,10 @@ export function Layout() {
         </div>
       </header>
       {brandError ? <div className="error">{brandError}</div> : null}
-      <Outlet context={{ brand: current, brands, brandsLoading: brandsQuery.isLoading }} />
+      <Outlet
+        key={current?.id ?? "no-brand"}
+        context={{ brand: current, brands, brandsLoading: brandsQuery.isLoading }}
+      />
     </div>
   );
 }

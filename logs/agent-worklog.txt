@@ -1196,3 +1196,4 @@ next_step: user applies alexander_personal preset in Settings; connect TenChat c
 [2026-09-30 12:29] Seeded brand Nodex on prod under admin@testfullcrm.alexklyvibe.ru with Brand Kit + alexander_personal content profile (knowledge_mode=required, approve required). Soft-deleted mistaken smoke Nodex.
 [2026-09-30 12:40] Renamed workspace Kitchen Lab → Nodex for admin@testfullcrm; brands in WS: Nodex + Kitchen Lab
 [2026-09-30 18:53] Fix SettingsPage: sync timezone/locale/autopipeline/content-profile form when brand selector changes; show brand name + timezone list
+[2026-10-02 15:05] Fix brand switch globally: useSyncExternalStore + Outlet key=brandId; Settings clarifies workspace vs active brand; logo shows current brand

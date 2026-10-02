@@ -208,7 +208,13 @@ export function SettingsPage() {
       <div className="panel grid">
         <h3>Профиль</h3>
         <p>Email: {session?.user.email}</p>
-        <p>Воркспейс: {session?.workspace.name}</p>
+        <p>
+          Воркспейс: {session?.workspace.name}{" "}
+          <span className="muted">(аккаунт, не бренд)</span>
+        </p>
+        <p>
+          Активный бренд: <strong>{brand.name}</strong>
+        </p>
         <p>Роль: {session?.workspace.role}</p>
       </div>
       <div className="panel grid">
