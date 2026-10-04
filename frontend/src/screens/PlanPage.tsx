@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useOutletContext } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useOutletContext } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cf } from "../api/cf";
 import { ApiError, pollJob } from "../api/client";
@@ -9,6 +9,11 @@ import { EmptyState, ErrorBanner, JobBanner } from "../components/Status";
 import { CHANNEL_LABELS, CONTENT_LABELS, MVP_CHANNELS, PLAN_STATUS, label } from "../labels";
 
 type Shell = { brand: BrandPublic | null };
+
+function isActiveChannel(status: string, revokedAt: string | null | undefined): boolean {
+  if (revokedAt) return false;
+  return status !== "revoked";
+}
 
 async function waitForPlanJob(jobId: string, setJob: (job: JobPublic) => void): Promise<JobPublic> {
   pushRecentJob({ id: jobId, type: "generate_plan", at: new Date().toISOString() });
@@ -29,11 +34,16 @@ export function PlanPage() {
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
-  const [channels, setChannels] = useState<string[]>(["telegram"]);
+  const [channels, setChannels] = useState<string[]>([]);
   const [targets, setTargets] = useState({ social_post: 8, article: 0, email: 0 });
   const [job, setJob] = useState<JobPublic | null>(null);
   const [plan, setPlan] = useState<PlanPublic | null>(null);
 
+  const channelsQuery = useQuery({
+    queryKey: ["channels", brand?.id],
+    queryFn: () => cf.channels(brand!.id),
+    enabled: Boolean(brand),
+  });
   const holidaysQuery = useQuery({
     queryKey: ["holidays", year, month, brand?.id],
     queryFn: () => cf.holidays(year, month, brand?.id),
@@ -49,6 +59,23 @@ export function PlanPage() {
     queryFn: () => cf.plans(brand!.id, year, month),
     enabled: Boolean(brand),
   });
+
+  const connectedChannelTypes = useMemo(() => {
+    const active = new Set(
+      (channelsQuery.data ?? [])
+        .filter((row) => isActiveChannel(row.status, row.revoked_at))
+        .map((row) => row.type),
+    );
+    return MVP_CHANNELS.filter((type) => active.has(type));
+  }, [channelsQuery.data]);
+
+  useEffect(() => {
+    setChannels((prev) => {
+      const kept = prev.filter((type) => connectedChannelTypes.includes(type as (typeof MVP_CHANNELS)[number]));
+      if (kept.length > 0) return kept;
+      return connectedChannelTypes.length > 0 ? [connectedChannelTypes[0]] : [];
+    });
+  }, [brand?.id, connectedChannelTypes]);
 
   const generate = useMutation({
     mutationFn: async (confirm: boolean) => {
@@ -145,7 +172,9 @@ export function PlanPage() {
   return (
     <main className="page grid">
       <h1>Мастер плана</h1>
-      <ErrorBanner error={generate.error || approve.error || holidaysQuery.error} />
+      <ErrorBanner
+        error={generate.error || approve.error || holidaysQuery.error || channelsQuery.error}
+      />
       <JobBanner status={busy ? job?.status || "running" : job?.status} error={job?.error} label="Генерация плана" />
       {busy ? (
         <p className="muted" role="status">
@@ -171,30 +200,39 @@ export function PlanPage() {
           </label>
         </div>
         <div className="row">
-          {MVP_CHANNELS.map((type) => (
-            <label key={type}>
-              <input
-                type="checkbox"
-                checked={channels.includes(type)}
-                disabled={busy}
-                onChange={(e) =>
-                  setChannels((prev) => {
-                    const next = e.target.checked
-                      ? [...prev, type]
-                      : prev.filter((item) => item !== type);
-                    if (type === "gmail") {
-                      setTargets((t) => ({
-                        ...t,
-                        email: e.target.checked ? Math.max(t.email, 2) : 0,
-                      }));
-                    }
-                    return next;
-                  })
-                }
-              />{" "}
-              {label(CHANNEL_LABELS, type)}
-            </label>
-          ))}
+          {channelsQuery.isLoading ? (
+            <p className="muted">Загрузка каналов…</p>
+          ) : connectedChannelTypes.length === 0 ? (
+            <p className="muted">
+              Нет подключённых каналов.{" "}
+              <Link to="/channels">Подключить в Каналах</Link>
+            </p>
+          ) : (
+            connectedChannelTypes.map((type) => (
+              <label key={type}>
+                <input
+                  type="checkbox"
+                  checked={channels.includes(type)}
+                  disabled={busy}
+                  onChange={(e) =>
+                    setChannels((prev) => {
+                      const next = e.target.checked
+                        ? [...prev, type]
+                        : prev.filter((item) => item !== type);
+                      if (type === "gmail") {
+                        setTargets((t) => ({
+                          ...t,
+                          email: e.target.checked ? Math.max(t.email, 2) : 0,
+                        }));
+                      }
+                      return next;
+                    })
+                  }
+                />{" "}
+                {label(CHANNEL_LABELS, type)}
+              </label>
+            ))
+          )}
         </div>
         <div className="row">
           {Object.entries(targets).map(([key, value]) => (
@@ -204,15 +242,15 @@ export function PlanPage() {
                 type="number"
                 min={0}
                 value={value}
-                disabled={busy}
+                disabled={busy || (key === "email" && !connectedChannelTypes.includes("gmail"))}
                 onChange={(e) => setTargets((prev) => ({ ...prev, [key]: Number(e.target.value) }))}
               />
             </label>
           ))}
         </div>
         <p className="muted">
-          Для старта: только Telegram + Пост (8). Статья/письмо поднимают сложность генерации;
-          письмо имеет смысл при включённом Gmail. Если черновик уже есть — «Перегенерировать».
+          Показаны только каналы, подключённые к текущему бренду. Для старта: один канал + Пост (8).
+          Письмо — только при Gmail. Если черновик уже есть — «Перегенерировать».
         </p>
         <div>
           <h3>Праздники</h3>
