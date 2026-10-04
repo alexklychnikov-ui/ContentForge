@@ -36,6 +36,13 @@ def create_job(
     return job
 
 
+def _ensure_celery_tasks() -> None:
+    """API process does not import celery_app by default; populate TASKS lazily."""
+    if TASKS:
+        return
+    import app.celery_app  # noqa: F401
+
+
 def dispatch_job(db: Session, job: Job) -> None:
     if job.status is not JobStatus.queued:
         return
@@ -43,6 +50,7 @@ def dispatch_job(db: Session, job: Job) -> None:
         run_job_in_session(db, job.id)
         return
     db.commit()
+    _ensure_celery_tasks()
     task = TASKS.get(job.type)
     if task is None:
         raise RuntimeError(f"Celery task not registered for {job.type}")

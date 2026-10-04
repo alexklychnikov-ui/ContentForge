@@ -1198,3 +1198,4 @@ next_step: user applies alexander_personal preset in Settings; connect TenChat c
 [2026-09-30 18:53] Fix SettingsPage: sync timezone/locale/autopipeline/content-profile form when brand selector changes; show brand name + timezone list
 [2026-10-02 15:05] Fix brand switch globally: useSyncExternalStore + Outlet key=brandId; Settings clarifies workspace vs active brand; logo shows current brand
 [2026-10-04 11:44] PlanPage: show only connected brand channels; verified Nodex IG connected (ContentForge Test / 17841434954777097)
+[2026-10-04 11:52] Fix plan generate 500: API lazy-imports celery_app so TASKS registered for dispatch_job

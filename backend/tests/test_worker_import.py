@@ -9,11 +9,21 @@ from app.celery_app import (
     sync_analytics,
 )
 from app.main import app
+from app.models import JobType
+from app.services.job_service import _ensure_celery_tasks
+from app.task_registry import TASKS
 
 
 def test_worker_imports_api_app() -> None:
     assert app.title == "ContentForge"
     assert celery_app.main == "contentforge"
+
+
+def test_dispatch_registers_celery_tasks_lazily() -> None:
+    _ensure_celery_tasks()
+    assert JobType.generate_plan in TASKS
+    assert JobType.generate_content in TASKS
+    assert JobType.rewrite in TASKS
 
 
 def test_ping_task_registered() -> None:
