@@ -142,7 +142,7 @@ def test_ac07_approve_then_conflict_or_revision(client: TestClient) -> None:
     assert approved.json()["status"] == "approved"
     conflict = _generate(client, headers, brand_id)
     assert conflict.status_code == 409
-    assert _error(conflict)["code"] == "plan_active_exists"
+    assert _error(conflict)["code"] == "plan_approved_exists"
     revision = _generate(client, headers, brand_id, {**PLAN_JAN, "create_revision": True})
     assert revision.status_code == 202
     old = client.get(f"/api/v1/plans/{plan_id}", headers=headers).json()
@@ -160,7 +160,7 @@ def test_draft_regenerate_requires_confirm(client: TestClient) -> None:
     assert first.status_code == 202
     blocked = _generate(client, headers, brand_id)
     assert blocked.status_code == 409
-    assert _error(blocked)["code"] == "plan_active_exists"
+    assert _error(blocked)["code"] == "plan_draft_exists"
     confirmed = _generate(client, headers, brand_id, {**PLAN_JAN, "confirm": True})
     assert confirmed.status_code == 202
     job = client.get(f"/api/v1/jobs/{confirmed.json()['job_id']}", headers=headers).json()

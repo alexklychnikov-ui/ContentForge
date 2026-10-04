@@ -66,6 +66,9 @@ def create_app() -> FastAPI:
     application.include_router(channels_router, prefix="/api/v1")
     application.include_router(recipients_router, prefix="/api/v1")
     application.include_router(media_router, prefix="/api/v1")
+    if os.environ.get("TESTING") != "1":
+        # Register Celery task callables in TASKS for API-side dispatch.
+        import app.celery_app  # noqa: F401
     return application
 
 
