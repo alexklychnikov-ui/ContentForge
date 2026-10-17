@@ -1200,3 +1200,27 @@ next_step: user applies alexander_personal preset in Settings; connect TenChat c
 [2026-10-04 11:44] PlanPage: show only connected brand channels; verified Nodex IG connected (ContentForge Test / 17841434954777097)
 [2026-10-04 11:52] Fix plan generate 500: API lazy-imports celery_app so TASKS registered for dispatch_job
 [2026-10-04 12:16] Plan gen hung: orphaned queued job after 500/dispatch; requeued c4f6b8f2 -> succeeded ~7.5s; harden dispatch+stuck_queued_timeout
+[2026-10-17 18:08] Platform-specific content optimization research
+stage: research
+status: done
+verified_by: explore-tenChat + explore-ContentForge + visual-designer
+artifacts: tenChat methodology facts; current prompt/quality/media pipeline facts; 9 cover/logo observations
+risks: tenChat has no dedicated long-form article methodology; platform MVP and image provider need product decision
+next_step: confirm scope, then design C4/DFD/Sequence and contracts
+[2026-10-17 19:02] Platform-specific content optimization design
+stage: design
+status: done
+verified_by: architecture reviewer (pass after 3 consistency reviews)
+artifacts: C4; DFD; Sequence; PolicyV1; ContentBriefV2; revision-bound approvals; centralized publication gate; OpenAI Images cover pipeline
+decisions: MVP VK + Instagram + TenChat; dark cinematic high-tech; manual cover approval; VK cover autopublish; Instagram/TenChat manual export
+risks: long-form TenChat rules are inferred from social methodology; stale async jobs and publication TOCTOU require atomic snapshot checks
+next_step: produce phased implementation plan with acceptance and rollback criteria
+[2026-10-17 19:31] Platform-specific content optimization planning
+stage: planning
+status: done
+verified_by: planning QA reviewer (pass; no middle+ findings)
+prompt: analyze tenChat content practices and High Tech assets; plan ContentForge optimization for VK, Instagram, TenChat and OpenAI Images covers; no implementation
+artifact: Docs/NODEX_PLATFORM_CONTENT_OPTIMIZATION_PLAN.md
+scope: 10 gated MVP stages from golden corpus through rollout; Post-MVP backlog excluded from implementation
+checks: C4/DFD/Sequence consistent; API/data/migration/security/NFR specified; each implementation stage has inputs/actions/checks/result/rollback; publication and cover snapshots are revision/checksum-bound
+next_step: await explicit authorization to enter coding stage 0
