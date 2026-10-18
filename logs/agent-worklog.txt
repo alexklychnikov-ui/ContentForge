@@ -1309,3 +1309,7 @@ checks: npm build; vitest 9 related passed
 prompt: empty + screenshot adapter_error on cover generate
 done: OPENAI_IMAGE_MODEL=gpt-image-1 (dall-e-2 missing on account); VPS .env updated; better error text in overlay
 checks: pytest cover 4; npm build; probe gpt-image-1 OK on VPS
+[2026-10-18 12:04] Fix authed cover preview in Editor
+prompt: может обложка и сгенерирована, но как мне её посмотреть
+done: AuthedMedia blob fetch with Bearer; Editor cover img uses it
+checks: npm build OK

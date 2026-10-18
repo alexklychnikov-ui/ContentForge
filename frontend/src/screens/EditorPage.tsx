@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cf } from "../api/cf";
 import type { BrandPublic, PiecePublic, QualityReview, VariantMeta, VariantPublic } from "../api/types";
 import { useActionFeedback } from "../components/ActionFeedback";
+import { AuthedMedia } from "../components/AuthedMedia";
 import { EmptyState, ErrorBanner } from "../components/Status";
 import {
   CHANNEL_LABELS,
@@ -583,10 +584,10 @@ export function EditorPage() {
                   <p className="muted">Обложка не назначена</p>
                 )}
                 {coverMediaId ? (
-                  <img
+                  <AuthedMedia
+                    mediaId={coverMediaId}
                     alt="cover preview"
-                    src={`/api/v1/media/${coverMediaId}/file`}
-                    style={{ maxWidth: 240, borderRadius: 8 }}
+                    style={{ maxWidth: 320, width: "100%", borderRadius: 8, display: "block" }}
                   />
                 ) : null}
                 <input
