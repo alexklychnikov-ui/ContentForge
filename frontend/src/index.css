@@ -214,6 +214,50 @@ textarea {
   border-color: #7a2434;
 }
 
+.job-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  display: grid;
+  place-items: center;
+  background: rgba(4, 10, 20, 0.72);
+  padding: 1rem;
+}
+
+.job-overlay-card {
+  width: min(22rem, 100%);
+  display: grid;
+  gap: 0.75rem;
+  text-align: center;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.45);
+}
+
+.job-overlay-card h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.job-overlay-card p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.job-spinner {
+  width: 1.75rem;
+  height: 1.75rem;
+  margin: 0.25rem auto 0;
+  border-radius: 999px;
+  border: 2px solid rgba(120, 180, 255, 0.25);
+  border-top-color: #7eb6ff;
+  animation: job-spin 0.8s linear infinite;
+}
+
+@keyframes job-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 .month-grid {
   display: grid;
   grid-template-columns: repeat(7, 1fr);

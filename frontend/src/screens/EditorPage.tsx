@@ -5,7 +5,7 @@ import { cf } from "../api/cf";
 import { pollJob } from "../api/client";
 import type { BrandPublic, PiecePublic, QualityReview, VariantMeta, VariantPublic } from "../api/types";
 import { pushRecentJob } from "../auth/session";
-import { EmptyState, ErrorBanner, JobBanner } from "../components/Status";
+import { EmptyState, ErrorBanner, JobOverlay } from "../components/Status";
 import {
   CHANNEL_LABELS,
   CONTENT_CREATE_TYPES,
@@ -117,6 +117,8 @@ export function EditorPage() {
   );
   const [jobStatus, setJobStatus] = useState<string | null>(null);
   const [jobError, setJobError] = useState<string | null>(null);
+  const [jobLabel, setJobLabel] = useState("AI-задача");
+  const [jobOpen, setJobOpen] = useState(false);
   const [reviewResult, setReviewResult] = useState<QualityReview | null>(null);
   const [exportPreview, setExportPreview] = useState<string | null>(null);
   const textRef = useRef<HTMLTextAreaElement | null>(null);
@@ -160,6 +162,16 @@ export function EditorPage() {
     setReviewResult(null);
     setExportPreview(null);
   }, [current?.id]);
+
+  useEffect(() => {
+    if (jobStatus !== "succeeded" || !jobOpen) return;
+    const timer = window.setTimeout(() => {
+      setJobOpen(false);
+      setJobStatus(null);
+      setJobError(null);
+    }, 1400);
+    return () => window.clearTimeout(timer);
+  }, [jobStatus, jobOpen]);
 
   useEffect(() => {
     if (piece) {
@@ -207,19 +219,41 @@ export function EditorPage() {
     archivePiece.mutate(id);
   }
 
-  async function runJob(start: () => Promise<{ job_id: string }>, kind: string) {
+  async function runJob(
+    start: () => Promise<{ job_id: string }>,
+    kind: string,
+    labelText: string,
+    maxTicks = 90,
+  ) {
+    setJobLabel(labelText);
     setJobError(null);
+    setJobStatus("queued");
+    setJobOpen(true);
     const accepted = await start();
     pushRecentJob({ id: accepted.job_id, type: kind, at: new Date().toISOString() });
-    const done = await pollJob(accepted.job_id, (id) => cf.job(id), { intervalMs: 700, maxTicks: 60 });
+    const done = await pollJob(accepted.job_id, (id) => cf.job(id), {
+      intervalMs: 700,
+      maxTicks,
+      onUpdate: (job) => {
+        setJobStatus(job.status);
+        setJobError(job.error);
+      },
+    });
     setJobStatus(done.status);
     setJobError(done.error);
     await queryClient.invalidateQueries({ queryKey: ["piece", pieceId] });
+    if (done.status === "failed") {
+      throw new Error(done.error || "AI-задача: ошибка");
+    }
   }
 
   const generate = useMutation({
     mutationFn: () =>
-      runJob(() => cf.generateContent(piece!.id, { variant_label: labelName, channel_type: channel }), "generate_content"),
+      runJob(
+        () => cf.generateContent(piece!.id, { variant_label: labelName, channel_type: channel }),
+        "generate_content",
+        "Генерация текста",
+      ),
   });
 
   useEffect(() => {
@@ -272,6 +306,7 @@ export function EditorPage() {
             extra_instructions: "перепиши выделенное короче",
           }),
         "rewrite",
+        "Переписывание фрагмента",
       );
     },
   });
@@ -303,7 +338,12 @@ export function EditorPage() {
   });
   const generateCover = useMutation({
     mutationFn: () =>
-      runJob(() => cf.generateCover(piece!.id, current!.id), "generate_cover"),
+      runJob(
+        () => cf.generateCover(piece!.id, current!.id),
+        "generate_cover",
+        "Генерация обложки",
+        120,
+      ),
   });
   const approveCover = useMutation({
     mutationFn: () => cf.approveCover(piece!.id, current!.id),
@@ -358,7 +398,19 @@ export function EditorPage() {
           manualExport.error
         }
       />
-      <JobBanner status={jobStatus} error={jobError} label="AI-задача" />
+      <JobOverlay
+        open={jobOpen}
+        status={jobStatus}
+        error={jobError}
+        label={jobLabel}
+        onClose={() => {
+          setJobOpen(false);
+          if (jobStatus === "succeeded" || jobStatus === "failed") {
+            setJobStatus(null);
+            setJobError(null);
+          }
+        }}
+      />
       <div className="row">
         <label className="field">
           Тип
@@ -603,7 +655,7 @@ export function EditorPage() {
                     disabled={!current || generateCover.isPending}
                     onClick={() => generateCover.mutate()}
                   >
-                    Сгенерировать
+                    {generateCover.isPending ? "Генерация…" : "Сгенерировать"}
                   </button>
                   <button
                     className="btn"

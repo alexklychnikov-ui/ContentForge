@@ -180,15 +180,21 @@ export function isTerminalJob(status: string): boolean {
 export async function pollJob<T extends { status: string }>(
   jobId: string,
   getJob: (id: string) => Promise<T>,
-  options: { intervalMs?: number; maxTicks?: number } = {},
+  options: {
+    intervalMs?: number;
+    maxTicks?: number;
+    onUpdate?: (job: T) => void;
+  } = {},
 ): Promise<T> {
   const intervalMs = options.intervalMs ?? 400;
   const maxTicks = options.maxTicks ?? 40;
   let ticks = 0;
   let job = await getJob(jobId);
+  options.onUpdate?.(job);
   while (!isTerminalJob(job.status) && ticks < maxTicks) {
     await new Promise((resolve) => setTimeout(resolve, intervalMs));
     job = await getJob(jobId);
+    options.onUpdate?.(job);
     ticks += 1;
   }
   return job;

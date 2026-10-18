@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import logging
 from typing import Any
+from urllib.request import urlopen
 from uuid import UUID, uuid4
 
 from openai import OpenAI
@@ -32,29 +34,51 @@ def _scene_prompt(variant: ContentVariant) -> str:
     )
 
 
+def _decode_image_result(item: Any) -> bytes:
+    b64 = getattr(item, "b64_json", None) or (item.get("b64_json") if isinstance(item, dict) else None)
+    if b64:
+        return base64.b64decode(b64)
+    url = getattr(item, "url", None) or (item.get("url") if isinstance(item, dict) else None)
+    if url:
+        with urlopen(str(url), timeout=60) as response:  # noqa: S310 — OpenAI signed URL
+            return response.read()
+    raise AIJobError("adapter_error", "OpenAI Images не вернул данные")
+
+
 def _generate_scene_bytes(prompt: str) -> bytes:
     settings = get_settings()
     if not settings.openai_api_key:
         return placeholder_scene_bytes()
     client = OpenAI(api_key=settings.openai_api_key)
     model = settings.openai_image_model
+    # gpt-image-* reject response_format; some API revisions also reject it for dall-e.
+    kwargs: dict[str, Any] = {
+        "model": model,
+        "prompt": prompt,
+        "size": "1024x1024",
+        "n": 1,
+    }
+    if not str(model).startswith("gpt-image"):
+        kwargs["response_format"] = "b64_json"
     try:
-        result = client.images.generate(
-            model=model,
-            prompt=prompt,
-            size="1024x1024",
-            n=1,
-            response_format="b64_json",
-        )
+        result = client.images.generate(**kwargs)
     except Exception as exc:
-        logger.warning("openai_image_error type=%s", type(exc).__name__)
-        raise AIJobError("adapter_error", "OpenAI Images недоступен", retryable=True) from exc
+        message = str(exc).lower()
+        if "response_format" in message and "response_format" in kwargs:
+            logger.warning("openai_image_retry_without_response_format model=%s", model)
+            kwargs.pop("response_format", None)
+            try:
+                result = client.images.generate(**kwargs)
+            except Exception as retry_exc:
+                logger.warning("openai_image_error type=%s", type(retry_exc).__name__)
+                raise AIJobError("adapter_error", "OpenAI Images недоступен") from retry_exc
+        else:
+            logger.warning("openai_image_error type=%s", type(exc).__name__)
+            raise AIJobError("adapter_error", "OpenAI Images недоступен") from exc
     item = result.data[0] if result.data else None
-    if item is None or not item.b64_json:
-        raise AIJobError("adapter_error", "OpenAI Images не вернул данные", retryable=True)
-    import base64
-
-    return base64.b64decode(item.b64_json)
+    if item is None:
+        raise AIJobError("adapter_error", "OpenAI Images не вернул данные")
+    return _decode_image_result(item)
 
 
 def count_cover_jobs_for_revision(db: Session, variant_id: UUID, revision: int) -> int:

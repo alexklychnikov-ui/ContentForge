@@ -1297,3 +1297,7 @@ prompt: «Сгенерировать» merge by selected channels; «Перег�
 done: enqueue merge_into_plan_id + per_channel; execute_generate_plan channel-scoped replace; PlanPage hint; tests merge/approve/revision
 checks: pytest tests/test_ac_plans.py tests/test_plan_slot_window.py -q → 18 passed
 handoff: teamlead — merge OK; commit/push/deploy separately when ready
+[2026-10-18 11:42] Cover generate fix + JobOverlay UX
+prompt: сгенерировать обложку ошибка + неудобно что статус вверху
+done: Images API retry without response_format; AIJobError retryable bug; JobOverlay modal in Editor; pollJob onUpdate
+checks: pytest cover 4; npm build OK
