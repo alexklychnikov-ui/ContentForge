@@ -4,6 +4,7 @@ import { cf } from "../api/cf";
 import { ApiError } from "../api/client";
 import { clearSession, getBrandId, getSession, setBrandId, subscribe } from "../auth/session";
 import { useEffect, useMemo, useSyncExternalStore } from "react";
+import { ActionFeedbackProvider } from "./ActionFeedback";
 
 const LINKS = [
   ["/", "Дашборд"],
@@ -55,53 +56,55 @@ export function Layout() {
     brandsQuery.error instanceof ApiError ? brandsQuery.error.message : brandsQuery.error?.message;
 
   return (
-    <div className="app-shell">
-      <header className="topbar">
-        <div className="brand-mark">{current?.name?.toUpperCase() || "NODEX"}</div>
-        <nav className="nav">
-          {LINKS.map(([to, label]) => (
-            <NavLink key={to} to={to} end={to === "/"}>
-              {label}
-            </NavLink>
-          ))}
-        </nav>
-        <div className="topbar-right">
-          <label className="field" style={{ minWidth: 180 }}>
-            Бренд
-            <select
-              value={current?.id ?? ""}
-              onChange={(event) => setBrandId(event.target.value || null)}
-              aria-label="Переключатель бренда"
+    <ActionFeedbackProvider>
+      <div className="app-shell">
+        <header className="topbar">
+          <div className="brand-mark">{current?.name?.toUpperCase() || "NODEX"}</div>
+          <nav className="nav">
+            {LINKS.map(([to, label]) => (
+              <NavLink key={to} to={to} end={to === "/"}>
+                {label}
+              </NavLink>
+            ))}
+          </nav>
+          <div className="topbar-right">
+            <label className="field" style={{ minWidth: 180 }}>
+              Бренд
+              <select
+                value={current?.id ?? ""}
+                onChange={(event) => setBrandId(event.target.value || null)}
+                aria-label="Переключатель бренда"
+              >
+                {brands.length === 0 ? <option value="">Нет брендов</option> : null}
+                {brands.map((brand) => (
+                  <option key={brand.id} value={brand.id}>
+                    {brand.name}
+                    {brand.onboarding_completed ? "" : " (черновик)"}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span className="muted">{session.user.email}</span>
+            <button
+              className="btn secondary"
+              type="button"
+              onClick={() => {
+                cf.logout().catch(() => undefined);
+                clearSession();
+                queryClient.clear();
+                navigate("/login");
+              }}
             >
-              {brands.length === 0 ? <option value="">Нет брендов</option> : null}
-              {brands.map((brand) => (
-                <option key={brand.id} value={brand.id}>
-                  {brand.name}
-                  {brand.onboarding_completed ? "" : " (черновик)"}
-                </option>
-              ))}
-            </select>
-          </label>
-          <span className="muted">{session.user.email}</span>
-          <button
-            className="btn secondary"
-            type="button"
-            onClick={() => {
-              cf.logout().catch(() => undefined);
-              clearSession();
-              queryClient.clear();
-              navigate("/login");
-            }}
-          >
-            Выйти
-          </button>
-        </div>
-      </header>
-      {brandError ? <div className="error">{brandError}</div> : null}
-      <Outlet
-        key={current?.id ?? "no-brand"}
-        context={{ brand: current, brands, brandsLoading: brandsQuery.isLoading }}
-      />
-    </div>
+              Выйти
+            </button>
+          </div>
+        </header>
+        {brandError ? <div className="error">{brandError}</div> : null}
+        <Outlet
+          key={current?.id ?? "no-brand"}
+          context={{ brand: current, brands, brandsLoading: brandsQuery.isLoading }}
+        />
+      </div>
+    </ActionFeedbackProvider>
   );
 }

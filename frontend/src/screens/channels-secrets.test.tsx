@@ -5,6 +5,7 @@ import { MemoryRouter, Outlet, Route, Routes } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 import { applyAuth } from "../auth/session";
 import type { BrandPublic } from "../api/types";
+import { ActionFeedbackProvider } from "../components/ActionFeedback";
 import { ChannelsPage } from "./ChannelsPage";
 
 const brand: BrandPublic = {
@@ -52,13 +53,15 @@ function renderChannels() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter>
-        <Routes>
-          <Route element={<Outlet context={{ brand }} />}>
-            <Route index element={<ChannelsPage />} />
-          </Route>
-        </Routes>
-      </MemoryRouter>
+      <ActionFeedbackProvider>
+        <MemoryRouter>
+          <Routes>
+            <Route element={<Outlet context={{ brand }} />}>
+              <Route index element={<ChannelsPage />} />
+            </Route>
+          </Routes>
+        </MemoryRouter>
+      </ActionFeedbackProvider>
     </QueryClientProvider>,
   );
 }

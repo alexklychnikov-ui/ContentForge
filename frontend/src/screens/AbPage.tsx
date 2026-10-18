@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cf } from "../api/cf";
 import type { BrandPublic, PiecePublic } from "../api/types";
+import { useActionFeedback } from "../components/ActionFeedback";
 import { EmptyState, ErrorBanner } from "../components/Status";
 import { CHANNEL_LABELS, CONTENT_LABELS, label } from "../labels";
 
@@ -47,6 +48,7 @@ function pieceOptionLabel(row: PiecePublic): string {
 export function AbPage() {
   const { brand } = useOutletContext<Shell>();
   const queryClient = useQueryClient();
+  const { trackAction } = useActionFeedback();
   const [pieceId, setPieceId] = useState("");
   const [variantA, setVariantA] = useState("");
   const [variantB, setVariantB] = useState("");
@@ -68,31 +70,33 @@ export function AbPage() {
 
   const create = useMutation({
     mutationFn: () =>
-      cf.createExperiment(brand!.id, {
-        piece_id: pieceId,
-        variant_a_id: variantA,
-        variant_b_id: variantB,
-        channel_type: "telegram",
-        mode: "sequential",
-        primary_metric: "impressions",
-        window_start: new Date().toISOString(),
-        window_end: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
-        schedule_a: new Date(localInput(2)).toISOString(),
-        schedule_b: new Date(localInput(6)).toISOString(),
-      }),
+      trackAction("Создание A/B", () =>
+        cf.createExperiment(brand!.id, {
+          piece_id: pieceId,
+          variant_a_id: variantA,
+          variant_b_id: variantB,
+          channel_type: "telegram",
+          mode: "sequential",
+          primary_metric: "impressions",
+          window_start: new Date().toISOString(),
+          window_end: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+          schedule_a: new Date(localInput(2)).toISOString(),
+          schedule_b: new Date(localInput(6)).toISOString(),
+        }),
+      ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["experiments"] }),
   });
   const start = useMutation({
-    mutationFn: (id: string) => cf.startExperiment(id),
+    mutationFn: (id: string) => trackAction("Старт A/B", () => cf.startExperiment(id)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["experiments"] }),
   });
   const stop = useMutation({
-    mutationFn: (id: string) => cf.stopExperiment(id),
+    mutationFn: (id: string) => trackAction("Остановка A/B", () => cf.stopExperiment(id)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["experiments"] }),
   });
   const winner = useMutation({
     mutationFn: ({ id, variant_id }: { id: string; variant_id: string }) =>
-      cf.winnerExperiment(id, variant_id),
+      trackAction("Выбор победителя", () => cf.winnerExperiment(id, variant_id)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["experiments"] }),
   });
 

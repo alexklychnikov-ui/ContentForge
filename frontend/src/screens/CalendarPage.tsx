@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ApiError } from "../api/client";
 import { cf } from "../api/cf";
 import type { BrandPublic, PlanItemPublic } from "../api/types";
+import { useActionFeedback } from "../components/ActionFeedback";
 import { EmptyState, ErrorBanner } from "../components/Status";
 import { MonthGrid } from "../components/MonthGrid";
 import { CHANNEL_LABELS, CONTENT_LABELS, MVP_CHANNELS, label } from "../labels";
@@ -14,6 +15,7 @@ export function CalendarPage() {
   const { brand } = useOutletContext<Shell>();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { trackAction } = useActionFeedback();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -36,46 +38,49 @@ export function CalendarPage() {
 
   const addItem = useMutation({
     mutationFn: () =>
-      cf.addPlanItem(plan!.id, {
-        date: selectedDate,
-        channel_type: channel === "all" ? "telegram" : channel,
-        content_type: "social_post",
-        theme,
-        goal: "awareness",
-        hook: "",
-      }),
+      trackAction("Добавление слота", () =>
+        cf.addPlanItem(plan!.id, {
+          date: selectedDate,
+          channel_type: channel === "all" ? "telegram" : channel,
+          content_type: "social_post",
+          theme,
+          goal: "awareness",
+          hook: "",
+        }),
+      ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["plans"] }),
   });
 
   const openPiece = useMutation({
-    mutationFn: async (item: PlanItemPublic) => {
-      if (item.content_piece_id) {
-        try {
-          const existing = await cf.getPiece(item.content_piece_id);
-          const empty = (existing.variants ?? []).length === 0;
-      return {
-        pieceId: existing.id,
-        autogen: empty,
-        channel: item.channel_type,
-        date: item.date,
-      };
-        } catch (error) {
-          if (!(error instanceof ApiError) || error.status !== 404) throw error;
+    mutationFn: (item: PlanItemPublic) =>
+      trackAction("Открытие контента", async () => {
+        if (item.content_piece_id) {
+          try {
+            const existing = await cf.getPiece(item.content_piece_id);
+            const empty = (existing.variants ?? []).length === 0;
+            return {
+              pieceId: existing.id,
+              autogen: empty,
+              channel: item.channel_type,
+              date: item.date,
+            };
+          } catch (error) {
+            if (!(error instanceof ApiError) || error.status !== 404) throw error;
+          }
         }
-      }
-      const piece = await cf.createPiece(brand!.id, {
-        type: item.content_type,
-        plan_item_id: item.id,
-      });
-      await queryClient.invalidateQueries({ queryKey: ["plans"] });
-      await queryClient.invalidateQueries({ queryKey: ["content"] });
-      return {
-        pieceId: piece.id,
-        autogen: true,
-        channel: item.channel_type,
-        date: item.date,
-      };
-    },
+        const piece = await cf.createPiece(brand!.id, {
+          type: item.content_type,
+          plan_item_id: item.id,
+        });
+        await queryClient.invalidateQueries({ queryKey: ["plans"] });
+        await queryClient.invalidateQueries({ queryKey: ["content"] });
+        return {
+          pieceId: piece.id,
+          autogen: true,
+          channel: item.channel_type,
+          date: item.date,
+        };
+      }),
     onSuccess: ({ pieceId, autogen, channel: channelType, date }) => {
       const params = new URLSearchParams({ channel: channelType, date });
       if (autogen) params.set("autogen", "1");

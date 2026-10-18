@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cf } from "../api/cf";
 import type { BrandContentProfile, BrandPublic, GroundingResult, KnowledgeMode } from "../api/types";
 import { getSession, setBrandId } from "../auth/session";
+import { useActionFeedback } from "../components/ActionFeedback";
 import { EmptyState, ErrorBanner } from "../components/Status";
 import { timezoneSelectOptions } from "../labels";
 
@@ -78,6 +79,7 @@ export function SettingsPage() {
   const { brand, brands } = useOutletContext<Shell>();
   const session = getSession();
   const navigate = useNavigate();
+  const { trackAction } = useActionFeedback();
   const queryClient = useQueryClient();
   const [timezone, setTimezone] = useState(brand?.timezone ?? "Europe/Moscow");
   const [locale, setLocale] = useState(brand?.default_locale ?? "ru");
@@ -112,13 +114,15 @@ export function SettingsPage() {
 
   const save = useMutation({
     mutationFn: () =>
-      cf.patchBrand(brand!.id, {
-        timezone,
-        default_locale: locale,
-        auto_pipeline_enabled: autoPipeline,
-        auto_pipeline_lead_hours: Number(leadHours),
-        default_slot_hour: Number(slotHour),
-      }),
+      trackAction("Сохранение настроек бренда", () =>
+        cf.patchBrand(brand!.id, {
+          timezone,
+          default_locale: locale,
+          auto_pipeline_enabled: autoPipeline,
+          auto_pipeline_lead_hours: Number(leadHours),
+          default_slot_hour: Number(slotHour),
+        }),
+      ),
     onSuccess: (updated) => {
       queryClient.invalidateQueries({ queryKey: ["brands"] });
       setTimezone(updated.timezone ?? "Europe/Moscow");
@@ -131,19 +135,21 @@ export function SettingsPage() {
 
   const saveProfile = useMutation({
     mutationFn: () =>
-      cf.patchContentProfile(brand!.id, {
-        positioning: profileForm.positioning,
-        audience_segments: lines(profileForm.audience_segments),
-        audience_pains: lines(profileForm.audience_pains),
-        content_pillars: lines(profileForm.content_pillars),
-        proof_facts: lines(profileForm.proof_facts),
-        preferred_cta_styles: lines(profileForm.preferred_cta_styles),
-        banned_openers: lines(profileForm.banned_openers),
-        structure_rules: profileForm.structure_rules,
-        knowledge_mode: profileForm.knowledge_mode,
-        knowledge_filters: lines(profileForm.knowledge_filters),
-        require_human_approval: profileForm.require_human_approval,
-      }),
+      trackAction("Сохранение content profile", () =>
+        cf.patchContentProfile(brand!.id, {
+          positioning: profileForm.positioning,
+          audience_segments: lines(profileForm.audience_segments),
+          audience_pains: lines(profileForm.audience_pains),
+          content_pillars: lines(profileForm.content_pillars),
+          proof_facts: lines(profileForm.proof_facts),
+          preferred_cta_styles: lines(profileForm.preferred_cta_styles),
+          banned_openers: lines(profileForm.banned_openers),
+          structure_rules: profileForm.structure_rules,
+          knowledge_mode: profileForm.knowledge_mode,
+          knowledge_filters: lines(profileForm.knowledge_filters),
+          require_human_approval: profileForm.require_human_approval,
+        }),
+      ),
     onSuccess: (row) => {
       setProfileForm(profileToForm(row));
       queryClient.setQueryData(["content-profile", brand!.id], row);
@@ -151,7 +157,10 @@ export function SettingsPage() {
   });
 
   const applyPreset = useMutation({
-    mutationFn: () => cf.applyContentProfilePreset(brand!.id, "alexander_personal"),
+    mutationFn: () =>
+      trackAction("Применение пресета", () =>
+        cf.applyContentProfilePreset(brand!.id, "alexander_personal"),
+      ),
     onSuccess: (row) => {
       setProfileForm(profileToForm(row));
       queryClient.setQueryData(["content-profile", brand!.id], row);
@@ -159,19 +168,20 @@ export function SettingsPage() {
   });
 
   const previewKnowledge = useMutation({
-    mutationFn: () => {
-      const query =
-        brand?.niche?.trim() ||
-        lines(profileForm.knowledge_filters)[0] ||
-        "вайбкодер бренд Telegram-боты автоматизация brand/VIBECODER";
-      return cf.previewKnowledge(brand!.id, { query, mode: "mix" });
-    },
+    mutationFn: () =>
+      trackAction("Проверка knowledge", () => {
+        const query =
+          brand?.niche?.trim() ||
+          lines(profileForm.knowledge_filters)[0] ||
+          "вайбкодер бренд Telegram-боты автоматизация brand/VIBECODER";
+        return cf.previewKnowledge(brand!.id, { query, mode: "mix" });
+      }),
     onSuccess: (row) => setPreview(row),
     onError: () => setPreview(null),
   });
 
   const remove = useMutation({
-    mutationFn: () => cf.deleteBrand(brand!.id),
+    mutationFn: () => trackAction("Удаление бренда", () => cf.deleteBrand(brand!.id)),
     onSuccess: () => {
       const next = brands.find((item) => item.id !== brand?.id);
       setBrandId(next?.id ?? null);

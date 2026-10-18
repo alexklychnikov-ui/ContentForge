@@ -1301,3 +1301,7 @@ handoff: teamlead — merge OK; commit/push/deploy separately when ready
 prompt: сгенерировать обложку ошибка + неудобно что статус вверху
 done: Images API retry without response_format; AIJobError retryable bug; JobOverlay modal in Editor; pollJob onUpdate
 checks: pytest cover 4; npm build OK
+[2026-10-18 11:45] Global ActionFeedback overlay
+prompt: модалка нужна всех действий в дашборде не только для генерации
+done: ActionFeedbackProvider in Layout; trackAction/trackJob wired Plan/Editor/Channels/Queue/Calendar/Settings/AB; cover fix from e90f403 included
+checks: npm build; vitest 9 related passed

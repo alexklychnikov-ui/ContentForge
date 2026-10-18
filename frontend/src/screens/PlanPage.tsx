@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useOutletContext } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cf } from "../api/cf";
-import { ApiError, pollJob } from "../api/client";
+import { ApiError } from "../api/client";
 import type { BrandPublic, JobPublic, PlanPublic } from "../api/types";
-import { pushRecentJob } from "../auth/session";
-import { EmptyState, ErrorBanner, JobBanner } from "../components/Status";
+import { useActionFeedback } from "../components/ActionFeedback";
+import { EmptyState, ErrorBanner } from "../components/Status";
 import { CHANNEL_LABELS, CONTENT_LABELS, MVP_CHANNELS, PLAN_STATUS, label } from "../labels";
 
 type Shell = { brand: BrandPublic | null };
@@ -15,22 +15,10 @@ function isActiveChannel(status: string, revokedAt: string | null | undefined): 
   return status !== "revoked";
 }
 
-async function waitForPlanJob(jobId: string, setJob: (job: JobPublic) => void): Promise<JobPublic> {
-  pushRecentJob({ id: jobId, type: "generate_plan", at: new Date().toISOString() });
-  setJob({
-    id: jobId,
-    type: "generate_plan",
-    status: "running",
-    result: null,
-    error: null,
-    created_at: new Date().toISOString(),
-  });
-  return pollJob(jobId, (id) => cf.job(id), { intervalMs: 700, maxTicks: 90 });
-}
-
 export function PlanPage() {
   const { brand } = useOutletContext<Shell>();
   const queryClient = useQueryClient();
+  const { trackAction, trackJob } = useActionFeedback();
   const now = new Date();
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
@@ -88,62 +76,65 @@ export function PlanPage() {
       if (channels.length === 0) {
         throw new Error("Выберите хотя бы один канал.");
       }
-      setJob({
-        id: "pending",
-        type: "generate_plan",
-        status: "queued",
-        result: null,
-        error: null,
-        created_at: new Date().toISOString(),
-      });
-      let jobId: string;
-      try {
-        const accepted = await cf.generatePlan(brand!.id, {
-          year,
-          month,
-          channels,
-          targets: cleanTargets,
-          locale: brand?.default_locale ?? "ru",
-          include_holidays: true,
-          include_trends: true,
-          confirm,
-          create_revision: confirm && plansQuery.data?.some((row) => row.status === "approved"),
-        });
-        jobId = accepted.job_id;
-      } catch (error) {
-        if (error instanceof ApiError && error.code === "plan_active_exists") {
-          const existingId = error.details.job_id;
-          if (typeof existingId === "string" && existingId) {
-            jobId = existingId;
-          } else {
-            setJob(null);
+      const labelText = confirm ? "Перегенерация плана" : "Генерация плана";
+      const done = await trackJob(
+        labelText,
+        async () => {
+          try {
+            return await cf.generatePlan(brand!.id, {
+              year,
+              month,
+              channels,
+              targets: cleanTargets,
+              locale: brand?.default_locale ?? "ru",
+              include_holidays: true,
+              include_trends: true,
+              confirm,
+              create_revision: confirm && plansQuery.data?.some((row) => row.status === "approved"),
+            });
+          } catch (error) {
+            if (error instanceof ApiError && error.code === "plan_active_exists") {
+              const existingId = error.details.job_id;
+              if (typeof existingId === "string" && existingId) {
+                return { job_id: existingId };
+              }
+            }
             throw error;
           }
-        } else {
-          setJob(null);
-          throw error;
-        }
-      }
-      const done = await waitForPlanJob(jobId, setJob);
-      setJob(done);
+        },
+        { kind: "generate_plan", maxTicks: 90 },
+      );
+      const status =
+        done.status === "queued" ||
+        done.status === "running" ||
+        done.status === "succeeded" ||
+        done.status === "failed"
+          ? done.status
+          : "failed";
+      setJob({
+        id: "done",
+        type: "generate_plan",
+        status,
+        result: done.result ?? null,
+        error: done.error,
+        created_at: new Date().toISOString(),
+      });
       if (done.status === "succeeded" && done.result?.plan_id) {
         const loaded = await cf.getPlan(String(done.result.plan_id));
         setPlan(loaded);
         await queryClient.invalidateQueries({ queryKey: ["plans"] });
-      }
-      if (done.status === "failed") {
-        throw new Error(done.error || "Генерация плана: ошибка");
       }
       return done;
     },
   });
 
   const approve = useMutation({
-    mutationFn: () => cf.patchPlan(plan!.id, { status: "approved" }),
+    mutationFn: () =>
+      trackAction("Утверждение плана", () => cf.patchPlan(plan!.id, { status: "approved" })),
     onSuccess: (row) => setPlan(row),
   });
 
-  const busy = generate.isPending || job?.status === "queued" || job?.status === "running";
+  const busy = generate.isPending;
 
   if (!brand) {
     return (
@@ -175,12 +166,7 @@ export function PlanPage() {
       <ErrorBanner
         error={generate.error || approve.error || holidaysQuery.error || channelsQuery.error}
       />
-      <JobBanner status={busy ? job?.status || "running" : job?.status} error={job?.error} label="Генерация плана" />
-      {busy ? (
-        <p className="muted" role="status">
-          Ждём ответ AI (обычно 5–30 с). Кнопки заблокированы — не обновляй страницу.
-        </p>
-      ) : null}
+      {job?.status === "failed" ? <ErrorBanner error={new Error(job.error || "Ошибка генерации")} /> : null}
       <div className="panel grid">
         <div className="row">
           <label className="field">

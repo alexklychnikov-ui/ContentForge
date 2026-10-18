@@ -2,10 +2,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useOutletContext, useParams, useSearchParams } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cf } from "../api/cf";
-import { pollJob } from "../api/client";
 import type { BrandPublic, PiecePublic, QualityReview, VariantMeta, VariantPublic } from "../api/types";
-import { pushRecentJob } from "../auth/session";
-import { EmptyState, ErrorBanner, JobOverlay } from "../components/Status";
+import { useActionFeedback } from "../components/ActionFeedback";
+import { EmptyState, ErrorBanner } from "../components/Status";
 import {
   CHANNEL_LABELS,
   CONTENT_CREATE_TYPES,
@@ -115,10 +114,7 @@ export function EditorPage() {
   const [scheduledAt, setScheduledAt] = useState(() =>
     dateParam && /^\d{4}-\d{2}-\d{2}$/.test(dateParam) ? `${dateParam}T12:00` : "",
   );
-  const [jobStatus, setJobStatus] = useState<string | null>(null);
-  const [jobError, setJobError] = useState<string | null>(null);
-  const [jobLabel, setJobLabel] = useState("AI-задача");
-  const [jobOpen, setJobOpen] = useState(false);
+  const { trackAction, trackJob } = useActionFeedback();
   const [reviewResult, setReviewResult] = useState<QualityReview | null>(null);
   const [exportPreview, setExportPreview] = useState<string | null>(null);
   const textRef = useRef<HTMLTextAreaElement | null>(null);
@@ -164,16 +160,6 @@ export function EditorPage() {
   }, [current?.id]);
 
   useEffect(() => {
-    if (jobStatus !== "succeeded" || !jobOpen) return;
-    const timer = window.setTimeout(() => {
-      setJobOpen(false);
-      setJobStatus(null);
-      setJobError(null);
-    }, 1400);
-    return () => window.clearTimeout(timer);
-  }, [jobStatus, jobOpen]);
-
-  useEffect(() => {
     if (piece) {
       setType(piece.type);
       if (current) {
@@ -199,7 +185,7 @@ export function EditorPage() {
   }, [pieceId]);
 
   const createPiece = useMutation({
-    mutationFn: () => cf.createPiece(brand!.id, { type }),
+    mutationFn: () => trackAction("Новый черновик", () => cf.createPiece(brand!.id, { type })),
     onSuccess: (row) => {
       queryClient.invalidateQueries({ queryKey: ["content"] });
       navigate(`/content/${row.id}`);
@@ -207,7 +193,8 @@ export function EditorPage() {
   });
 
   const archivePiece = useMutation({
-    mutationFn: (id: string) => cf.patchPiece(id, { status: "archived" }),
+    mutationFn: (id: string) =>
+      trackAction("Удаление черновика", () => cf.patchPiece(id, { status: "archived" })),
     onSuccess: (_row, id) => {
       queryClient.invalidateQueries({ queryKey: ["content"] });
       if (pieceId === id) navigate("/content");
@@ -219,41 +206,15 @@ export function EditorPage() {
     archivePiece.mutate(id);
   }
 
-  async function runJob(
-    start: () => Promise<{ job_id: string }>,
-    kind: string,
-    labelText: string,
-    maxTicks = 90,
-  ) {
-    setJobLabel(labelText);
-    setJobError(null);
-    setJobStatus("queued");
-    setJobOpen(true);
-    const accepted = await start();
-    pushRecentJob({ id: accepted.job_id, type: kind, at: new Date().toISOString() });
-    const done = await pollJob(accepted.job_id, (id) => cf.job(id), {
-      intervalMs: 700,
-      maxTicks,
-      onUpdate: (job) => {
-        setJobStatus(job.status);
-        setJobError(job.error);
-      },
-    });
-    setJobStatus(done.status);
-    setJobError(done.error);
-    await queryClient.invalidateQueries({ queryKey: ["piece", pieceId] });
-    if (done.status === "failed") {
-      throw new Error(done.error || "AI-задача: ошибка");
-    }
-  }
-
   const generate = useMutation({
-    mutationFn: () =>
-      runJob(
-        () => cf.generateContent(piece!.id, { variant_label: labelName, channel_type: channel }),
-        "generate_content",
+    mutationFn: async () => {
+      await trackJob(
         "Генерация текста",
-      ),
+        () => cf.generateContent(piece!.id, { variant_label: labelName, channel_type: channel }),
+        { kind: "generate_content" },
+      );
+      await queryClient.invalidateQueries({ queryKey: ["piece", pieceId] });
+    },
   });
 
   useEffect(() => {
@@ -283,53 +244,63 @@ export function EditorPage() {
 
   const save = useMutation({
     mutationFn: () =>
-      cf.patchVariant(piece!.id, current!.id, { payload: formToPayload(form, piece!.type) }),
+      trackAction("Сохранение", () =>
+        cf.patchVariant(piece!.id, current!.id, { payload: formToPayload(form, piece!.type) }),
+      ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["piece", pieceId] }),
   });
   const addB = useMutation({
-    mutationFn: () => cf.addVariant(piece!.id, { label: "B", payload: formToPayload(form, piece!.type) }),
+    mutationFn: () =>
+      trackAction("Добавление варианта B", () =>
+        cf.addVariant(piece!.id, { label: "B", payload: formToPayload(form, piece!.type) }),
+      ),
     onSuccess: () => {
       setLabelName("B");
       queryClient.invalidateQueries({ queryKey: ["piece", pieceId] });
     },
   });
   const rewrite = useMutation({
-    mutationFn: () => {
+    mutationFn: async () => {
       const el = textRef.current;
       const field = piece!.type === "social_post" ? "text" : "body_markdown";
       const start = el?.selectionStart ?? 0;
       const end = el?.selectionEnd ?? 0;
-      return runJob(
+      await trackJob(
+        "Переписывание фрагмента",
         () =>
           cf.rewrite(piece!.id, current!.id, {
             selection: { field, start, end },
             extra_instructions: "перепиши выделенное короче",
           }),
-        "rewrite",
-        "Переписывание фрагмента",
+        { kind: "rewrite" },
       );
+      await queryClient.invalidateQueries({ queryKey: ["piece", pieceId] });
     },
   });
   const schedule = useMutation({
-    mutationFn: () => {
-      const account = (channelsQuery.data ?? []).find((row) => row.type === channel && row.status === "connected");
-      return cf.schedule(brand!.id, {
-        variant_id: current!.id,
-        channel_account_id: account?.id,
-        scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
-        stopword_override: false,
-      });
-    },
+    mutationFn: () =>
+      trackAction("Постановка в очередь", () => {
+        const account = (channelsQuery.data ?? []).find(
+          (row) => row.type === channel && row.status === "connected",
+        );
+        return cf.schedule(brand!.id, {
+          variant_id: current!.id,
+          channel_account_id: account?.id,
+          scheduled_at: scheduledAt ? new Date(scheduledAt).toISOString() : undefined,
+          stopword_override: false,
+        });
+      }),
   });
   const review = useMutation({
-    mutationFn: () => cf.reviewVariant(piece!.id, current!.id, { run_ai: true }),
+    mutationFn: () =>
+      trackAction("Проверка качества", () => cf.reviewVariant(piece!.id, current!.id, { run_ai: true })),
     onSuccess: (row) => {
       setReviewResult(row);
       queryClient.invalidateQueries({ queryKey: ["piece", pieceId] });
     },
   });
   const approve = useMutation({
-    mutationFn: () => cf.approveVariant(piece!.id, current!.id),
+    mutationFn: () => trackAction("Утверждение варианта", () => cf.approveVariant(piece!.id, current!.id)),
     onSuccess: () => {
       setReviewResult(null);
       queryClient.invalidateQueries({ queryKey: ["piece", pieceId] });
@@ -337,27 +308,29 @@ export function EditorPage() {
     },
   });
   const generateCover = useMutation({
-    mutationFn: () =>
-      runJob(
-        () => cf.generateCover(piece!.id, current!.id),
-        "generate_cover",
+    mutationFn: async () => {
+      await trackJob(
         "Генерация обложки",
-        120,
-      ),
+        () => cf.generateCover(piece!.id, current!.id),
+        { kind: "generate_cover", maxTicks: 120 },
+      );
+      await queryClient.invalidateQueries({ queryKey: ["piece", pieceId] });
+    },
   });
   const approveCover = useMutation({
-    mutationFn: () => cf.approveCover(piece!.id, current!.id),
+    mutationFn: () => trackAction("Одобрение обложки", () => cf.approveCover(piece!.id, current!.id)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["piece", pieceId] }),
   });
   const assignCover = useMutation({
     mutationFn: (file: File) =>
-      cf.uploadMedia(brand!.id, file).then((media) =>
-        cf.assignCover(piece!.id, current!.id, media.id),
+      trackAction("Загрузка обложки", () =>
+        cf.uploadMedia(brand!.id, file).then((media) => cf.assignCover(piece!.id, current!.id, media.id)),
       ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["piece", pieceId] }),
   });
   const manualExport = useMutation({
-    mutationFn: () => cf.exportVariant(current!.id, channel),
+    mutationFn: () =>
+      trackAction("Экспорт для ручной публикации", () => cf.exportVariant(current!.id, channel)),
     onSuccess: (row) => setExportPreview(JSON.stringify(row, null, 2)),
   });
   const coverMeta = useMemo(() => {
@@ -397,19 +370,6 @@ export function EditorPage() {
           assignCover.error ||
           manualExport.error
         }
-      />
-      <JobOverlay
-        open={jobOpen}
-        status={jobStatus}
-        error={jobError}
-        label={jobLabel}
-        onClose={() => {
-          setJobOpen(false);
-          if (jobStatus === "succeeded" || jobStatus === "failed") {
-            setJobStatus(null);
-            setJobError(null);
-          }
-        }}
       />
       <div className="row">
         <label className="field">

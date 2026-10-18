@@ -3,6 +3,7 @@ import { Link, useOutletContext } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cf } from "../api/cf";
 import type { BrandPublic } from "../api/types";
+import { useActionFeedback } from "../components/ActionFeedback";
 import { EmptyState, ErrorBanner } from "../components/Status";
 import { CHANNEL_LABELS, PUB_STATUS, label } from "../labels";
 
@@ -11,6 +12,7 @@ type Shell = { brand: BrandPublic | null };
 export function QueuePage() {
   const { brand } = useOutletContext<Shell>();
   const queryClient = useQueryClient();
+  const { trackAction } = useActionFeedback();
   const [status, setStatus] = useState("");
   const pubsQuery = useQuery({
     queryKey: ["publications", brand?.id, status],
@@ -19,15 +21,15 @@ export function QueuePage() {
     refetchInterval: 4000,
   });
   const cancel = useMutation({
-    mutationFn: (id: string) => cf.cancelPublication(id),
+    mutationFn: (id: string) => trackAction("Отмена публикации", () => cf.cancelPublication(id)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["publications"] }),
   });
   const retry = useMutation({
-    mutationFn: (id: string) => cf.retryPublication(id),
+    mutationFn: (id: string) => trackAction("Повтор публикации", () => cf.retryPublication(id)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["publications"] }),
   });
   const manual = useMutation({
-    mutationFn: (id: string) => cf.markManual(id, {}),
+    mutationFn: (id: string) => trackAction("Ручная публикация", () => cf.markManual(id, {})),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["publications"] }),
   });
 

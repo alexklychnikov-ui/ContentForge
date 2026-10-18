@@ -3,6 +3,7 @@ import { useOutletContext } from "react-router-dom";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { cf } from "../api/cf";
 import type { BrandPublic, ChannelPublic } from "../api/types";
+import { useActionFeedback } from "../components/ActionFeedback";
 import { EmptyState, ErrorBanner } from "../components/Status";
 import { CHANNEL_LABELS, CHANNEL_STATUS, MVP_CHANNELS, label } from "../labels";
 
@@ -36,6 +37,7 @@ function healthErrorMessage(error: unknown): string {
 export function ChannelsPage() {
   const { brand } = useOutletContext<Shell>();
   const queryClient = useQueryClient();
+  const { trackAction } = useActionFeedback();
   const [type, setType] = useState<(typeof MVP_CHANNELS)[number]>("telegram");
   const [form, setForm] = useState<Record<string, string>>({ display_name: "", pdn: "1" });
   const [formKey, setFormKey] = useState(0);
@@ -62,7 +64,7 @@ export function ChannelsPage() {
   }, [queryClient]);
 
   const instagramOAuth = useMutation({
-    mutationFn: () => cf.instagramOAuthStart(brand!.id),
+    mutationFn: () => trackAction("Подключение Instagram", () => cf.instagramOAuthStart(brand!.id)),
     onSuccess: (data) => {
       window.location.href = data.auth_url;
     },
@@ -74,21 +76,22 @@ export function ChannelsPage() {
     enabled: Boolean(brand),
   });
   const save = useMutation({
-    mutationFn: () => {
-      const body: Record<string, unknown> = {
-        pdn_consent: form.pdn === "1",
-        display_name: form.display_name || type,
-      };
-      if (type === "telegram") {
-        body.bot_token = form.bot_token;
-        body.channel_id = form.channel_id;
-      }
-      if (type === "vk") {
-        body.group_id = form.group_id;
-        body.access_token = form.access_token;
-      }
-      return cf.saveChannel(brand!.id, type, body);
-    },
+    mutationFn: () =>
+      trackAction("Сохранение канала", () => {
+        const body: Record<string, unknown> = {
+          pdn_consent: form.pdn === "1",
+          display_name: form.display_name || type,
+        };
+        if (type === "telegram") {
+          body.bot_token = form.bot_token;
+          body.channel_id = form.channel_id;
+        }
+        if (type === "vk") {
+          body.group_id = form.group_id;
+          body.access_token = form.access_token;
+        }
+        return cf.saveChannel(brand!.id, type, body);
+      }),
     onSuccess: () => {
       setForm({ display_name: "", pdn: "1" });
       setFormKey((n) => n + 1);
@@ -96,7 +99,7 @@ export function ChannelsPage() {
     },
   });
   const health = useMutation({
-    mutationFn: (id: string) => cf.channelHealth(id),
+    mutationFn: (id: string) => trackAction("Проверка канала", () => cf.channelHealth(id)),
     onSuccess: (data, id) => {
       queryClient.invalidateQueries({ queryKey: ["channels"] });
       setLastChecks((prev) => ({
@@ -116,7 +119,7 @@ export function ChannelsPage() {
       ? health.data.reason || "Проверка канала не прошла"
       : null;
   const revoke = useMutation({
-    mutationFn: (id: string) => cf.revokeChannel(id),
+    mutationFn: (id: string) => trackAction("Отключение канала", () => cf.revokeChannel(id)),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["channels"] }),
   });
   if (!brand) {
