@@ -4,6 +4,7 @@ import logging
 from datetime import date, datetime
 from typing import Any
 from uuid import UUID
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
@@ -29,7 +30,7 @@ from app.models import (
     TrendSignal,
     TrendStatus,
 )
-from app.security import as_utc
+from app.security import as_utc, utc_now
 from app.services.ai_client import AIJobError, PROMPT_VERSION, complete_json
 from app.services.ai_schemas import (
     CONTENT_SCHEMA_BY_TYPE,
@@ -64,8 +65,10 @@ PLAN_SYSTEM = (
     "Platform-specific intent: same theme must read differently per channel_type. "
     "goal must be one of: awareness, traffic, lead, retention. "
     "Do not invent prices, legal guarantees, or promo dates missing from context. "
-    "Mix RU holidays into themes when they fall in the month. "
-    "Use only provided channels and content types. Dates must be in the requested month."
+    "Mix RU holidays into themes when they fall in the planning window. "
+    "Use only provided channels and content types. "
+    "Dates must be within planning_window_start..planning_window_end inclusive "
+    "(for the current month this starts from today, not day 1)."
 )
 
 CONTENT_SYSTEM = (
@@ -158,6 +161,39 @@ def month_bounds(year: int, month: int) -> tuple[date, date]:
     return date(year, month, 1), date(year, month, last)
 
 
+def brand_local_today(brand: BrandProfile, *, now: datetime | None = None) -> date:
+    tz_name = (brand.timezone or "UTC").strip() or "UTC"
+    try:
+        tz = ZoneInfo(tz_name)
+    except Exception:
+        tz = ZoneInfo("UTC")
+    moment = now or utc_now()
+    if moment.tzinfo is None:
+        moment = as_utc(moment)
+    return moment.astimezone(tz).date()
+
+
+def plan_slot_window(
+    year: int,
+    month: int,
+    *,
+    today: date,
+) -> tuple[date, date]:
+    """Inclusive date window for plan slots.
+
+    Current calendar month (in brand-local today): from today through month end.
+    Other months: full month (future plans from the 1st; past months for regen).
+    """
+    month_start, month_end = month_bounds(year, month)
+    if year == today.year and month == today.month:
+        start = max(month_start, today)
+    else:
+        start = month_start
+    if start > month_end:
+        return month_end, month_end
+    return start, month_end
+
+
 def holidays_for_plan(db: Session, brand_id: UUID, year: int, month: int) -> list[Holiday]:
     return list_holidays(db, year, month, brand_id)
 
@@ -199,18 +235,24 @@ def _plan_schema_hint(
     targets: dict[ContentType, int],
     year: int,
     month: int,
+    *,
+    window_start: date,
+    window_end: date,
 ) -> str:
     channel_list = "|".join(item.value for item in channels)
     type_list = "|".join(key.value for key in targets)
     goals = "|".join(item.value for item in PlanGoal)
+    sample_date = window_start.isoformat()
     return (
         f"Schema example item: "
-        f'{{"date":"{year}-{month:02d}-01","channel_type":"{channels[0].value}",'
+        f'{{"date":"{sample_date}","channel_type":"{channels[0].value}",'
         f'"content_type":"{next(iter(targets)).value}","theme":"...","goal":"awareness","hook":"...",'
         f'"audience_segment":"...","audience_pain":"...","takeaway":"...",'
         f'"scene_seed":"...","image_concept":"..."}}. '
         f"Allowed channel_type: {channel_list}. Allowed content_type: {type_list}. "
-        f"Allowed goal: {goals}. Dates only in {year}-{month:02d}."
+        f"Allowed goal: {goals}. "
+        f"Dates only from {window_start.isoformat()} to {window_end.isoformat()} "
+        f"(month {year}-{month:02d}, remaining window)."
     )
 
 
@@ -226,7 +268,10 @@ def execute_generate_plan(db: Session, job: Job, brand: BrandProfile) -> dict[st
     include_trends = bool(payload.get("include_trends", True))
     holidays = holidays_for_plan(db, brand.id, year, month) if include_holidays else []
     trends = trends_for_plan(db, brand.id, year, month) if include_trends else []
-    start, end = month_bounds(year, month)
+    today = brand_local_today(brand)
+    start, end = plan_slot_window(year, month, today=today)
+    if include_holidays:
+        holidays = [row for row in holidays if start <= row.date <= end]
     channel_values = {item.value for item in channels}
 
     brand_ctx: dict[str, Any] = {
@@ -257,6 +302,9 @@ def execute_generate_plan(db: Session, job: Job, brand: BrandProfile) -> dict[st
     context = {
         "year": year,
         "month": month,
+        "planning_window_start": start.isoformat(),
+        "planning_window_end": end.isoformat(),
+        "brand_local_today": today.isoformat(),
         "channels": [item.value for item in channels],
         "targets": {key.value: value for key, value in targets.items()},
         "locale": payload.get("locale", brand.default_locale.value),
@@ -271,7 +319,9 @@ def execute_generate_plan(db: Session, job: Job, brand: BrandProfile) -> dict[st
             "role": "user",
             "content": _wrap_context(context)
             + f"\nReturn exactly {expected} items. "
-            + _plan_schema_hint(channels, targets, year, month),
+            + _plan_schema_hint(
+                channels, targets, year, month, window_start=start, window_end=end
+            ),
         },
     ]
 
@@ -287,7 +337,8 @@ def execute_generate_plan(db: Session, job: Job, brand: BrandProfile) -> dict[st
             if item.date < start or item.date > end:
                 return AIJobError(
                     "schema_invalid",
-                    f"item date {item.date.isoformat()} is outside {year}-{month:02d}",
+                    f"item date {item.date.isoformat()} is outside "
+                    f"{start.isoformat()}..{end.isoformat()}",
                 )
             if item.channel_type.value not in channel_values:
                 return AIJobError(
