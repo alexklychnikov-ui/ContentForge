@@ -1313,3 +1313,6 @@ checks: pytest cover 4; npm build; probe gpt-image-1 OK on VPS
 prompt: может обложка и сгенерирована, но как мне её посмотреть
 done: AuthedMedia blob fetch with Bearer; Editor cover img uses it
 checks: npm build OK
+[2026-10-18 12:09] Cover prompt follows image_concept
+prompt: что это за картинка и как соответствует описанию
+done: _scene_prompt prioritizes image_concept/scene; dropped abstract neon override

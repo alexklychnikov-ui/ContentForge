@@ -26,11 +26,19 @@ MAX_COVER_JOBS_PER_REVISION = 3
 
 def _scene_prompt(variant: ContentVariant) -> str:
     payload = variant.payload or {}
-    concept = payload.get("image_concept") or payload.get("headline") or payload.get("theme") or "tech scene"
+    concept = (
+        str(payload.get("image_concept") or "").strip()
+        or str(payload.get("scene") or "").strip()
+        or str(payload.get("headline") or "").strip()
+        or str(payload.get("theme") or "").strip()
+        or "tech workspace scene"
+    )
+    # Concept first: generic "neon cinematic" style used to override the post brief.
     return (
-        "Dark cinematic high-tech marketing scene, navy background, cyan glow, "
-        "no text, no logo, no watermark, single focal subject, square composition. "
-        f"Concept: {concept}"
+        f"Create a square 1:1 marketing cover illustration that literally depicts this scene: {concept}. "
+        "Follow the described objects, composition and setting as closely as possible. "
+        "No readable text, no logos, no watermarks, no UI screenshots with letters. "
+        "Clean product/editorial illustration, soft depth, navy/teal palette ok but do not replace the scene with abstract neon shapes."
     )
 
 
