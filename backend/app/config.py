@@ -33,9 +33,9 @@ class Settings(BaseSettings):
     lightrag_url: str = "https://lightrag.alexklyvibe.ru"
     lightrag_api_key: str = ""
     lightrag_timeout_seconds: int = 180
-    platform_policy_v1_enabled: bool = False
-    central_publication_gate_enabled: bool = False
-    cover_generation_enabled: bool = False
+    platform_policy_v1_enabled: bool = True
+    central_publication_gate_enabled: bool = True
+    cover_generation_enabled: bool = True
 
 
 @lru_cache

@@ -9,6 +9,10 @@ if not (os.environ.get("TOKEN_ENCRYPTION_KEY") or "").strip():
 if os.environ.get("TELEGRAM_SMOKE") != "1":
     os.environ["TELEGRAM_HTTPS_PROXY"] = ""
 
+os.environ["PLATFORM_POLICY_V1_ENABLED"] = "false"
+os.environ["CENTRAL_PUBLICATION_GATE_ENABLED"] = "false"
+os.environ["COVER_GENERATION_ENABLED"] = "false"
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
