@@ -73,14 +73,11 @@ ALEXANDER_PERSONAL_PRESET: dict = {
         "instagram": "лид в первые 2 строки; одна сцена; CTA выбором 1/2",
     },
     "knowledge_mode": KnowledgeMode.required,
+    # Match SOURCE_ID / body text (LightRAG file_path is often hashed srcid-…).
     "knowledge_filters": [
-        "вайбкодер",
-        "VIBECODER-бренд",
-        "Telegram-боты",
-        "автоматизация",
-        "AI RAG LightRAG",
-        "Python FastAPI",
-        "ERP бэкграунд",
+        "brand/VIBECODER",
+        "brand/ERP-бренд",
+        "вайбкодер с ERP",
     ],
     "require_human_approval": True,
 }

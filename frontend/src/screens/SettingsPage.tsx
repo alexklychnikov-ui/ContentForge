@@ -163,7 +163,7 @@ export function SettingsPage() {
       const query =
         brand?.niche?.trim() ||
         lines(profileForm.knowledge_filters)[0] ||
-        "правила постов TenChat";
+        "вайбкодер бренд Telegram-боты автоматизация brand/VIBECODER";
       return cf.previewKnowledge(brand!.id, { query, mode: "mix" });
     },
     onSuccess: (row) => setPreview(row),

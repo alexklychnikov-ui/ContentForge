@@ -49,16 +49,34 @@ class _ScopedRefs:
     warning: str | None = None
 
 
-def _match_filters(reference_id: str, file_path: str, filters: list[str]) -> bool:
+def _match_filters(
+    reference_id: str,
+    file_path: str,
+    filters: list[str],
+    *,
+    content: str | None = None,
+) -> bool:
     haystacks = (
         (file_path or "").lower(),
         (reference_id or "").lower(),
+        (content or "").lower(),
     )
     for raw in filters:
         needle = (raw or "").strip().lower()
         if not needle:
             continue
         if any(needle in hay for hay in haystacks):
+            return True
+    return False
+
+
+def _response_matches_filters(response: str, filters: list[str]) -> bool:
+    hay = (response or "").lower()
+    if not hay:
+        return False
+    for raw in filters:
+        needle = (raw or "").strip().lower()
+        if needle and needle in hay:
             return True
     return False
 
@@ -92,8 +110,22 @@ def _apply_filters(
     matched = [
         item
         for item in raw_refs
-        if _match_filters(item.reference_id, item.file_path, cleaned)
+        if _match_filters(
+            item.reference_id,
+            item.file_path,
+            cleaned,
+            content=getattr(item, "content", None),
+        )
     ]
+    # LightRAG often returns hashed file_path (srcid-…) with empty ref.content.
+    # If topical needles appear in the retrieved context, keep the full hit set.
+    if not matched and _response_matches_filters(result.response or "", cleaned):
+        refs = [
+            GroundingReference(id=item.reference_id, file_path=item.file_path)
+            for item in raw_refs
+        ]
+        return _ScopedRefs(context=result.response, references=refs)
+
     if not matched:
         return _ScopedRefs(context="", references=[], filter_miss=True)
 
@@ -103,6 +135,9 @@ def _apply_filters(
     ]
     scoped = _rebuild_context_from_refs(matched)
     if not scoped:
+        # Path/id matched but snippets missing — fall back to full response if topical.
+        if _response_matches_filters(result.response or "", cleaned):
+            return _ScopedRefs(context=result.response, references=refs)
         return _ScopedRefs(
             context="",
             references=refs,

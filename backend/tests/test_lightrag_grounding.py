@@ -233,6 +233,32 @@ def test_grounding_required_blocks_on_filter() -> None:
     assert result.context == ""
 
 
+def test_grounding_filters_match_response_when_refs_are_hashed() -> None:
+    """LightRAG often returns srcid paths + empty ref.content; topical body still counts."""
+    fake = MagicMock()
+    fake.query.return_value = SimpleNamespace(
+        response=(
+            "[[SOURCE_ID:brand/VIBECODER-бренд.md]]\n"
+            "Вайбкодер с ERP-бэкграундом: боты и автоматизация."
+        ),
+        references=[
+            SimpleNamespace(
+                reference_id="1",
+                file_path="srcid-abc123deadbeef.md",
+                content=None,
+            ),
+        ],
+    )
+    result = ground_knowledge(
+        _profile(mode=KnowledgeMode.required, filters=["brand/VIBECODER"]),
+        "вайбкодер боты",
+        client=fake,
+    )
+    assert result.status == GroundingStatus.grounded
+    assert "VIBECODER" in result.context
+    assert result.references[0].file_path.startswith("srcid-")
+
+
 def test_grounding_optional_ungrounded_on_filter_miss() -> None:
     fake = MagicMock()
     fake.query.return_value = SimpleNamespace(
