@@ -73,12 +73,9 @@ ALEXANDER_PERSONAL_PRESET: dict = {
         "instagram": "лид в первые 2 строки; одна сцена; CTA выбором 1/2",
     },
     "knowledge_mode": KnowledgeMode.required,
-    # Match SOURCE_ID / body text (LightRAG file_path is often hashed srcid-…).
-    "knowledge_filters": [
-        "brand/VIBECODER",
-        "brand/ERP-бренд",
-        "вайбкодер с ERP",
-    ],
+    # Keep empty: LightRAG returns hashed srcid file_path and graph text without
+    # SOURCE_ID markers, so path/token filters falsely wipe all references.
+    "knowledge_filters": [],
     "require_human_approval": True,
 }
 
