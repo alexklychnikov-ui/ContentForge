@@ -72,16 +72,16 @@ def test_apply_alexander_personal_preset(client: TestClient) -> None:
     body = applied.json()
     assert body["knowledge_mode"] == "required"
     assert body["require_human_approval"] is True
-    assert "Dynamics AX 2012" in body["positioning"]
-    assert "ритейл и сети на Dynamics AX 2012" in body["audience_segments"]
-    assert "цена в AX, на ценнике и на кассе разъехалась" in body["audience_pains"]
-    assert "склад / Infor / оборот" in body["content_pillars"]
+    assert "Вайбкодер" in body["positioning"]
+    assert "малый бизнес и самозанятые с заказами в мессенджерах" in body["audience_segments"]
+    assert "размытое ТЗ и «сделайте бота вообще»" in body["audience_pains"]
+    assert "практика вайбкодинга (Cursor / AI-assisted)" in body["content_pillars"]
     assert "выбор 1/2" in body["preferred_cta_styles"]
     assert "В современном мире" in body["banned_openers"]
-    assert "боль → сцена" in body["structure_rules"]
+    assert "вайбкодинга" in body["structure_rules"]
     assert "tenchat" in body["platform_policies"]
     assert "hard sell" in body["platform_policies"]["tenchat"]
-    assert any("AX 2012" in fact for fact in body["proof_facts"])
+    assert any("Dynamics AX 2012" in fact for fact in body["proof_facts"])
 
 
 def test_content_profile_foreign_workspace_denied(client: TestClient) -> None:
