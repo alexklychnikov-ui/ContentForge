@@ -1316,3 +1316,6 @@ checks: npm build OK
 [2026-10-18 12:09] Cover prompt follows image_concept
 prompt: что это за картинка и как соответствует описанию
 done: _scene_prompt prioritizes image_concept/scene; dropped abstract neon override
+[2026-10-18 12:15] Cover click-to-zoom lightbox
+prompt: сделай + увеличение изображения по клику
+done: AuthedMedia zoomable lightbox Esc/backdrop close

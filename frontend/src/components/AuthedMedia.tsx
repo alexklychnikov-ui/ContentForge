@@ -8,20 +8,24 @@ export function AuthedMedia({
   alt,
   className,
   style,
+  zoomable = false,
 }: {
   mediaId: string;
   alt: string;
   className?: string;
   style?: CSSProperties;
+  zoomable?: boolean;
 }) {
   const [src, setSrc] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [zoomed, setZoomed] = useState(false);
 
   useEffect(() => {
     let objectUrl: string | null = null;
     let cancelled = false;
     setSrc(null);
     setFailed(false);
+    setZoomed(false);
 
     const token = getSession()?.tokens.access_token;
     if (!token) {
@@ -53,11 +57,54 @@ export function AuthedMedia({
     };
   }, [mediaId]);
 
+  useEffect(() => {
+    if (!zoomed) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setZoomed(false);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zoomed]);
+
   if (failed) {
     return <p className="muted">Не удалось загрузить превью обложки.</p>;
   }
   if (!src) {
     return <p className="muted">Загрузка превью…</p>;
   }
-  return <img alt={alt} src={src} className={className} style={style} />;
+
+  return (
+    <>
+      <button
+        type="button"
+        className={`media-thumb${zoomable ? " zoomable" : ""}`}
+        onClick={() => {
+          if (zoomable) setZoomed(true);
+        }}
+        disabled={!zoomable}
+        aria-label={zoomable ? "Увеличить изображение" : alt}
+      >
+        <img alt={alt} src={src} className={className} style={style} />
+      </button>
+      {zoomed ? (
+        <div
+          className="media-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label={alt}
+          onClick={() => setZoomed(false)}
+        >
+          <img
+            alt={alt}
+            src={src}
+            className="media-lightbox-img"
+            onClick={(event) => event.stopPropagation()}
+          />
+          <button className="btn media-lightbox-close" type="button" onClick={() => setZoomed(false)}>
+            Закрыть
+          </button>
+        </div>
+      ) : null}
+    </>
+  );
 }

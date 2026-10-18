@@ -584,11 +584,15 @@ export function EditorPage() {
                   <p className="muted">Обложка не назначена</p>
                 )}
                 {coverMediaId ? (
-                  <AuthedMedia
-                    mediaId={coverMediaId}
-                    alt="cover preview"
-                    style={{ maxWidth: 320, width: "100%", borderRadius: 8, display: "block" }}
-                  />
+                  <>
+                    <AuthedMedia
+                      mediaId={coverMediaId}
+                      alt="cover preview"
+                      zoomable
+                      style={{ maxWidth: 320, width: "100%", borderRadius: 8, display: "block" }}
+                    />
+                    <p className="muted">Клик по картинке — увеличить</p>
+                  </>
                 ) : null}
                 <input
                   ref={coverInputRef}
