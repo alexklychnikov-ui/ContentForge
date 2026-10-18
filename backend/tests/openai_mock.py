@@ -1,6 +1,7 @@
 import calendar
 import json
 import re
+from datetime import date, timedelta
 
 from app.services.ai_client import AIJobError, PROMPT_VERSION
 from app.services.ai_schemas import (
@@ -31,25 +32,62 @@ def parse_context(messages: list[dict[str, str]]) -> dict:
     return {}
 
 
-def build_plan_payload(context: dict) -> dict:
+def _plan_item_dates(context: dict, count: int) -> list[str]:
     year = int(context["year"])
     month = int(context["month"])
+    window_start = context.get("planning_window_start")
+    window_end = context.get("planning_window_end")
+    if window_start and window_end:
+        start = date.fromisoformat(str(window_start))
+        end = date.fromisoformat(str(window_end))
+        span = max((end - start).days, 0)
+        return [
+            (start + timedelta(days=(index % (span + 1)))).isoformat()
+            for index in range(count)
+        ]
+    last = calendar.monthrange(year, month)[1]
+    return [f"{year:04d}-{month:02d}-{1 + (index % last):02d}" for index in range(count)]
+
+
+def build_plan_payload(context: dict) -> dict:
+    holidays = list(context.get("holidays") or [])
+    items: list[dict] = []
+    if context.get("allocation_mode") == "per_channel" and context.get("targets_per_channel"):
+        matrix = context["targets_per_channel"]
+        sequence: list[tuple[str, str]] = []
+        for channel, per_types in matrix.items():
+            for content_type, count in per_types.items():
+                sequence.extend([(channel, content_type)] * int(count))
+        dates = _plan_item_dates(context, len(sequence))
+        for index, (channel, content_type) in enumerate(sequence):
+            theme = f"Тема {index + 1}"
+            if holidays and index == 0:
+                theme = f"{holidays[0]['name']}: контент к дате"
+            items.append(
+                {
+                    "date": dates[index],
+                    "channel_type": channel,
+                    "content_type": content_type,
+                    "theme": theme,
+                    "goal": "awareness",
+                    "hook": "Хук для аудитории",
+                }
+            )
+        return {"items": items}
+
     channels = list(context["channels"])
     targets = dict(context["targets"])
-    holidays = list(context.get("holidays") or [])
-    last = calendar.monthrange(year, month)[1]
-    sequence: list[str] = []
+    sequence_types: list[str] = []
     for content_type, count in targets.items():
-        sequence.extend([content_type] * int(count))
-    items = []
-    for index, content_type in enumerate(sequence):
-        day = 1 + (index % last)
+        sequence_types.extend([content_type] * int(count))
+    dates = _plan_item_dates(context, len(sequence_types))
+    for index, content_type in enumerate(sequence_types):
         theme = f"Тема {index + 1}"
         if holidays and index == 0:
             theme = f"{holidays[0]['name']}: контент к дате"
         items.append(
             {
-                "date": f"{year:04d}-{month:02d}-{day:02d}",
+                "date": dates[index],
                 "channel_type": channels[index % len(channels)],
                 "content_type": content_type,
                 "theme": theme,

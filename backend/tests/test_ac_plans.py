@@ -82,12 +82,18 @@ def test_ac05_slot_count_and_holidays(client: TestClient) -> None:
     job = client.get(f"/api/v1/jobs/{response.json()['job_id']}", headers=headers).json()
     assert job["status"] == "succeeded"
     result = job["result"]
-    expected = sum(PLAN_JAN["targets"].values())
+    # per_channel: email only on gmail → telegram 3 + gmail 4 = 7
+    expected = 7
     assert result["item_count"] == expected
     holidays = result["holidays_considered"]
     assert any("Новый год" in item["name"] for item in holidays)
     plan = client.get(f"/api/v1/plans/{result['plan_id']}", headers=headers).json()
     assert len(plan["items"]) == expected
+    assert plan["params"]["allocation_mode"] == "per_channel"
+    assert plan["params"]["targets_per_channel"] == {
+        "telegram": {"social_post": 2, "article": 1},
+        "gmail": {"social_post": 2, "article": 1, "email": 1},
+    }
     themes = " ".join(item["theme"] for item in plan["items"])
     holiday_in_theme = "Новый год" in themes
     holiday_in_panel = any("Новый год" in item["name"] for item in plan["params"]["holidays_considered"])
@@ -165,6 +171,24 @@ def test_draft_regenerate_requires_confirm(client: TestClient) -> None:
     assert confirmed.status_code == 202
     job = client.get(f"/api/v1/jobs/{confirmed.json()['job_id']}", headers=headers).json()
     assert job["status"] == "succeeded"
+
+
+def test_confirm_uses_shared_allocation_totals(client: TestClient) -> None:
+    owner = register_user(client).json()
+    headers = auth_header(owner["tokens"])
+    brand_id = create_brand(client, headers).json()["id"]
+    first = _generate(client, headers, brand_id)
+    assert first.status_code == 202
+    confirmed = _generate(client, headers, brand_id, {**PLAN_JAN, "confirm": True})
+    assert confirmed.status_code == 202
+    job = client.get(f"/api/v1/jobs/{confirmed.json()['job_id']}", headers=headers).json()
+    assert job["status"] == "succeeded"
+    expected = sum(PLAN_JAN["targets"].values())
+    assert job["result"]["item_count"] == expected
+    plan = client.get(f"/api/v1/plans/{job['result']['plan_id']}", headers=headers).json()
+    assert plan["params"]["allocation_mode"] == "shared"
+    assert "targets_per_channel" not in plan["params"]
+    assert len(plan["items"]) == expected
 
 
 def test_foreign_plan_and_job_are_not_found(client: TestClient) -> None:

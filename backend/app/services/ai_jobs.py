@@ -230,6 +230,33 @@ def _wrap_context(payload: dict[str, Any]) -> str:
     return "<<<CONTEXT\n" + json.dumps(payload, ensure_ascii=False) + "\nCONTEXT>>>"
 
 
+def _channel_allows_content_type(
+    profile: BrandContentProfile | None, channel: ChannelType, content_type: ContentType
+) -> bool:
+    if content_type == ContentType.email and channel != ChannelType.gmail:
+        return False
+    if profile is None:
+        return True
+    policy, _src = get_effective_platform_policy(profile, channel.value)
+    return policy.allows_content_type(content_type)
+
+
+def _build_targets_per_channel(
+    channels: list[ChannelType],
+    targets: dict[ContentType, int],
+    profile: BrandContentProfile | None,
+) -> dict[str, dict[str, int]]:
+    result: dict[str, dict[str, int]] = {}
+    for channel in channels:
+        per_type: dict[str, int] = {}
+        for content_type, count in targets.items():
+            if _channel_allows_content_type(profile, channel, content_type):
+                per_type[content_type.value] = count
+        if per_type:
+            result[channel.value] = per_type
+    return result
+
+
 def _plan_schema_hint(
     channels: list[ChannelType],
     targets: dict[ContentType, int],
@@ -263,7 +290,7 @@ def execute_generate_plan(db: Session, job: Job, brand: BrandProfile) -> dict[st
     channels = [ChannelType(item) for item in payload.get("channels") or []]
     raw_targets = payload.get("targets") or {}
     targets = {ContentType(key): int(value) for key, value in raw_targets.items() if int(value) > 0}
-    expected = sum(targets.values())
+    allocation_mode = str(payload.get("allocation_mode") or "shared")
     include_holidays = bool(payload.get("include_holidays", True))
     include_trends = bool(payload.get("include_trends", True))
     holidays = holidays_for_plan(db, brand.id, year, month) if include_holidays else []
@@ -299,26 +326,49 @@ def execute_generate_plan(db: Session, job: Job, brand: BrandProfile) -> dict[st
                 "extra_instructions": policy.extra_instructions,
             }
         brand_ctx["platform_policies"] = policy_hints
-    context = {
+
+    targets_public = {key.value: value for key, value in targets.items()}
+    targets_per_channel: dict[str, dict[str, int]] | None = None
+    if allocation_mode == "per_channel":
+        targets_per_channel = _build_targets_per_channel(channels, targets, profile)
+        expected = sum(sum(per.values()) for per in targets_per_channel.values())
+    else:
+        expected = sum(targets.values())
+
+    context: dict[str, Any] = {
         "year": year,
         "month": month,
         "planning_window_start": start.isoformat(),
         "planning_window_end": end.isoformat(),
         "brand_local_today": today.isoformat(),
         "channels": [item.value for item in channels],
-        "targets": {key.value: value for key, value in targets.items()},
+        "targets": targets_public,
+        "allocation_mode": allocation_mode,
         "locale": payload.get("locale", brand.default_locale.value),
         "holidays": _holiday_public(holidays),
         "trends": _trend_public(trends),
         "brand": brand_ctx,
         "item_count_required": expected,
     }
+    if targets_per_channel is not None:
+        context["targets_per_channel"] = targets_per_channel
+
+    if allocation_mode == "per_channel" and targets_per_channel is not None:
+        quota_hint = (
+            f"Produce exactly the counts in targets_per_channel for each channel "
+            f"(per content_type on that channel). Total items must be exactly {expected}. "
+            f"targets_per_channel={json.dumps(targets_per_channel, ensure_ascii=False)}. "
+        )
+    else:
+        quota_hint = f"Return exactly {expected} items (targets are totals across channels). "
+
     messages = [
         {"role": "system", "content": PLAN_SYSTEM},
         {
             "role": "user",
             "content": _wrap_context(context)
-            + f"\nReturn exactly {expected} items. "
+            + "\n"
+            + quota_hint
             + _plan_schema_hint(
                 channels, targets, year, month, window_start=start, window_end=end
             ),
@@ -333,6 +383,7 @@ def execute_generate_plan(db: Session, job: Job, brand: BrandProfile) -> dict[st
                 {"expected": expected, "got": len(parsed.items)},
             )
         by_type: dict[ContentType, int] = {key: 0 for key in ContentType}
+        by_channel_type: dict[tuple[str, str], int] = {}
         for item in parsed.items:
             if item.date < start or item.date > end:
                 return AIJobError(
@@ -358,6 +409,26 @@ def execute_generate_plan(db: Session, job: Job, brand: BrandProfile) -> dict[st
                         },
                     )
             by_type[item.content_type] = by_type.get(item.content_type, 0) + 1
+            key = (item.channel_type.value, item.content_type.value)
+            by_channel_type[key] = by_channel_type.get(key, 0) + 1
+
+        if allocation_mode == "per_channel" and targets_per_channel is not None:
+            for channel_key, per_types in targets_per_channel.items():
+                for content_key, count in per_types.items():
+                    actual = by_channel_type.get((channel_key, content_key), 0)
+                    if actual != count:
+                        return AIJobError(
+                            "schema_count_mismatch",
+                            f"items for {channel_key}/{content_key} must be {count}, got {actual}",
+                            {
+                                "channel": channel_key,
+                                "content_type": content_key,
+                                "expected": count,
+                                "got": actual,
+                            },
+                        )
+            return None
+
         for content_type, count in targets.items():
             actual = by_type.get(content_type, 0)
             if actual != count:
@@ -371,20 +442,24 @@ def execute_generate_plan(db: Session, job: Job, brand: BrandProfile) -> dict[st
     result, meta = complete_json(PlanAIResult, messages, extra_validator=_check, temperature=0.2, max_repairs=2)
     assert isinstance(result, PlanAIResult)
     settings = get_settings()
+    plan_params: dict[str, Any] = {
+        "channels": [item.value for item in channels],
+        "targets": targets_public,
+        "allocation_mode": allocation_mode,
+        "locale": payload.get("locale", brand.default_locale.value),
+        "include_holidays": include_holidays,
+        "include_trends": include_trends,
+        "holidays_considered": _holiday_public(holidays),
+        "trends_considered": _trend_public(trends),
+    }
+    if targets_per_channel is not None:
+        plan_params["targets_per_channel"] = targets_per_channel
     plan = ContentPlan(
         brand_id=brand.id,
         year=year,
         month=month,
         status=PlanStatus.draft,
-        params={
-            "channels": [item.value for item in channels],
-            "targets": {key.value: value for key, value in targets.items()},
-            "locale": payload.get("locale", brand.default_locale.value),
-            "include_holidays": include_holidays,
-            "include_trends": include_trends,
-            "holidays_considered": _holiday_public(holidays),
-            "trends_considered": _trend_public(trends),
-        },
+        params=plan_params,
         model=settings.openai_model,
         created_by=job.created_by,
     )

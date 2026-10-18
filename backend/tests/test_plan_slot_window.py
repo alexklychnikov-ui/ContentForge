@@ -1,6 +1,8 @@
 from datetime import date
 
-from app.services.ai_jobs import plan_slot_window
+from app.models import BrandContentProfile, ChannelType, ContentType, KnowledgeMode
+from app.services.ai_jobs import _build_targets_per_channel, plan_slot_window
+from app.services.platform_policy import PlatformPolicyV1
 
 
 def test_current_month_starts_today() -> None:
@@ -25,3 +27,65 @@ def test_first_day_of_month() -> None:
     start, end = plan_slot_window(2026, 10, today=date(2026, 10, 1))
     assert start == date(2026, 10, 1)
     assert end == date(2026, 10, 31)
+
+
+def test_targets_per_channel_no_profile_email_only_gmail() -> None:
+    channels = [ChannelType.telegram, ChannelType.gmail]
+    targets = {
+        ContentType.social_post: 2,
+        ContentType.article: 1,
+        ContentType.email: 1,
+    }
+    matrix = _build_targets_per_channel(channels, targets, None)
+    assert matrix == {
+        "telegram": {"social_post": 2, "article": 1},
+        "gmail": {"social_post": 2, "article": 1, "email": 1},
+    }
+    assert sum(sum(v.values()) for v in matrix.values()) == 7
+
+
+def test_targets_per_channel_respects_policy(monkeypatch) -> None:
+    profile = BrandContentProfile(
+        brand_id=None,  # type: ignore[arg-type]
+        positioning="",
+        audience_segments=[],
+        audience_pains=[],
+        content_pillars=[],
+        proof_facts=[],
+        preferred_cta_styles=[],
+        banned_openers=[],
+        structure_rules="",
+        platform_policies={},
+        platform_policies_v1=None,
+        platform_policies_version=0,
+        knowledge_mode=KnowledgeMode.off,
+        knowledge_filters=[],
+        require_human_approval=True,
+    )
+    policies = {
+        "telegram": PlatformPolicyV1(
+            platform="telegram",
+            allowed_content_types=["social_post", "article"],
+        ),
+        "gmail": PlatformPolicyV1(
+            platform="gmail",
+            allowed_content_types=["social_post", "article", "email"],
+        ),
+    }
+
+    def _fake_policy(_profile, platform: str, settings=None):
+        return policies[platform], "test"
+
+    monkeypatch.setattr("app.services.ai_jobs.get_effective_platform_policy", _fake_policy)
+    channels = [ChannelType.telegram, ChannelType.gmail]
+    targets = {
+        ContentType.social_post: 2,
+        ContentType.article: 1,
+        ContentType.email: 1,
+    }
+    matrix = _build_targets_per_channel(channels, targets, profile)
+    assert matrix == {
+        "telegram": {"social_post": 2, "article": 1},
+        "gmail": {"social_post": 2, "article": 1, "email": 1},
+    }
+    assert sum(sum(v.values()) for v in matrix.values()) == 7

@@ -1252,3 +1252,35 @@ prompt: «давай дальше» — cover pipeline, VK wall photo, Editor UI
 done: cover_compositor + cover_service + generate_cover job; VK photos.upload in vk adapter; test_cover_pipeline + test_vk_cover_upload; cf.ts generate/approve/assign cover + uploadMedia + export; EditorPage cover block + manual export preview
 checks: pytest 172 passed 1 skipped; npm run build OK
 next_step: user commit+push → VPS alembic 0009-0011 + update-vps.sh; stage 9 smoke with flags; optional orphan cover cleanup
+[2026-10-18 10:15] Prod: feature flags ON + deploy Nodex v1 policies
+prompt: включить всё для рабочей платформы, не MVP; проверить
+done: config defaults true (policy v1, gate, covers); /health features; conftest flags false; env.production.example; vps-seed platform_policies_v1; push f1d47c4; VPS .env flags true; update-vps.sh; seed Nodex
+checks: pytest 172 passed (local); https://kitchen.alexklyvibe.ru/health features all true; alembic via deploy OK
+[2026-10-18 10:35] ERP brand foundation for freelance profile
+prompt: ERP-бренд.md как основа бренда фрилансера; проверить pipeline; поправить Settings
+done: alexander_personal rewritten from ERP doc; Nodex product preset separated; social prompt harden (no invented AOT authorship); proof_facts/structure on all content types; seed kit+profile applied on VPS
+checks: push cb69d23; deploy health 200; seed shows AX positioning/pains/pillars/proof_facts
+pipeline_verdict: architecture OK — mismatch was content (SMB/bots vs AX contour), not missing pipeline stages
+[2026-10-18 10:45] New vibe-coder brand MD (ERP as background only)
+prompt: stop ERP-themed posts; freelance vibe coding + automation/AI/bots; ERP as recognizable background; first deliverable = separate MD from ERP-бренд.md + Freelance Auto-Responder focus
+artifact: C:/Python/Projects/DynamicsAX/brand/VIBECODER-бренд.md
+note: ContentForge Settings/preset not changed yet — await approval of MD before rewiring brand profile
+[2026-10-18 10:55] Rewire Settings/preset to VIBECODER brand
+prompt: «ок» after LightRAG upsert of VIBECODER-бренд.md
+done: alexander_personal + seed kit = vibe coding/bots/AI; ERP as proof only; social prompt hardened; deploy 4e58884 + seed on VPS
+checks: health 200; positioning starts with «Вайбкодер»; pillars = vibe/Telegram/AI
+[2026-10-18 11:10] Plan slots from today in current month
+prompt: generate should not start from day 1 of current month
+done: plan_slot_window + brand_local_today; AI context/validation; FE hint; deploy 78c08d0
+checks: pytest plan window + ac_plans; health 200
+[2026-10-18 11:11] Per-channel plan generate (confirm=false); regenerate stays shared totals
+prompt: allocation_mode per_channel vs shared; FE hint; tests
+done: plan_service payload; ai_jobs quotas/validator; openai_mock matrix; PlanPage hint; AC05=8 (no profile); confirm shared test
+checks: pytest test_ac_plans + test_plan_slot_window — 16 passed
+[2026-10-18 11:17] QA: per-channel plan generate verification
+prompt: verify coder per_channel change (confirm false/true, FE confirm UX, pytest)
+result: PASS
+checks: pytest tests/test_ac_plans.py tests/test_plan_slot_window.py -q → 16 passed; test_jobs.py absent (skipped)
+behavior: confirm=false→per_channel N×channels; confirm=true→shared totals; FE Перегенерировать→window.confirm→mutate(true)
+issues: middle — default/_no profile telegram allows email, so per_channel duplicates email onto telegram when email target>0 (FE copy: email only Gmail); unit test covers custom policy exclude path
+handoff: teamlead — ship OK; optional follow-up tighten telegram default policy to exclude email

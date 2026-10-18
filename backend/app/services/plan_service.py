@@ -108,6 +108,7 @@ def enqueue_generate_plan(
             "locale": payload.locale.value,
             "include_holidays": payload.include_holidays,
             "include_trends": payload.include_trends,
+            "allocation_mode": "shared" if (payload.confirm or payload.create_revision) else "per_channel",
         },
         idempotency_key=payload.idempotency_key,
     )
