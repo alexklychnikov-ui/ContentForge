@@ -10,6 +10,7 @@ from app.logutil import job_id_ctx, log_event
 from app.models import BrandProfile, Job, JobStatus, JobType
 from app.services.ai_client import AIJobError
 from app.services.ai_jobs import execute_generate_content, execute_generate_plan, execute_rewrite
+from app.services.cover_service import execute_generate_cover
 from app.services.brand_kit import is_brand_kit_complete
 
 logger = logging.getLogger(__name__)
@@ -74,6 +75,8 @@ def _run_job_in_session(db: Session, job_id: UUID) -> None:
                 result = execute_generate_content(db, job, brand)
             elif job.type is JobType.rewrite:
                 result = execute_rewrite(db, job, brand)
+            elif job.type is JobType.generate_cover:
+                result = execute_generate_cover(db, job, brand)
             else:
                 assert_never(job.type)
         job.status = JobStatus.succeeded

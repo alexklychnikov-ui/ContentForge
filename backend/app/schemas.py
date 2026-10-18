@@ -160,6 +160,8 @@ class BrandContentProfileOut(BaseModel):
     banned_openers: list[str]
     structure_rules: str
     platform_policies: dict[str, str]
+    platform_policies_v1: dict[str, dict] | None = None
+    platform_policies_version: int = 0
     knowledge_mode: KnowledgeMode
     knowledge_filters: list[str]
     require_human_approval: bool
@@ -177,6 +179,7 @@ class BrandContentProfileUpdate(BaseModel):
     banned_openers: list[str] | None = None
     structure_rules: str | None = None
     platform_policies: dict[str, str] | None = None
+    platform_policies_v1: dict[str, dict] | None = None
     knowledge_mode: KnowledgeMode | None = None
     knowledge_filters: list[str] | None = None
     require_human_approval: bool | None = None
@@ -350,6 +353,7 @@ class VariantPublic(BaseModel):
     payload: dict
     revision: int
     is_immutable: bool
+    cover_media_id: UUID | None = None
 
 
 class PiecePublic(BaseModel):
@@ -416,6 +420,14 @@ class QualityReviewOut(BaseModel):
 
 class VariantReviewRequest(BaseModel):
     run_ai: bool = True
+
+
+class ManualExportRequest(BaseModel):
+    platform: str = Field(min_length=2, max_length=32)
+
+
+class VariantCoverAssignRequest(BaseModel):
+    media_id: UUID
 
 
 class RewriteSelection(BaseModel):

@@ -38,7 +38,10 @@ from app.services.ai_schemas import (
     RewriteAI,
 )
 from app.services.catalog_service import list_holidays
-from app.services.content_brief import build_content_brief
+from app.services.content_brief import build_content_brief, build_content_brief_v2
+from app.services.platform_policy import get_effective_platform_policy
+from app.services.platform_prompts import article_system_prompt, social_post_system_prompt
+from app.services.variant_checksum import store_checksum_meta
 from app.services.content_profile_service import ensure_content_profile
 from app.services.content_quality import (
     get_quality_blockers,
@@ -52,11 +55,13 @@ from app.services.stopwords import find_stopwords, payload_text
 
 logger = logging.getLogger(__name__)
 
-PROMPT_VERSION_CONTENT_V2 = "content_v2"
+PROMPT_VERSION_CONTENT_V2 = "content_v2_platform"
 
 PLAN_SYSTEM = (
     "You are ContentForge planner. Return JSON {\"items\":[...]}. "
-    "Each item: date (YYYY-MM-DD), channel_type, content_type, theme, goal, hook. "
+    "Each item: date (YYYY-MM-DD), channel_type, content_type, theme, goal, hook, "
+    "audience_segment, audience_pain, takeaway, scene_seed, image_concept. "
+    "Platform-specific intent: same theme must read differently per channel_type. "
     "goal must be one of: awareness, traffic, lead, retention. "
     "Do not invent prices, legal guarantees, or promo dates missing from context. "
     "Mix RU holidays into themes when they fall in the month. "
@@ -112,16 +117,20 @@ def _grounding_query(
 
 
 def _use_content_v2(profile: BrandContentProfile, content_type: ContentType) -> bool:
-    if content_type is not ContentType.social_post:
-        return False
-    if profile.knowledge_mode is not KnowledgeMode.off:
-        return True
-    return bool(
-        (profile.structure_rules or "").strip()
-        or list(profile.content_pillars or [])
-        or list(profile.banned_openers or [])
-        or list(profile.audience_pains or [])
-    )
+    if content_type is ContentType.social_post:
+        if profile.knowledge_mode is not KnowledgeMode.off:
+            return True
+        return bool(
+            (profile.structure_rules or "").strip()
+            or list(profile.content_pillars or [])
+            or list(profile.banned_openers or [])
+            or list(profile.audience_pains or [])
+        )
+    if content_type is ContentType.article:
+        return profile.knowledge_mode is not KnowledgeMode.off or bool(
+            (profile.structure_rules or "").strip()
+        )
+    return False
 
 
 def _generation_meta(
@@ -197,7 +206,9 @@ def _plan_schema_hint(
     return (
         f"Schema example item: "
         f'{{"date":"{year}-{month:02d}-01","channel_type":"{channels[0].value}",'
-        f'"content_type":"{next(iter(targets)).value}","theme":"...","goal":"awareness","hook":"..."}}. '
+        f'"content_type":"{next(iter(targets)).value}","theme":"...","goal":"awareness","hook":"...",'
+        f'"audience_segment":"...","audience_pain":"...","takeaway":"...",'
+        f'"scene_seed":"...","image_concept":"..."}}. '
         f"Allowed channel_type: {channel_list}. Allowed content_type: {type_list}. "
         f"Allowed goal: {goals}. Dates only in {year}-{month:02d}."
     )
@@ -235,6 +246,14 @@ def execute_generate_plan(db: Session, job: Job, brand: BrandProfile) -> dict[st
             brand_ctx["audience_pains"] = list(profile.audience_pains)
         if profile.audience_segments:
             brand_ctx["audience_segments"] = list(profile.audience_segments)
+        policy_hints: dict[str, dict[str, Any]] = {}
+        for ch in channels:
+            policy, _src = get_effective_platform_policy(profile, ch.value)
+            policy_hints[ch.value] = {
+                "allowed_content_types": list(policy.allowed_content_types),
+                "extra_instructions": policy.extra_instructions,
+            }
+        brand_ctx["platform_policies"] = policy_hints
     context = {
         "year": year,
         "month": month,
@@ -275,6 +294,18 @@ def execute_generate_plan(db: Session, job: Job, brand: BrandProfile) -> dict[st
                     "schema_invalid",
                     f"channel {item.channel_type.value} is not in requested channels",
                 )
+            if profile is not None:
+                policy, _src = get_effective_platform_policy(profile, item.channel_type.value)
+                if not policy.allows_content_type(item.content_type):
+                    return AIJobError(
+                        "schema_invalid",
+                        f"content_type {item.content_type.value} not allowed for {item.channel_type.value}",
+                        {
+                            "platform": item.channel_type.value,
+                            "content_type": item.content_type.value,
+                            "allowed": policy.allowed_content_types,
+                        },
+                    )
             by_type[item.content_type] = by_type.get(item.content_type, 0) + 1
         for content_type, count in targets.items():
             actual = by_type.get(content_type, 0)
@@ -318,6 +349,11 @@ def execute_generate_plan(db: Session, job: Job, brand: BrandProfile) -> dict[st
                 theme=item.theme,
                 goal=item.goal,
                 hook=item.hook,
+                audience_segment=item.audience_segment or "",
+                audience_pain=item.audience_pain or "",
+                takeaway=item.takeaway or "",
+                scene_seed=item.scene_seed or "",
+                image_concept=item.image_concept or "",
                 sort_order=index,
             )
         )
@@ -350,19 +386,19 @@ def execute_generate_content(db: Session, job: Job, brand: BrandProfile) -> dict
     goal = item.goal.value if item is not None else ""
 
     profile = ensure_content_profile(db, brand.id)
-    brief = build_content_brief(
-        brand,
-        profile,
-        theme=theme,
-        hook=hook,
-        goal=goal,
-        channel_type=channel_str or None,
-        extra_instructions=extra,
-    )
+    platform_key = (channel_str or "").strip().lower()
+    if piece.type is ContentType.article and platform_key:
+        policy, _src = get_effective_platform_policy(profile, platform_key)
+        if not policy.allows_content_type(ContentType.article):
+            raise AIJobError(
+                "validation_error",
+                f"Тип article не разрешён для {platform_key}",
+                {"platform": platform_key},
+            )
 
     grounding = GroundingResult(status=GroundingStatus.skipped)
     use_v2 = _use_content_v2(profile, piece.type)
-    if piece.type is ContentType.social_post and profile.knowledge_mode is not KnowledgeMode.off:
+    if piece.type in (ContentType.social_post, ContentType.article) and profile.knowledge_mode is not KnowledgeMode.off:
         query = _grounding_query(theme=theme, hook=hook, extra=extra, profile=profile)
         grounding = ground_knowledge(profile, query)
         if grounding.status is GroundingStatus.blocked:
@@ -376,8 +412,37 @@ def execute_generate_content(db: Session, job: Job, brand: BrandProfile) -> dict
                 },
             )
 
+    proof_refs = [ref.id for ref in grounding.references]
+    brief_v2 = build_content_brief_v2(
+        brand,
+        profile,
+        plan_item=item,
+        theme=theme,
+        hook=hook,
+        goal=goal,
+        channel_type=channel_str or None,
+        content_type=piece.type.value,
+        retrieval_status=grounding.status.value,
+        proof_source_refs=proof_refs,
+    )
+    brief = brief_v2.get("content_brief_legacy") or build_content_brief(
+        brand,
+        profile,
+        theme=theme,
+        hook=hook,
+        goal=goal,
+        channel_type=channel_str or None,
+        extra_instructions=extra,
+    )
+
     prompt_version = PROMPT_VERSION_CONTENT_V2 if use_v2 else PROMPT_VERSION
-    system_prompt = CONTENT_SYSTEM_V2 if use_v2 else CONTENT_SYSTEM
+    system_prompt = CONTENT_SYSTEM
+    if use_v2:
+        policy_for_prompt, _src = get_effective_platform_policy(profile, platform_key or "telegram")
+        if piece.type is ContentType.article:
+            system_prompt = article_system_prompt(platform_key or None, policy_for_prompt)
+        else:
+            system_prompt = social_post_system_prompt(platform_key or None, policy_for_prompt)
 
     context: dict[str, Any] = {
         "type": piece.type.value,
@@ -388,6 +453,7 @@ def execute_generate_content(db: Session, job: Job, brand: BrandProfile) -> dict
         "goal": goal,
         "extra_instructions": extra,
         "content_brief": brief,
+        "content_brief_v2": brief_v2,
         "brand": brief["brand"],
     }
     if piece.type is not ContentType.social_post and profile is not None:
@@ -405,9 +471,13 @@ def execute_generate_content(db: Session, job: Job, brand: BrandProfile) -> dict
             user_parts.append(
                 _wrap_untrusted_knowledge(grounding.context, refs)
             )
-    if use_v2:
+    if use_v2 and piece.type is ContentType.social_post:
         user_parts.append(
             "Return JSON for social_post with text, headline, lead, scene, takeaway, cta, hashtags, alt_text."
+        )
+    elif use_v2 and piece.type is ContentType.article:
+        user_parts.append(
+            "Return JSON for article with title, excerpt, body_markdown, seo_title, seo_description, slug."
         )
     else:
         user_parts.append("Return JSON for this type.")
@@ -418,6 +488,9 @@ def execute_generate_content(db: Session, job: Job, brand: BrandProfile) -> dict
     ]
     result, meta = complete_json(schema, messages)
     variant_payload = result.model_dump()
+    if platform_key:
+        variant_payload["target_platform"] = platform_key
+        variant_payload["content_type"] = piece.type.value
     hits = find_stopwords(payload_text(variant_payload), list(brand.stopwords or []))
     gen_meta = _generation_meta(
         grounding=grounding,
@@ -430,9 +503,11 @@ def execute_generate_content(db: Session, job: Job, brand: BrandProfile) -> dict
             payload=variant_payload,
             profile=profile,
             stopwords=list(brand.stopwords or []),
+            platform=platform_key or None,
         )
         gen_meta["quality"] = quality_payload_from_lint(lint)
     variant_payload["_meta"] = gen_meta
+    variant_payload = store_checksum_meta(variant_payload)
 
     variant = next((row for row in piece.variants if row.label == label), None)
     if variant is None:

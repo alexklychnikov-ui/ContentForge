@@ -290,9 +290,21 @@ def test_auto_schedule_allowed_when_approved(db: Session) -> None:
     brand, user, piece = _seed(db, require_human_approval=True)
     piece.status = PieceStatus.ready
     payload = _good_payload()
+    from app.services.variant_checksum import payload_checksum, store_checksum_meta
+
+    payload = store_checksum_meta(payload)
+    checksum = payload_checksum(payload)
     payload["_meta"] = {
+        **payload.get("_meta", {}),
         "approved_at": datetime.now(timezone.utc).isoformat(),
         "approved_by": str(user.id),
+        "approved_revision": 1,
+        "approval": {
+            "revision": 1,
+            "payload_checksum": checksum,
+            "approved_at": datetime.now(timezone.utc).isoformat(),
+            "approved_by": str(user.id),
+        },
         "quality": {"blockers": [], "warnings": [], "lint": {"scores": None}},
     }
     variant = ContentVariant(piece_id=piece.id, label="A", payload=payload, revision=1)

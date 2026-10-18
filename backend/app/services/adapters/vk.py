@@ -1,9 +1,11 @@
 import logging
+from pathlib import Path
 
 import httpx
 from sqlalchemy.orm import Session
 
-from app.models import ChannelAccount, ChannelStatus, ContentVariant, Publication
+from app.models import ChannelAccount, ChannelStatus, ContentVariant, MediaAsset, Publication
+from app.services.media_service import media_file_path
 from app.schemas import ChannelHealth
 from app.services.adapters.base import (
     AdapterError,
@@ -24,7 +26,9 @@ VK_API_VERSION = "5.199"
 HEALTH_TIMEOUT = 10.0
 PUBLISH_TIMEOUT = 30.0
 MAX_TEXT = 4096
-VK_METHODS = frozenset({"groups.getById", "wall.post"})
+VK_METHODS = frozenset(
+    {"groups.getById", "wall.post", "photos.getWallUploadServer", "photos.saveWallPhoto"}
+)
 RATE_LIMIT_CODES = frozenset({6, 9, 14, 29})
 AUTH_DENIED_CODES = frozenset({5, 15, 27, 203, 214})
 
@@ -148,6 +152,48 @@ def _health_reason(exc: AdapterError) -> str:
     return "Проверка VK не удалась."
 
 
+def _upload_wall_photo(token: str, group_id: str, file_path: Path) -> str:
+    server = vk_api(
+        "photos.getWallUploadServer",
+        token,
+        {"group_id": group_id},
+        timeout=PUBLISH_TIMEOUT,
+    )
+    if not isinstance(server, dict) or not server.get("upload_url"):
+        raise AdapterError("adapter_error", "VK upload server missing", retryable=True)
+    upload_url = str(server["upload_url"])
+    with file_path.open("rb") as handle:
+        with vk_http_client(PUBLISH_TIMEOUT) as client:
+            response = client.post(upload_url, files={"photo": handle})
+    try:
+        upload_payload = response.json()
+    except ValueError:
+        raise AdapterError("adapter_error", "VK upload returned non-JSON", retryable=True) from None
+    if not isinstance(upload_payload, dict) or not upload_payload.get("photo"):
+        raise AdapterError("adapter_error", "VK upload failed", retryable=True)
+    saved = vk_api(
+        "photos.saveWallPhoto",
+        token,
+        {
+            "group_id": group_id,
+            "photo": upload_payload["photo"],
+            "server": upload_payload.get("server"),
+            "hash": upload_payload.get("hash"),
+        },
+        timeout=PUBLISH_TIMEOUT,
+    )
+    if not isinstance(saved, list) or not saved:
+        raise AdapterError("adapter_error", "VK saveWallPhoto failed", retryable=False)
+    photo = saved[0]
+    if not isinstance(photo, dict):
+        raise AdapterError("adapter_error", "VK photo payload invalid", retryable=False)
+    owner_id = photo.get("owner_id")
+    photo_id = photo.get("id")
+    if owner_id is None or photo_id is None:
+        raise AdapterError("adapter_error", "VK photo id missing", retryable=False)
+    return f"photo{owner_id}_{photo_id}"
+
+
 class VkAdapter(ChannelAdapter):
     supports_autopost = True
 
@@ -172,6 +218,11 @@ class VkAdapter(ChannelAdapter):
         }
         if publication.idempotency_key:
             params["guid"] = publication.idempotency_key
+        if variant.cover_media_id is not None:
+            asset = db.get(MediaAsset, variant.cover_media_id)
+            if asset is not None:
+                attachment = _upload_wall_photo(token, group_id, media_file_path(asset))
+                params["attachments"] = attachment
         logger.info("vk_wall_post group_id=%s", group_id)
         result = vk_api("wall.post", token, params, timeout=PUBLISH_TIMEOUT)
         post_id = None

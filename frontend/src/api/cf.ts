@@ -1,3 +1,4 @@
+import { getSession } from "../auth/session";
 import { apiDelete, apiGet, apiPatch, apiPost } from "./client";
 import type {
   AnalyticsSummary,
@@ -90,6 +91,33 @@ export const cf = {
     apiPost<QualityReview>(`/content/${pieceId}/variants/${variantId}/review`, body ?? { run_ai: true }),
   approveVariant: (pieceId: string, variantId: string) =>
     apiPost<PiecePublic>(`/content/${pieceId}/variants/${variantId}/approve`, {}),
+  generateCover: (pieceId: string, variantId: string) =>
+    apiPost<JobAccepted>(`/content/${pieceId}/variants/${variantId}/covers/generate`, {}),
+  approveCover: (pieceId: string, variantId: string) =>
+    apiPost<VariantPublic>(`/content/${pieceId}/variants/${variantId}/covers/approve`, {}),
+  assignCover: (pieceId: string, variantId: string, mediaId: string) =>
+    apiPost<VariantPublic>(`/content/${pieceId}/variants/${variantId}/cover`, { media_id: mediaId }),
+  exportVariant: (variantId: string, platform: string) =>
+    apiPost<Record<string, unknown>>(`/variants/${variantId}/export`, { platform }),
+  uploadMedia: async (brandId: string, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    const session = getSession();
+    const headers = new Headers();
+    if (session?.tokens.access_token) {
+      headers.set("Authorization", `Bearer ${session.tokens.access_token}`);
+    }
+    const response = await fetch(`/api/v1/brands/${brandId}/media`, {
+      method: "POST",
+      headers,
+      body: form,
+    });
+    const body = await response.json();
+    if (!response.ok) {
+      throw new Error(typeof body?.error?.message === "string" ? body.error.message : "upload failed");
+    }
+    return body as { id: string; url: string };
+  },
   channels: (brandId: string) => apiGet<ChannelPublic[]>(`/brands/${brandId}/channels`),
   saveChannel: (brandId: string, type: string, body: Record<string, unknown>) =>
     apiPost<ChannelPublic>(`/brands/${brandId}/channels/${type}/credentials`, body),

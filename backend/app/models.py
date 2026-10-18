@@ -117,6 +117,7 @@ class PieceStatus(str, enum.Enum):
 class JobType(str, enum.Enum):
     generate_plan = "generate_plan"
     generate_content = "generate_content"
+    generate_cover = "generate_cover"
     rewrite = "rewrite"
 
 
@@ -265,6 +266,8 @@ class BrandContentProfile(Base):
     banned_openers: Mapped[list[str]] = mapped_column(JSON, nullable=False, default=list)
     structure_rules: Mapped[str] = mapped_column(Text, nullable=False, default="")
     platform_policies: Mapped[dict[str, str]] = mapped_column(JSON, nullable=False, default=dict)
+    platform_policies_v1: Mapped[dict[str, dict] | None] = mapped_column(JSON, nullable=True)
+    platform_policies_version: Mapped[int] = mapped_column(nullable=False, default=0)
     knowledge_mode: Mapped[KnowledgeMode] = mapped_column(
         Enum(KnowledgeMode, native_enum=False, length=16),
         nullable=False,
@@ -440,6 +443,11 @@ class PlanItem(Base):
         default=PlanGoal.awareness,
     )
     hook: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    audience_segment: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    audience_pain: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    takeaway: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    scene_seed: Mapped[str] = mapped_column(Text, nullable=False, default="")
+    image_concept: Mapped[str] = mapped_column(Text, nullable=False, default="")
     content_piece_id: Mapped[uuid.UUID | None] = mapped_column(
         Uuid(as_uuid=True),
         ForeignKey(
@@ -509,8 +517,14 @@ class ContentVariant(Base):
     payload: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
     revision: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
     is_immutable: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    cover_media_id: Mapped[uuid.UUID | None] = mapped_column(
+        Uuid(as_uuid=True),
+        ForeignKey("media_assets.id", ondelete="SET NULL"),
+        nullable=True,
+    )
 
     piece: Mapped[ContentPiece] = relationship(back_populates="variants")
+    cover_media: Mapped["MediaAsset | None"] = relationship(foreign_keys=[cover_media_id])
     publications: Mapped[list["Publication"]] = relationship(
         back_populates="variant", cascade="all, delete-orphan"
     )

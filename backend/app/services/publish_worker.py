@@ -9,9 +9,11 @@ from app.db import get_session_factory
 from app.logutil import log_event, publication_id_ctx
 from app.models import ChannelAccount, ChannelStatus, ContentVariant, Publication, PublicationStatus
 from app.security import as_utc, utc_now
+from app.errors import AppError
 from app.services.adapters import get_adapter
 from app.services.adapters.base import AdapterError
 from app.services.audit import write_audit
+from app.services.publication_gate import verify_publication_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -138,6 +140,15 @@ def _process_publication(db: Session, pub: Publication, moment: datetime) -> Non
     pub.attempt_count = int(pub.attempt_count or 0) + 1
     pub.updated_at = moment
     db.flush()
+    try:
+        verify_publication_snapshot(pub.meta, variant, db)
+    except AppError as exc:
+        _fail_publication(
+            pub,
+            AdapterError(exc.code, exc.message, retryable=False),
+            moment,
+        )
+        return
     try:
         result = adapter.publish(db, channel, variant, pub)
     except AdapterError as exc:

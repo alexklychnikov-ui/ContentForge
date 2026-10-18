@@ -27,6 +27,10 @@ def install_vk_mock(monkeypatch, handler=None) -> list[dict]:
             return [{"id": int((params or {}).get("group_id") or 1), "name": "test"}]
         if method == "wall.post":
             return {"post_id": DEFAULT_POST_ID}
+        if method == "photos.getWallUploadServer":
+            return {"upload_url": "https://vk-upload.test/upload", "album_id": 1}
+        if method == "photos.saveWallPhoto":
+            return [{"id": 501, "owner_id": -123}]
         raise AssertionError(f"unexpected vk method {method}")
 
     monkeypatch.setattr("app.services.adapters.vk.vk_api", fake)

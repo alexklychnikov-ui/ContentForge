@@ -45,6 +45,20 @@ ALEXANDER_PERSONAL_PRESET: dict = {
     "require_human_approval": True,
 }
 
+NODEX_PRESET: dict = {
+    **ALEXANDER_PERSONAL_PRESET,
+    "positioning": (
+        "Nodex: AI-платформа контент-маркетинга; Python/AI, автоматизация, "
+        "контент под VK, Instagram и TenChat с grounding и quality gates"
+    ),
+    "platform_policies": {
+        "vk": "VK Nodex: hook, сцена, CTA 1/2; лонг до 4096",
+        "instagram": "Instagram: caption, hashtags, alt, квадратная обложка",
+        "tenchat": "TenChat: боль → сцена → практика → takeaway; без hard sell",
+    },
+}
+
 CONTENT_PROFILE_PRESETS: dict[str, dict] = {
     "alexander_personal": ALEXANDER_PERSONAL_PRESET,
+    "nodex": NODEX_PRESET,
 }

@@ -44,6 +44,7 @@ celery_app.conf.update(
         "contentforge.generate_plan": {"queue": "ai"},
         "contentforge.generate_content": {"queue": "ai"},
         "contentforge.rewrite": {"queue": "ai"},
+        "contentforge.generate_cover": {"queue": "ai"},
     },
 )
 
@@ -68,6 +69,11 @@ def rewrite(job_id: str) -> None:
     run_job_in_worker(job_id)
 
 
+@celery_app.task(name="contentforge.generate_cover", queue="ai")
+def generate_cover(job_id: str) -> None:
+    run_job_in_worker(job_id)
+
+
 @celery_app.task(name="contentforge.publish_due")
 def publish_due() -> dict[str, int]:
     return run_publish_due_job()
@@ -86,3 +92,4 @@ def prepare_plan_slots() -> dict[str, int]:
 TASKS[JobType.generate_plan] = generate_plan
 TASKS[JobType.generate_content] = generate_content
 TASKS[JobType.rewrite] = rewrite
+TASKS[JobType.generate_cover] = generate_cover

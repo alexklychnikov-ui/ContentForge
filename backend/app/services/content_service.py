@@ -32,6 +32,9 @@ from app.services.audit import write_audit
 from app.services.brand_kit import assert_can_generate_plan
 from app.services.brand_service import MUTATE_BRAND_ROLES, require_brand
 from app.services.content_profile_service import ensure_content_profile
+from app.services.cover_service import count_cover_jobs_for_revision
+from app.services.job_service import create_job, dispatch_job
+from app.services.variant_checksum import clear_text_approval, payload_checksum, store_checksum_meta
 from app.services.content_quality import (
     is_variant_approved,
     quality_payload_from_lint,
@@ -39,7 +42,6 @@ from app.services.content_quality import (
     store_approval_on_payload,
     store_quality_on_payload,
 )
-from app.services.job_service import create_job, dispatch_job
 
 
 def list_pieces(
@@ -180,8 +182,12 @@ def patch_variant(
     if payload.payload is not None:
         merged = dict(variant.payload or {})
         merged.update(payload.payload)
-        variant.payload = merged
+        merged = clear_text_approval(merged)
+        variant.payload = store_checksum_meta(merged)
         variant.revision += 1
+        piece = variant.piece
+        if piece.status is PieceStatus.ready:
+            piece.status = PieceStatus.draft
     db.flush()
     return variant
 
@@ -293,6 +299,96 @@ def review_variant(
     return _quality_out(variant, piece)
 
 
+def enqueue_generate_cover(
+    db: Session,
+    user: User,
+    piece_id: UUID,
+    variant_id: UUID,
+) -> Job:
+    from app.config import get_settings
+
+    settings = get_settings()
+    if not settings.cover_generation_enabled:
+        raise AppError(409, "feature_disabled", "Генерация обложек выключена")
+    variant = get_variant(db, user, piece_id, variant_id)
+    brand, _membership = require_brand(db, user, variant.piece.brand_id, MUTATE_BRAND_ROLES)
+    profile = ensure_content_profile(db, brand.id)
+    if profile.require_human_approval and not is_variant_approved(variant, variant.piece):
+        raise AppError(422, "text_not_approved", "Сначала подтвердите текст")
+    checksum = payload_checksum(variant.payload)
+    if count_cover_jobs_for_revision(db, variant.id, variant.revision) >= 3:
+        raise AppError(429, "cover_generation_limit", "Лимит генераций обложки")
+    job = create_job(
+        db,
+        user=user,
+        job_type=JobType.generate_cover,
+        payload={
+            "brand_id": str(brand.id),
+            "variant_id": str(variant.id),
+            "expected_revision": variant.revision,
+            "expected_payload_checksum": checksum,
+        },
+    )
+    if job.status.value == "queued":
+        dispatch_job(db, job)
+    return job
+
+
+def assign_variant_cover(
+    db: Session,
+    user: User,
+    piece_id: UUID,
+    variant_id: UUID,
+    media_id: UUID,
+) -> ContentVariant:
+    variant = get_variant(db, user, piece_id, variant_id)
+    brand, _membership = require_brand(db, user, variant.piece.brand_id, MUTATE_BRAND_ROLES)
+    from app.models import MediaAsset
+
+    media = db.get(MediaAsset, media_id)
+    if media is None or media.brand_id != brand.id:
+        raise AppError(404, "not_found", "Media не найден")
+    variant.cover_media_id = media_id
+    payload = dict(variant.payload or {})
+    meta = dict(payload.get("_meta") or {})
+    meta.pop("cover", None)
+    payload["_meta"] = meta
+    variant.payload = payload
+    db.flush()
+    return variant
+
+
+def approve_variant_cover(
+    db: Session,
+    user: User,
+    piece_id: UUID,
+    variant_id: UUID,
+) -> ContentVariant:
+    from app.models import MediaAsset
+
+    variant = get_variant(db, user, piece_id, variant_id)
+    brand, _membership = require_brand(db, user, variant.piece.brand_id, MUTATE_BRAND_ROLES)
+    if variant.cover_media_id is None:
+        raise AppError(422, "cover_required", "Нет обложки")
+    media = db.get(MediaAsset, variant.cover_media_id)
+    if media is None or media.brand_id != brand.id:
+        raise AppError(404, "not_found", "Media не найден")
+    payload = dict(variant.payload or {})
+    meta = dict(payload.get("_meta") or {})
+    meta["cover"] = {
+        "revision": variant.revision,
+        "media_id": str(media.id),
+        "media_checksum": media.checksum,
+        "payload_checksum": payload_checksum(payload),
+        "approved_at": utc_now().isoformat(),
+        "approved_by": str(user.id),
+    }
+    payload["_meta"] = meta
+    variant.payload = payload
+    db.flush()
+    return variant
+
+
 def approve_variant(
     db: Session,
     user: User,
@@ -320,10 +416,13 @@ def approve_variant(
             {"blockers": blockers},
         )
     now = utc_now().isoformat()
+    checksum = payload_checksum(variant.payload)
     variant.payload = store_approval_on_payload(
         variant.payload or {},
         approved_at=now,
         approved_by=str(user.id),
+        revision=variant.revision,
+        checksum=checksum,
     )
     piece.status = PieceStatus.ready
     db.flush()

@@ -13,7 +13,9 @@ from app.models import (
     KnowledgeMode,
     PieceStatus,
 )
+from app.services.platform_policy import get_effective_platform_policy
 from app.services.stopwords import find_stopwords, payload_text
+from app.services.variant_checksum import approval_matches
 
 
 class QualityLintResult(BaseModel):
@@ -104,16 +106,53 @@ def lint_social_post(
     return QualityLintResult(blockers=blockers, warnings=warnings)
 
 
+def lint_article(
+    payload: dict[str, Any] | None,
+    profile: BrandContentProfile,
+    *,
+    platform: str | None = None,
+    stopwords: list[str] | None = None,
+) -> QualityLintResult:
+    data = dict(payload or {})
+    blockers: list[str] = []
+    warnings: list[str] = []
+
+    title = _str_field(data, "title")
+    body = _str_field(data, "body_markdown")
+    if not title:
+        blockers.append("missing_title")
+    if not body:
+        blockers.append("empty_body")
+
+    if platform:
+        policy, _src = get_effective_platform_policy(profile, platform)
+        if not policy.allows_content_type(ContentType.article):
+            blockers.append("platform_content_type_not_allowed")
+        if policy.max_text_length:
+            from app.services.adapters.vk import variant_text
+
+            if len(variant_text(data)) > policy.max_text_length:
+                blockers.append("text_length_exceeded")
+
+    hits = find_stopwords(payload_text(data), list(stopwords or []))
+    for word in hits:
+        warnings.append(f"stopword:{word}")
+    return QualityLintResult(blockers=blockers, warnings=warnings)
+
+
 def lint_content_payload(
     *,
     content_type: ContentType,
     payload: dict[str, Any] | None,
     profile: BrandContentProfile,
     stopwords: list[str] | None = None,
+    platform: str | None = None,
 ) -> QualityLintResult:
-    if content_type is not ContentType.social_post:
-        return QualityLintResult()
-    return lint_social_post(payload, profile, stopwords)
+    if content_type is ContentType.social_post:
+        return lint_social_post(payload, profile, stopwords)
+    if content_type is ContentType.article:
+        return lint_article(payload, profile, platform=platform, stopwords=stopwords)
+    return QualityLintResult()
 
 
 def quality_payload_from_lint(
@@ -146,12 +185,11 @@ def get_quality_blockers(payload: dict[str, Any] | None) -> list[str]:
 
 
 def is_variant_approved(variant: ContentVariant, piece: ContentPiece | None = None) -> bool:
-    piece = piece or variant.piece
-    if piece is not None and piece.status is PieceStatus.ready:
+    if approval_matches(variant.revision, variant.payload):
         return True
     meta = (variant.payload or {}).get("_meta")
-    if isinstance(meta, dict) and meta.get("approved_at"):
-        return True
+    if isinstance(meta, dict) and meta.get("approved_at") and not meta.get("approval"):
+        return int(meta.get("approved_revision") or variant.revision) == variant.revision
     return False
 
 
@@ -171,11 +209,20 @@ def store_approval_on_payload(
     *,
     approved_at: str,
     approved_by: str,
+    revision: int,
+    checksum: str,
 ) -> dict[str, Any]:
     merged = dict(payload or {})
     meta = dict(merged.get("_meta") or {})
     meta["approved_at"] = approved_at
     meta["approved_by"] = approved_by
+    meta["approved_revision"] = revision
+    meta["approval"] = {
+        "revision": revision,
+        "payload_checksum": checksum,
+        "approved_at": approved_at,
+        "approved_by": approved_by,
+    }
     merged["_meta"] = meta
     return merged
 
@@ -186,9 +233,13 @@ def run_formal_lint_for_variant(
     profile: BrandContentProfile,
     brand: BrandProfile,
 ) -> QualityLintResult:
+    platform = None
+    if variant.payload and isinstance(variant.payload.get("target_platform"), str):
+        platform = variant.payload["target_platform"]
     return lint_content_payload(
         content_type=piece.type,
         payload=variant.payload,
         profile=profile,
         stopwords=list(brand.stopwords or []),
+        platform=platform,
     )

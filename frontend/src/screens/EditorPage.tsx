@@ -50,7 +50,8 @@ function groundingStatusLabel(status: string): string {
 }
 
 function fieldsFor(type: PiecePublic["type"]): string[] {
-  if (type === "social_post") return ["text", "cta", "hashtags", "alt_text"];
+  if (type === "social_post")
+    return ["headline", "lead", "scene", "takeaway", "text", "cta", "hashtags", "alt_text"];
   if (type === "article") return ["title", "slug", "excerpt", "body_markdown", "seo_title", "seo_description"];
   return ["subject", "preheader", "body_markdown"];
 }
@@ -116,7 +117,9 @@ export function EditorPage() {
   const [jobStatus, setJobStatus] = useState<string | null>(null);
   const [jobError, setJobError] = useState<string | null>(null);
   const [reviewResult, setReviewResult] = useState<QualityReview | null>(null);
+  const [exportPreview, setExportPreview] = useState<string | null>(null);
   const textRef = useRef<HTMLTextAreaElement | null>(null);
+  const coverInputRef = useRef<HTMLInputElement | null>(null);
   const autogenStarted = useRef(false);
 
   const listQuery = useQuery({
@@ -154,6 +157,7 @@ export function EditorPage() {
 
   useEffect(() => {
     setReviewResult(null);
+    setExportPreview(null);
   }, [current?.id]);
 
   useEffect(() => {
@@ -296,6 +300,35 @@ export function EditorPage() {
       queryClient.invalidateQueries({ queryKey: ["content", brand?.id] });
     },
   });
+  const generateCover = useMutation({
+    mutationFn: () =>
+      runJob(() => cf.generateCover(piece!.id, current!.id), "generate_cover"),
+  });
+  const approveCover = useMutation({
+    mutationFn: () => cf.approveCover(piece!.id, current!.id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["piece", pieceId] }),
+  });
+  const assignCover = useMutation({
+    mutationFn: (file: File) =>
+      cf.uploadMedia(brand!.id, file).then((media) =>
+        cf.assignCover(piece!.id, current!.id, media.id),
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["piece", pieceId] }),
+  });
+  const manualExport = useMutation({
+    mutationFn: () => cf.exportVariant(current!.id, channel),
+    onSuccess: (row) => setExportPreview(JSON.stringify(row, null, 2)),
+  });
+  const coverMeta = useMemo(() => {
+    const meta = current?.payload?._meta;
+    if (!meta || typeof meta !== "object") return null;
+    const cover = (meta as Record<string, unknown>).cover;
+    if (!cover || typeof cover !== "object") return null;
+    return cover as { approved_at?: string };
+  }, [current?.payload]);
+  const coverApproved = Boolean(coverMeta?.approved_at);
+  const coverMediaId = current?.cover_media_id ?? null;
+  const manualExportChannels = ["instagram", "tenchat", "vk"] as const;
 
   if (!brand) {
     return (
@@ -317,7 +350,11 @@ export function EditorPage() {
           rewrite.error ||
           archivePiece.error ||
           review.error ||
-          approve.error
+          approve.error ||
+          generateCover.error ||
+          approveCover.error ||
+          assignCover.error ||
+          manualExport.error
         }
       />
       <JobBanner status={jobStatus} error={jobError} label="AI-задача" />
@@ -522,6 +559,61 @@ export function EditorPage() {
                 </button>
               </div>
               <p className="muted">Выдели фрагмент в основном тексте и нажми</p>
+              <div className="card">
+                <h3>Обложка</h3>
+                {coverMediaId ? (
+                  <p className="muted">
+                    media: {coverMediaId.slice(0, 8)}…
+                    {coverApproved ? " · одобрена" : " · не одобрена"}
+                  </p>
+                ) : (
+                  <p className="muted">Обложка не назначена</p>
+                )}
+                {coverMediaId ? (
+                  <img
+                    alt="cover preview"
+                    src={`/api/v1/media/${coverMediaId}/file`}
+                    style={{ maxWidth: 240, borderRadius: 8 }}
+                  />
+                ) : null}
+                <input
+                  ref={coverInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp"
+                  hidden
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    if (file) assignCover.mutate(file);
+                  }}
+                />
+                <div className="row">
+                  <button
+                    className="btn secondary"
+                    type="button"
+                    disabled={!current || assignCover.isPending}
+                    onClick={() => coverInputRef.current?.click()}
+                  >
+                    Загрузить
+                  </button>
+                  <button
+                    className="btn secondary"
+                    type="button"
+                    disabled={!current || generateCover.isPending}
+                    onClick={() => generateCover.mutate()}
+                  >
+                    Сгенерировать
+                  </button>
+                  <button
+                    className="btn"
+                    type="button"
+                    disabled={!current || !coverMediaId || coverApproved || approveCover.isPending}
+                    onClick={() => approveCover.mutate()}
+                  >
+                    Одобрить обложку
+                  </button>
+                </div>
+              </div>
               <label className="field">
                 Канал
                 <select value={channel} onChange={(e) => setChannel(e.target.value)}>
@@ -541,6 +633,23 @@ export function EditorPage() {
                 Поставить в очередь
               </button>
               {schedule.data ? <p className="muted">Публикация {schedule.data.status}</p> : null}
+              {(manualExportChannels as readonly string[]).includes(channel) ? (
+                <div className="row">
+                  <button
+                    className="btn secondary"
+                    type="button"
+                    disabled={!current || manualExport.isPending}
+                    onClick={() => manualExport.mutate()}
+                  >
+                    Экспорт для ручной публикации
+                  </button>
+                </div>
+              ) : null}
+              {exportPreview ? (
+                <pre className="muted" style={{ whiteSpace: "pre-wrap", fontSize: 12 }}>
+                  {exportPreview}
+                </pre>
+              ) : null}
             </>
           )}
         </div>

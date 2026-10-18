@@ -1224,3 +1224,31 @@ artifact: Docs/NODEX_PLATFORM_CONTENT_OPTIMIZATION_PLAN.md
 scope: 10 gated MVP stages from golden corpus through rollout; Post-MVP backlog excluded from implementation
 checks: C4/DFD/Sequence consistent; API/data/migration/security/NFR specified; each implementation stage has inputs/actions/checks/result/rollback; publication and cover snapshots are revision/checksum-bound
 next_step: await explicit authorization to enter coding stage 0
+[2026-10-17 20:15] Nodex optimization plan coding stages 0-3
+stage: coding
+status: done (e0-e3 partial MVP backend)
+prompt: execute plan with pytest after each stage; fix critical failures
+e0: golden corpus JSON + validation tests (test_golden_corpus.py)
+e1: PlatformPolicyV1, ContentBriefV2 schema, migration 0009, dual-read, nodex preset, tests/test_platform_policy_v1.py
+e2: plan brief fields migration 0010, build_content_brief_v2, plan policy hints + validation, test_content_brief_v2.py
+e3: platform_prompts.py + content_v2_platform prompt wiring; test_platform_prompts.py
+checks: pytest 164 passed, 1 skipped
+next_step: stage 4 long-form track, then 5-9 per plan; alembic 0009+0010 on VPS before prod flags
+[2026-10-17 21:05] Nodex optimization plan coding stages 4-8 (backend+FE partial)
+stage: coding
+status: done (e4-e8 MVP slice); e6 OpenAI cover job deferred; e7 VK wall photo upload deferred
+e4: article v2 prompts, grounding, lint_article, instagram article block via policy
+e5: variant_checksum SHA256, revision-bound approval, patch clears approval, gate snapshot optional via CENTRAL_PUBLICATION_GATE_ENABLED
+e6: cover_media_id migration 0011, POST assign cover; generate_cover JobType reserved (no worker yet)
+e7: assert_publication_ready + worker verify_publication_snapshot; manual export POST /variants/{id}/export
+e8: Editor social fields headline/lead/scene/takeaway
+checks: pytest 169 passed 1 skipped; npm run build OK
+flags default off: PLATFORM_POLICY_V1_ENABLED, CENTRAL_PUBLICATION_GATE_ENABLED, COVER_GENERATION_ENABLED
+next_step: OpenAI cover pipeline + VK photos.upload; alembic 0009-0011 on VPS; enable flags on Nodex; stage 9 prod smoke
+[2026-10-18 09:50] Nodex optimization plan — cover/VK/FE continuation (e6-e8 closeout)
+stage: coding
+status: done (local); prod deploy pending commit/push
+prompt: «давай дальше» — cover pipeline, VK wall photo, Editor UI
+done: cover_compositor + cover_service + generate_cover job; VK photos.upload in vk adapter; test_cover_pipeline + test_vk_cover_upload; cf.ts generate/approve/assign cover + uploadMedia + export; EditorPage cover block + manual export preview
+checks: pytest 172 passed 1 skipped; npm run build OK
+next_step: user commit+push → VPS alembic 0009-0011 + update-vps.sh; stage 9 smoke with flags; optional orphan cover cleanup

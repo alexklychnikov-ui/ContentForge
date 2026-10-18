@@ -18,6 +18,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
+    openai_image_model: str = "dall-e-2"
     token_encryption_key: str = ""
     media_root: str = "./data/media"
     jwt_secret: str = "dev-insecure-change-me-not-for-production"
@@ -32,6 +33,9 @@ class Settings(BaseSettings):
     lightrag_url: str = "https://lightrag.alexklyvibe.ru"
     lightrag_api_key: str = ""
     lightrag_timeout_seconds: int = 180
+    platform_policy_v1_enabled: bool = False
+    central_publication_gate_enabled: bool = False
+    cover_generation_enabled: bool = False
 
 
 @lru_cache

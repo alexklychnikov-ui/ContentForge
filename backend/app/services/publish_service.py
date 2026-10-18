@@ -22,6 +22,8 @@ from app.security import as_utc, utc_now
 from app.services.audit import write_audit
 from app.services.brand_service import MUTATE_BRAND_ROLES, require_brand
 from app.services.recipient_service import has_active_recipients
+from app.services.content_profile_service import ensure_content_profile
+from app.services.publication_gate import assert_publication_ready
 from app.services.stopwords import assert_publish_allowed
 
 
@@ -112,6 +114,10 @@ def schedule_publication_internal(
     if channel.status is ChannelStatus.revoked or channel.revoked_at is not None:
         raise AppError(409, "channel_revoked", "Канал отозван")
     assert_gmail_recipients(db, brand.id, variant, channel)
+    profile = ensure_content_profile(db, brand.id)
+    gate_snapshot = assert_publication_ready(
+        db, brand=brand, variant=variant, channel=channel, profile=profile
+    )
     when = as_utc(scheduled_at)
     row = Publication(
         variant_id=variant.id,
@@ -119,7 +125,7 @@ def schedule_publication_internal(
         scheduled_at=when,
         status=PublicationStatus.scheduled,
         idempotency_key=key,
-        meta={},
+        meta={"gate_snapshot": gate_snapshot} if gate_snapshot else {},
     )
     try:
         with db.begin_nested():
@@ -170,6 +176,10 @@ def schedule_publication(
     if channel.status is ChannelStatus.revoked or channel.revoked_at is not None:
         raise AppError(409, "channel_revoked", "Канал отозван")
     assert_gmail_recipients(db, brand.id, variant, channel)
+    profile = ensure_content_profile(db, brand.id)
+    gate_snapshot = assert_publication_ready(
+        db, brand=brand, variant=variant, channel=channel, profile=profile
+    )
     if hits:
         write_audit(
             db,
@@ -188,7 +198,7 @@ def schedule_publication(
         scheduled_at=scheduled_at,
         status=PublicationStatus.scheduled,
         idempotency_key=key,
-        meta={},
+        meta={"gate_snapshot": gate_snapshot} if gate_snapshot else {},
     )
     try:
         with db.begin_nested():

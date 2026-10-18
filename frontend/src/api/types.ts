@@ -194,6 +194,7 @@ export type VariantPublic = {
   payload: Record<string, unknown>;
   revision: number;
   is_immutable: boolean;
+  cover_media_id?: string | null;
 };
 
 export type PiecePublic = {

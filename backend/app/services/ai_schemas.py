@@ -23,6 +23,11 @@ class PlanItemAI(BaseModel):
     theme: str = Field(min_length=1)
     goal: PlanGoal
     hook: str = Field(min_length=1)
+    audience_segment: str = ""
+    audience_pain: str = ""
+    takeaway: str = ""
+    scene_seed: str = ""
+    image_concept: str = ""
 
     @field_validator("channel_type", "content_type", mode="before")
     @classmethod

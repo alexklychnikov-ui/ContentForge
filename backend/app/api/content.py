@@ -19,10 +19,15 @@ from app.schemas import (
     VariantPatch,
     VariantPublic,
     VariantReviewRequest,
+    ManualExportRequest,
+    VariantCoverAssignRequest,
 )
 from app.services.content_service import (
     add_variant,
     approve_variant,
+    assign_variant_cover,
+    approve_variant_cover,
+    enqueue_generate_cover,
     create_piece,
     enqueue_generate_content,
     enqueue_rewrite,
@@ -32,6 +37,7 @@ from app.services.content_service import (
     patch_variant,
     review_variant,
 )
+from app.services.export_service import build_manual_export
 
 router = APIRouter(tags=["content"])
 
@@ -178,6 +184,60 @@ def review_variant_by_id(
     if variant is None:
         raise AppError(404, "not_found", "Вариант не найден")
     return review_variant(db, user, variant.piece_id, variant_id, payload)
+
+
+@router.post("/variants/{variant_id}/export")
+def export_variant_manual(
+    variant_id: UUID,
+    payload: ManualExportRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    return build_manual_export(db, user, variant_id, platform=payload.platform)
+
+
+@router.post(
+    "/content/{piece_id}/variants/{variant_id}/cover",
+    response_model=VariantPublic,
+)
+def assign_cover(
+    piece_id: UUID,
+    variant_id: UUID,
+    payload: VariantCoverAssignRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> VariantPublic:
+    variant = assign_variant_cover(db, user, piece_id, variant_id, payload.media_id)
+    return VariantPublic.model_validate(variant)
+
+
+@router.post(
+    "/content/{piece_id}/variants/{variant_id}/covers/generate",
+    response_model=JobAccepted,
+    status_code=status.HTTP_202_ACCEPTED,
+)
+def generate_cover(
+    piece_id: UUID,
+    variant_id: UUID,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> JobAccepted:
+    job = enqueue_generate_cover(db, user, piece_id, variant_id)
+    return JobAccepted(job_id=job.id)
+
+
+@router.post(
+    "/content/{piece_id}/variants/{variant_id}/covers/approve",
+    response_model=VariantPublic,
+)
+def approve_cover(
+    piece_id: UUID,
+    variant_id: UUID,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> VariantPublic:
+    variant = approve_variant_cover(db, user, piece_id, variant_id)
+    return VariantPublic.model_validate(variant)
 
 
 @router.post(

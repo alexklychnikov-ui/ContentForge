@@ -26,10 +26,10 @@ from app.models import (
 from app.services.ai_client import AIJobError, PROMPT_VERSION
 from app.services.ai_jobs import (
     CONTENT_SYSTEM,
-    CONTENT_SYSTEM_V2,
     PROMPT_VERSION_CONTENT_V2,
     execute_generate_content,
 )
+from app.services.platform_prompts import social_post_system_prompt
 from app.services.ai_schemas import SocialPostAI
 from app.services.knowledge_grounding import (
     GroundingReference,
@@ -185,7 +185,9 @@ def test_social_generate_grounded_includes_fence_and_brief(
 
     system = captured["messages"][0]["content"]
     user_msg = captured["messages"][1]["content"]
-    assert system == CONTENT_SYSTEM_V2
+    assert "Telegram:" in system
+    assert "hard sell" in system
+    assert "content_brief_v2" in user_msg
     assert "<<<UNTRUSTED_KNOWLEDGE" in user_msg
     assert "UNTRUSTED_KNOWLEDGE>>>" in user_msg
     assert "бот без процесса" in user_msg
