@@ -456,13 +456,15 @@ def execute_generate_content(db: Session, job: Job, brand: BrandProfile) -> dict
         "content_brief_v2": brief_v2,
         "brand": brief["brand"],
     }
-    if piece.type is not ContentType.social_post and profile is not None:
+    if profile is not None:
         if profile.structure_rules:
             context["structure_rules"] = profile.structure_rules
         if profile.banned_openers:
             context["banned_openers"] = list(profile.banned_openers)
         if profile.proof_facts:
             context["proof_facts"] = list(profile.proof_facts)
+        if profile.positioning:
+            context["positioning"] = profile.positioning
 
     user_parts = [_wrap_context(context)]
     if grounding.status in {GroundingStatus.grounded, GroundingStatus.ungrounded}:

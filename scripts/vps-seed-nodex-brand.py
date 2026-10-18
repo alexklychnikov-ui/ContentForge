@@ -1,4 +1,4 @@
-"""Move/create Nodex under the real admin workspace."""
+"""Seed / refresh Nodex workspace brand with Alexander ERP freelance kit."""
 from __future__ import annotations
 
 import json
@@ -18,18 +18,20 @@ OWNER_EMAIL = "admin@testfullcrm.alexklyvibe.ru"
 
 BRAND_KIT = {
     "niche": (
-        "Python/AI-разработка и автоматизация для малого бизнеса: "
-        "Telegram-боты, интеграции, ERP/Dynamics AX → рабочие MVP под задачу"
+        "Microsoft Dynamics AX 2012 (X++): доработки розничного ERP-контура "
+        "до проводки и обмена — цены, склад/Infor, касса УКМ-4, 1С, Rabbit, "
+        "ЕГАИС, Ветис, Честный знак. Python/AI — ускоритель того же контура."
     ),
     "audience": (
-        "Малый бизнес и самозанятые (заказы в Telegram/WhatsApp), "
-        "компании без штатного IT, основатели ранних стартапов, "
-        "которым нужно быстро собрать рабочее решение и довести до деплоя"
+        "Ритейл и сети на AX 2012, внутренние IT и интеграторы розницы, "
+        "владельцы процессов цены/склада/кассы/регуляторики — "
+        "нужна доработка до проводки и обмена, а не до прототипа экрана"
     ),
     "voice_tone": (
         "Прямой, экспертный, без нейрошаблонов и hard sell. "
-        "Говорю языком пользы и операционки МСБ: конкретная сцена → "
-        "как снял боль → уносимый ход. Спокойная уверенность практика."
+        "Язык контура: цена → ценник → касса; склад → обмен; документ → проводка. "
+        "Конкретная сцена из практики → как закрыл стык → уносимый ход. "
+        "Спокойная уверенность практика, не «гуру цифровизации»."
     ),
     "stopwords": [
         "в современном мире",
@@ -39,40 +41,40 @@ BRAND_KIT = {
         "лучшие на рынке",
         "уникальное предложение",
         "нейросеть изменит всё",
+        "в эру цифровизации",
     ],
     "offers": [
-        "Telegram-боты и автоматизация рутины под бизнес-процесс",
-        "AI-интеграции (OpenAI, базы знаний / RAG) в рабочие workflow",
-        "Быстрый MVP: от бизнес-задачи до деплоя",
-        "Автоматизация и интеграции вокруг ERP / Dynamics AX",
-        "Сопровождение и доработка уже запущенных ботов/скриптов",
+        "Доработки Dynamics AX 2012 (X++) по розничному контуру",
+        "Цена / акция / лояльность / ценник / выгрузка в кассу УКМ-4",
+        "Складской учёт и обмен с Infor / WMS",
+        "Интеграции: 1С, RabbitMQ, казначейские платежи",
+        "Регуляторика: ЕГАИС, Ветис, Честный знак",
+        "Разбор стыков и сопровождение уже живых контуров",
+        "Python/AI для ускорения разбора и автоматизации вокруг ERP",
     ],
     "example_posts": [
         (
-            "Размытое ТЗ — не проблема клиента. Проблема — когда берёшь его в работу "
-            "как есть.\n\nНа последнем боте сначала зафиксировал один сценарий: "
-            "заказ → статус → уведомление. Остальное — во вторую очередь.\n\n"
-            "Ход на 48 часов: выписать 3 шага процесса до первой строчки кода.\n\n"
-            "1) Сначала процесс\n2) Сначала «универсальный» бот\nЧто выбираете?"
+            "Цена «есть в AX» — ещё не значит, что касса продаёт ту же.\n\n"
+            "На ценнике дисконтная карта, в акции смена ценовой группы, "
+            "в УКМ уехала минимальная цена. Расхождение ловится до продажи, "
+            "а не по инвентаризации.\n\n"
+            "Ход на 48 часов: пройти один SKU от торгового соглашения "
+            "до строки на кассе и отметить, где обрывается цепочка.\n\n"
+            "1) Чинить экран цены\n2) Чинить стык AX → ценник → УКМ\nЧто выбираете?"
         ),
         (
-            "AI не чинит хаос. Он его ускоряет — если под ним нет процесса.\n\n"
-            "Собрал связку: знания в LightRAG → ответ в рабочем чате. "
-            "Помогло только после того, как отфильтровали, что вообще можно "
-            "спрашивать.\n\nУносимый ход: один источник правды + один канал ответа.\n\n"
-            "Спорно: без регламента AI — дорогой генератор шума."
+            "Интеграция без журнала — это не обмен, а надежда.\n\n"
+            "В рабочем контуре Rabbit/1С/Infor живут статус, повтор и ошибки за день. "
+            "«Отправили и забыли» разваливается на частичной отгрузке "
+            "или когда маркировка не дошла до кассы.\n\n"
+            "Уносимый ход: для одного потока выписать "
+            "исходящее → журнал → входящее → что считается успехом.\n\n"
+            "Спорно: без идемпотентности любой «успешный» пост в очередь — лотерея."
         ),
     ],
     "default_locale": Locale.ru,
     "timezone": "Asia/Irkutsk",
 }
-
-PROOF_FACTS = [
-    "Стек: Python, AI/OpenAI, Telegram-боты, автоматизация, ERP/Dynamics AX",
-    "Формула: понял бизнес-задачу → быстро собрал рабочее решение → довёл до деплоя",
-    "Опыт: LightRAG (база знаний + Docker/облако), expense-bot с AI-отчётами, мониторинг цен с уведомлениями в Telegram",
-    "ЦА: МСБ, самозанятые, компании без IT, ранние стартапы",
-]
 
 
 def _apply_kit(brand: BrandProfile) -> None:
@@ -93,16 +95,14 @@ def _apply_kit(brand: BrandProfile) -> None:
 
 def _apply_profile(profile) -> None:
     for key, value in ALEXANDER_PERSONAL_PRESET.items():
-        setattr(profile, key, value)
-    profile.proof_facts = list(PROOF_FACTS)
+        if isinstance(value, list):
+            setattr(profile, key, list(value))
+        elif isinstance(value, dict):
+            setattr(profile, key, dict(value))
+        else:
+            setattr(profile, key, value)
     profile.knowledge_mode = KnowledgeMode.required
     profile.require_human_approval = True
-    profile.platform_policies = {
-        "tenchat": "короткий пост; без hard sell; личная практика и уносимый ход",
-        "telegram": "короче TenChat-формата ок; один CTA; без воды",
-        "vk": "можно чуть развернуть сцену; без корпоративного пафоса",
-        "instagram": "лид в первые 2 строки; сцена + практика; CTA выбором 1/2",
-    }
     profile.platform_policies_v1 = dict(NODEX_PLATFORM_POLICIES_V1)
     profile.platform_policies_version = (profile.platform_policies_version or 0) + 1
     profile.updated_at = utc_now()
@@ -120,7 +120,6 @@ def main() -> None:
         ws = db.get(Workspace, membership.workspace_id)
         assert ws is not None
 
-        # Soft-delete mistaken Nodex on smoke workspaces
         mistaken = list(
             db.scalars(
                 select(BrandProfile).where(
@@ -162,11 +161,15 @@ def main() -> None:
                     "owner": user.email,
                     "workspace": ws.name,
                     "workspace_id": str(ws.id),
+                    "niche": brand.niche,
+                    "positioning": profile.positioning,
+                    "audience_segments": profile.audience_segments,
+                    "audience_pains": profile.audience_pains,
+                    "content_pillars": profile.content_pillars,
+                    "proof_facts": profile.proof_facts,
                     "knowledge_mode": profile.knowledge_mode.value,
                     "require_human_approval": profile.require_human_approval,
                     "timezone": brand.timezone,
-                    "offers": brand.offers,
-                    "proof_facts": profile.proof_facts,
                 },
                 ensure_ascii=False,
                 indent=2,
