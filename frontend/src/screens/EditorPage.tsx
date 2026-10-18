@@ -8,6 +8,7 @@ import { pushRecentJob } from "../auth/session";
 import { EmptyState, ErrorBanner, JobBanner } from "../components/Status";
 import {
   CHANNEL_LABELS,
+  CONTENT_CREATE_TYPES,
   CONTENT_LABELS,
   FIELD_META,
   MVP_CHANNELS,
@@ -362,9 +363,9 @@ export function EditorPage() {
         <label className="field">
           Тип
           <select value={type} onChange={(e) => setType(e.target.value as PiecePublic["type"])}>
-            {Object.entries(CONTENT_LABELS).map(([key, name]) => (
+            {CONTENT_CREATE_TYPES.map((key) => (
               <option key={key} value={key}>
-                {name}
+                {label(CONTENT_LABELS, key)}
               </option>
             ))}
           </select>

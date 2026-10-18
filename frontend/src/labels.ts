@@ -12,8 +12,11 @@ export const CHANNEL_LABELS: Record<string, string> = {
 export const CONTENT_LABELS: Record<string, string> = {
   social_post: "Пост",
   article: "Статья",
-  email: "Письмо",
+  email: "Письмо", // legacy display only
 };
+
+/** Типы, которые можно создать в редакторе / задать в плане. */
+export const CONTENT_CREATE_TYPES = ["social_post", "article"] as const;
 
 export const PIECE_STATUS: Record<string, string> = {
   draft: "черновик",
@@ -77,7 +80,7 @@ export const CHANNEL_STATUS: Record<string, string> = {
   revoked: "отозван",
 };
 
-export const MVP_CHANNELS = ["telegram", "vk", "gmail", "instagram", "tenchat"] as const;
+export const MVP_CHANNELS = ["telegram", "vk", "instagram", "tenchat"] as const;
 
 /** IANA ids; RU/CIS first. */
 export const TIMEZONE_OPTIONS: { value: string; label: string }[] = [

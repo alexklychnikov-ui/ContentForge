@@ -39,8 +39,6 @@ export function ChannelsPage() {
   const [type, setType] = useState<(typeof MVP_CHANNELS)[number]>("telegram");
   const [form, setForm] = useState<Record<string, string>>({ display_name: "", pdn: "1" });
   const [formKey, setFormKey] = useState(0);
-  const [email, setEmail] = useState("");
-  const [name, setName] = useState("");
   const [oauthBanner, setOauthBanner] = useState<string | null>(null);
   const [lastChecks, setLastChecks] = useState<Record<string, LastHealthCheck>>({});
 
@@ -75,12 +73,6 @@ export function ChannelsPage() {
     queryFn: () => cf.channels(brand!.id),
     enabled: Boolean(brand),
   });
-  const recipientsQuery = useQuery({
-    queryKey: ["recipients", brand?.id],
-    queryFn: () => cf.recipients(brand!.id),
-    enabled: Boolean(brand),
-  });
-
   const save = useMutation({
     mutationFn: () => {
       const body: Record<string, unknown> = {
@@ -94,10 +86,6 @@ export function ChannelsPage() {
       if (type === "vk") {
         body.group_id = form.group_id;
         body.access_token = form.access_token;
-      }
-      if (type === "gmail") {
-        body.from_email = form.from_email;
-        body.app_password = form.app_password;
       }
       return cf.saveChannel(brand!.id, type, body);
     },
@@ -131,19 +119,6 @@ export function ChannelsPage() {
     mutationFn: (id: string) => cf.revokeChannel(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["channels"] }),
   });
-  const addRecipient = useMutation({
-    mutationFn: () => cf.addRecipient(brand!.id, { email, name }),
-    onSuccess: () => {
-      setEmail("");
-      setName("");
-      queryClient.invalidateQueries({ queryKey: ["recipients"] });
-    },
-  });
-  const removeRecipient = useMutation({
-    mutationFn: (id: string) => cf.deleteRecipient(id),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["recipients"] }),
-  });
-
   if (!brand) {
     return (
       <main className="page">
@@ -162,7 +137,7 @@ export function ChannelsPage() {
       <h1>Каналы</h1>
       <p className="muted">Instagram: OAuth через Facebook (Professional + Page). TenChat: только копирование вручную. Reels и Mailchimp не в MVP. Токены в GET не показываем.</p>
       {leaked ? <div className="error">В ответе каналов есть секрет — это баг API.</div> : null}
-      <ErrorBanner error={channelsQuery.error || save.error || health.error || revoke.error || recipientsQuery.error || addRecipient.error || removeRecipient.error || instagramOAuth.error} />
+      <ErrorBanner error={channelsQuery.error || save.error || health.error || revoke.error || instagramOAuth.error} />
       {oauthBanner ? <div className="job succeeded">{oauthBanner}</div> : null}
       {adapterHealthError ? <div className="error">{adapterHealthError}</div> : null}
       <div className="cards">
@@ -206,7 +181,7 @@ export function ChannelsPage() {
         })}
       </div>
       {channels.length === 0 ? (
-        <EmptyState title="Каналы не подключены" hint="Подключите Telegram, VK, Gmail, Instagram или TenChat." cta="Онбординг" to="/onboarding" />
+        <EmptyState title="Каналы не подключены" hint="Подключите Telegram, VK, Instagram или TenChat." cta="Онбординг" to="/onboarding" />
       ) : null}
       <form
         key={formKey}
@@ -294,22 +269,6 @@ export function ChannelsPage() {
             </label>
           </>
         ) : null}
-        {type === "gmail" ? (
-          <>
-            <label className="field">
-              From email
-              <input onChange={(e) => setForm((p) => ({ ...p, from_email: e.target.value }))} />
-            </label>
-            <label className="field">
-              App password
-              <input
-                type="password"
-                autoComplete="off"
-                onChange={(e) => setForm((p) => ({ ...p, app_password: e.target.value }))}
-              />
-            </label>
-          </>
-        ) : null}
         {type === "instagram" ? (
           <p className="muted">
             Professional (Creator/Business) + Facebook Page. Redirect:{" "}
@@ -338,45 +297,6 @@ export function ChannelsPage() {
           </button>
         )}
       </form>
-      <div className="panel grid">
-        <h3>Получатели Gmail</h3>
-        <div className="row">
-          <input placeholder="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-          <input placeholder="имя" value={name} onChange={(e) => setName(e.target.value)} />
-          <button className="btn" type="button" onClick={() => addRecipient.mutate()}>
-            Добавить
-          </button>
-        </div>
-        <table>
-          <thead>
-            <tr>
-              <th>Email</th>
-              <th>Имя</th>
-              <th>Статус</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {(recipientsQuery.data ?? []).map((row) => (
-              <tr key={row.id}>
-                <td>{row.email}</td>
-                <td>{row.name}</td>
-                <td>{row.status}</td>
-                <td>
-                  <button
-                    className="btn"
-                    type="button"
-                    disabled={removeRecipient.isPending}
-                    onClick={() => removeRecipient.mutate(row.id)}
-                  >
-                    Удалить
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
     </main>
   );
 }

@@ -82,8 +82,8 @@ def test_ac05_slot_count_and_holidays(client: TestClient) -> None:
     job = client.get(f"/api/v1/jobs/{response.json()['job_id']}", headers=headers).json()
     assert job["status"] == "succeeded"
     result = job["result"]
-    # per_channel: email only on gmail → telegram 3 + gmail 4 = 7
-    expected = 7
+    # per_channel: telegram + vk × (2 posts + 1 article) = 6
+    expected = 6
     assert result["item_count"] == expected
     holidays = result["holidays_considered"]
     assert any("Новый год" in item["name"] for item in holidays)
@@ -92,7 +92,7 @@ def test_ac05_slot_count_and_holidays(client: TestClient) -> None:
     assert plan["params"]["allocation_mode"] == "per_channel"
     assert plan["params"]["targets_per_channel"] == {
         "telegram": {"social_post": 2, "article": 1},
-        "gmail": {"social_post": 2, "article": 1, "email": 1},
+        "vk": {"social_post": 2, "article": 1},
     }
     themes = " ".join(item["theme"] for item in plan["items"])
     holiday_in_theme = "Новый год" in themes

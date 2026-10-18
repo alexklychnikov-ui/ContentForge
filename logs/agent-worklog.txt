@@ -1284,3 +1284,11 @@ checks: pytest tests/test_ac_plans.py tests/test_plan_slot_window.py -q → 16 p
 behavior: confirm=false→per_channel N×channels; confirm=true→shared totals; FE Перегенерировать→window.confirm→mutate(true)
 issues: middle — default/_no profile telegram allows email, so per_channel duplicates email onto telegram when email target>0 (FE copy: email only Gmail); unit test covers custom policy exclude path
 handoff: teamlead — ship OK; optional follow-up tighten telegram default policy to exclude email
+[2026-10-18 11:19] Per-channel generate deployed
+prompt: Сгенерировать = N на каждый выбранный канал; Перегенерировать = shared totals
+done: allocation_mode per_channel/shared; email gmail-only; push 8180aad; VPS health 200
+checks: pytest 16 plan tests; deploy OK
+[2026-10-18 11:21] Remove email/gmail from product UI
+prompt: Убери email совсем он мне не нужен
+done: MVP_CHANNELS without gmail; Plan targets post/article only; Editor CONTENT_CREATE_TYPES; Channels recipients/Gmail form removed; plan_service rejects gmail + strips email targets
+checks: pytest 17 plan; npm build OK

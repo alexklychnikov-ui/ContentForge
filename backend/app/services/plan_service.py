@@ -33,11 +33,15 @@ def _active_plan(db: Session, brand_id: UUID, year: int, month: int) -> ContentP
 
 
 def _require_targets(payload: GeneratePlanRequest) -> dict[str, int]:
-    allowed = {item.value for item in ContentType}
+    allowed = {item.value for item in ContentType if item != ContentType.email}
     if not payload.channels:
         raise AppError(422, "validation_error", "Укажите хотя бы один канал")
+    if any(ch.value == "gmail" for ch in payload.channels):
+        raise AppError(422, "validation_error", "Канал Gmail отключён")
     targets: dict[str, int] = {}
     for key, value in payload.targets.items():
+        if key == ContentType.email.value:
+            continue
         if key not in allowed:
             raise AppError(422, "validation_error", f"Неизвестный тип {key}")
         if value > 0:

@@ -35,7 +35,7 @@ export function PlanPage() {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [channels, setChannels] = useState<string[]>([]);
-  const [targets, setTargets] = useState({ social_post: 8, article: 0, email: 0 });
+  const [targets, setTargets] = useState({ social_post: 8, article: 0 });
   const [job, setJob] = useState<JobPublic | null>(null);
   const [plan, setPlan] = useState<PlanPublic | null>(null);
 
@@ -215,18 +215,11 @@ export function PlanPage() {
                   checked={channels.includes(type)}
                   disabled={busy}
                   onChange={(e) =>
-                    setChannels((prev) => {
-                      const next = e.target.checked
+                    setChannels((prev) =>
+                      e.target.checked
                         ? [...prev, type]
-                        : prev.filter((item) => item !== type);
-                      if (type === "gmail") {
-                        setTargets((t) => ({
-                          ...t,
-                          email: e.target.checked ? Math.max(t.email, 2) : 0,
-                        }));
-                      }
-                      return next;
-                    })
+                        : prev.filter((item) => item !== type),
+                    )
                   }
                 />{" "}
                 {label(CHANNEL_LABELS, type)}
@@ -242,7 +235,7 @@ export function PlanPage() {
                 type="number"
                 min={0}
                 value={value}
-                disabled={busy || (key === "email" && !connectedChannelTypes.includes("gmail"))}
+                disabled={busy}
                 onChange={(e) => setTargets((prev) => ({ ...prev, [key]: Number(e.target.value) }))}
               />
             </label>
@@ -250,7 +243,7 @@ export function PlanPage() {
         </div>
         <p className="muted">
           Показаны только каналы, подключённые к текущему бренду. Для старта: один канал + Пост (8).
-          Письмо — только при Gmail. «Сгенерировать» — указанное число на каждый выбранный канал;
+          «Сгенерировать» — указанное число на каждый выбранный канал;
           «Перегенерировать» — полная перезапись с прежним распределением (сумма по каналам).
           Для текущего месяца слоты ставятся с сегодняшней даты (таймзона бренда), не с 1-го числа.
         </p>
