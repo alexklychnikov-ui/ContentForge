@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import logging
+import re
 from typing import Any
 from urllib.request import urlopen
 from uuid import UUID, uuid4
@@ -12,28 +13,64 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
-from app.errors import AppError
 from app.models import BrandProfile, ContentVariant, Job, JobStatus, JobType, MediaAsset, MediaKind
 from app.services.ai_client import AIJobError
-from app.services.cover_compositor import composite_cover, placeholder_scene_bytes
+from app.services.cover_compositor import MAX_HEADLINE_CHARS, composite_cover, placeholder_scene_bytes
 from app.services.media_service import _media_dir, CANONICAL_MIME
 from app.services.variant_checksum import payload_checksum
 
 logger = logging.getLogger(__name__)
 
 MAX_COVER_JOBS_PER_REVISION = 3
+_HASHTAG_RE = re.compile(r"#\S+")
 
 
-def _scene_prompt(variant: ContentVariant) -> str:
-    payload = variant.payload or {}
-    concept = (
-        str(payload.get("image_concept") or "").strip()
-        or str(payload.get("scene") or "").strip()
-        or str(payload.get("headline") or "").strip()
-        or str(payload.get("theme") or "").strip()
-        or "tech workspace scene"
-    )
-    # Concept first: generic "neon cinematic" style used to override the post brief.
+def _first_line(value: str) -> str:
+    for line in (value or "").splitlines():
+        cleaned = " ".join(line.split())
+        if cleaned:
+            return cleaned
+    return ""
+
+
+def _strip_hashtags(value: str) -> str:
+    return " ".join(_HASHTAG_RE.sub("", value or "").split())
+
+
+def _clip_headline(value: str) -> str:
+    text = _strip_hashtags(value)
+    if len(text) <= MAX_HEADLINE_CHARS:
+        return text
+    clipped = text[:MAX_HEADLINE_CHARS].rstrip()
+    if " " in clipped:
+        clipped = clipped.rsplit(" ", 1)[0]
+    return clipped.rstrip(".,;:—-") or text[:MAX_HEADLINE_CHARS]
+
+
+def _resolve_cover_copy(payload: dict[str, Any] | None) -> tuple[str, str]:
+    """Return (headline, visual_brief) without mutating payload (CAS checksum)."""
+    data = payload or {}
+    headline = _clip_headline(str(data.get("headline") or ""))
+    if not headline:
+        headline = _clip_headline(_first_line(str(data.get("lead") or "")))
+    if not headline:
+        headline = _clip_headline(_first_line(str(data.get("text") or "")))
+
+    visual_brief = str(data.get("image_concept") or "").strip()
+    if not visual_brief:
+        visual_brief = str(data.get("scene") or "").strip()
+    if not visual_brief:
+        takeaway = str(data.get("takeaway") or "").strip()
+        text = str(data.get("text") or "").strip()
+        seed = takeaway or _first_line(text) or "tech workspace"
+        visual_brief = f"scene showing: {seed}"
+
+    return headline, visual_brief
+
+
+def _scene_prompt(visual_brief: str) -> str:
+    concept = (visual_brief or "").strip() or "tech workspace scene"
+    # Concept first: do not override the post brief with abstract neon filler.
     return (
         f"Create a square 1:1 marketing cover illustration that literally depicts this scene: {concept}. "
         "Follow the described objects, composition and setting as closely as possible. "
@@ -204,8 +241,8 @@ def execute_generate_cover(db: Session, job: Job, brand: BrandProfile) -> dict[s
     if count_cover_jobs_for_revision(db, variant.id, expected_revision) >= MAX_COVER_JOBS_PER_REVISION:
         raise AIJobError("cover_generation_limit", "Лимит генераций обложки для ревизии")
 
-    scene_bytes = _generate_scene_bytes(_scene_prompt(variant))
-    headline = str((variant.payload or {}).get("headline") or "")[:48]
+    headline, visual_brief = _resolve_cover_copy(variant.payload)
+    scene_bytes = _generate_scene_bytes(_scene_prompt(visual_brief))
     jpeg_bytes = composite_cover(scene_bytes, headline=headline)
     asset = _save_cover_asset(db, brand.id, jpeg_bytes)
     applied = apply_cover_to_variant_cas(

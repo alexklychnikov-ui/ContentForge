@@ -52,7 +52,7 @@ function groundingStatusLabel(status: string): string {
 
 function fieldsFor(type: PiecePublic["type"]): string[] {
   if (type === "social_post")
-    return ["headline", "lead", "scene", "takeaway", "text", "cta", "hashtags", "alt_text"];
+    return ["headline", "lead", "scene", "image_concept", "takeaway", "text", "cta", "hashtags", "alt_text"];
   if (type === "article") return ["title", "slug", "excerpt", "body_markdown", "seo_title", "seo_description"];
   return ["subject", "preheader", "body_markdown"];
 }
@@ -575,6 +575,9 @@ export function EditorPage() {
               <p className="muted">Выдели фрагмент в основном тексте и нажми</p>
               <div className="card">
                 <h3>Обложка</h3>
+                <p className="muted">
+                  Текст на обложке рисуется из headline (читаемо). Сцена — из image_concept.
+                </p>
                 {coverMediaId ? (
                   <p className="muted">
                     media: {coverMediaId.slice(0, 8)}…

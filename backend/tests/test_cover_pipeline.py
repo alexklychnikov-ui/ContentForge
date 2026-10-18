@@ -19,6 +19,7 @@ from app.models import (
     User,
 )
 from app.services.cover_compositor import composite_cover, placeholder_scene_bytes
+from app.services.cover_service import _resolve_cover_copy
 from app.services.job_runner import run_job_in_session
 from app.services.variant_checksum import payload_checksum, store_checksum_meta
 
@@ -26,6 +27,41 @@ from app.services.variant_checksum import payload_checksum, store_checksum_meta
 def test_compositor_produces_jpeg():
     jpeg = composite_cover(placeholder_scene_bytes(), headline="Nodex AI")
     assert jpeg[:2] == b"\xff\xd8"
+    assert len(jpeg) > 5_000
+
+
+def test_compositor_long_russian_headline():
+    headline = (
+        "Как за неделю собрать Telegram-бота на vibe coding без боли и лишней бюрократии"
+    )
+    jpeg = composite_cover(placeholder_scene_bytes(), headline=headline)
+    assert jpeg[:2] == b"\xff\xd8"
+    assert len(jpeg) > 8_000
+
+
+def test_resolve_cover_copy_prefers_image_concept_and_clips_headline():
+    headline, brief = _resolve_cover_copy(
+        {
+            "headline": "Короткий хук #ai #bots и ещё очень длинный хвост который надо обрезать до лимита",
+            "lead": "Лид не должен победить headline",
+            "image_concept": "desk with laptop and neon keyboard, top-down",
+            "scene": "fallback scene",
+        }
+    )
+    assert "#" not in headline
+    assert len(headline) <= 56
+    assert brief == "desk with laptop and neon keyboard, top-down"
+
+
+def test_resolve_cover_copy_synthesizes_brief():
+    headline, brief = _resolve_cover_copy(
+        {
+            "text": "Первая строка поста\nВторая",
+            "takeaway": "Запусти бота за вечер",
+        }
+    )
+    assert headline == "Первая строка поста"
+    assert brief == "scene showing: Запусти бота за вечер"
 
 
 def test_decode_image_result_b64():

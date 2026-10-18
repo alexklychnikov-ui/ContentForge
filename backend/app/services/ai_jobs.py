@@ -81,7 +81,9 @@ CONTENT_SYSTEM = (
 CONTENT_SYSTEM_V2 = (
     "You are ContentForge personal copywriter for social posts. "
     "Return JSON with: text (required full post), headline, lead (1-2 hook lines), "
-    "scene, takeaway, cta, hashtags, alt_text. "
+    "scene, image_concept, takeaway, cta, hashtags, alt_text. "
+    "headline must be cover-ready: short, ≤56 characters, no hashtags. "
+    "image_concept: hard visual brief (objects/setting/camera); no readable text on the image. "
     "Structure: pain → scene → practice → takeaway → CTA. "
     "Do not use banned neuro/cliché openers from the brief. "
     "Respect stopwords. Do not invent cases, numbers, or facts — "
@@ -700,7 +702,8 @@ def execute_generate_content(db: Session, job: Job, brand: BrandProfile) -> dict
             )
     if use_v2 and piece.type is ContentType.social_post:
         user_parts.append(
-            "Return JSON for social_post with text, headline, lead, scene, takeaway, cta, hashtags, alt_text."
+            "Return JSON for social_post with text, headline (≤56 chars, cover-ready), lead, scene, "
+            "image_concept (concrete visual brief; no readable text on image), takeaway, cta, hashtags, alt_text."
         )
     elif use_v2 and piece.type is ContentType.article:
         user_parts.append(

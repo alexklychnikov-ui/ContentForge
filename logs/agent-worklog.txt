@@ -1319,3 +1319,8 @@ done: _scene_prompt prioritizes image_concept/scene; dropped abstract neon overr
 [2026-10-18 12:15] Cover click-to-zoom lightbox
 prompt: сделай + увеличение изображения по клику
 done: AuthedMedia zoomable lightbox Esc/backdrop close
+[2026-10-18 12:19] Cover typography + visual brief
+prompt: readable headline overlay + auto visual brief; DejaVu fonts; no AI text; no commit/deploy
+done: Dockerfile fonts-dejavu-core; cover_compositor wrap/gradient/DejaVu; _resolve_cover_copy; SocialPostAI.image_concept + prompts; Editor hint + field; tests
+checks: pytest tests/test_cover_pipeline.py → 7 passed; npm run build OK
+handoff: parent — commit/push/deploy separately

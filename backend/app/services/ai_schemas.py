@@ -61,6 +61,7 @@ class SocialPostAI(BaseModel):
     headline: str = ""
     lead: str = ""
     scene: str = ""
+    image_concept: str = ""
     takeaway: str = ""
     cta: str = ""
     hashtags: list[str] = Field(default_factory=list)

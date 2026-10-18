@@ -28,6 +28,14 @@ export type FieldMeta = { label: string; required?: boolean; hint?: string };
 
 export const FIELD_META: Record<string, Record<string, FieldMeta>> = {
   social_post: {
+    headline: { label: "Headline (обложка)", hint: "≤56 символов, читаемый оверлей" },
+    lead: { label: "Лид", hint: "по желанию" },
+    scene: { label: "Сцена в тексте", hint: "по желанию" },
+    image_concept: {
+      label: "Visual brief (image_concept)",
+      hint: "объекты/место/ракурс; без текста на картинке",
+    },
+    takeaway: { label: "Takeaway", hint: "по желанию" },
     text: { label: "Текст поста", required: true },
     cta: { label: "Призыв к действию (CTA)", hint: "по желанию" },
     hashtags: { label: "Хештеги", hint: "по желанию, через пробел" },
