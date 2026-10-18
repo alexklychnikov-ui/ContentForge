@@ -131,7 +131,7 @@ def test_ac06_count_mismatch_does_not_persist_plan(
     assert db.scalars(select(ContentPlan)).all() == []
 
 
-def test_ac07_approve_then_conflict_or_revision(client: TestClient) -> None:
+def test_ac07_approve_then_merge_or_revision(client: TestClient) -> None:
     owner = register_user(client).json()
     headers = auth_header(owner["tokens"])
     brand_id = create_brand(client, headers).json()["id"]
@@ -146,9 +146,13 @@ def test_ac07_approve_then_conflict_or_revision(client: TestClient) -> None:
     )
     assert approved.status_code == 200
     assert approved.json()["status"] == "approved"
-    conflict = _generate(client, headers, brand_id)
-    assert conflict.status_code == 409
-    assert _error(conflict)["code"] == "plan_approved_exists"
+    merged = _generate(client, headers, brand_id)
+    assert merged.status_code == 202
+    merge_job = client.get(f"/api/v1/jobs/{merged.json()['job_id']}", headers=headers).json()
+    assert merge_job["status"] == "succeeded"
+    assert merge_job["result"]["plan_id"] == plan_id
+    still = client.get(f"/api/v1/plans/{plan_id}", headers=headers).json()
+    assert still["status"] == "approved"
     revision = _generate(client, headers, brand_id, {**PLAN_JAN, "create_revision": True})
     assert revision.status_code == 202
     old = client.get(f"/api/v1/plans/{plan_id}", headers=headers).json()
@@ -158,19 +162,79 @@ def test_ac07_approve_then_conflict_or_revision(client: TestClient) -> None:
     assert new_job["result"]["plan_id"] != plan_id
 
 
-def test_draft_regenerate_requires_confirm(client: TestClient) -> None:
+def test_draft_regenerate_merges_without_confirm(client: TestClient) -> None:
     owner = register_user(client).json()
     headers = auth_header(owner["tokens"])
     brand_id = create_brand(client, headers).json()["id"]
     first = _generate(client, headers, brand_id)
     assert first.status_code == 202
-    blocked = _generate(client, headers, brand_id)
-    assert blocked.status_code == 409
-    assert _error(blocked)["code"] == "plan_draft_exists"
+    first_job = client.get(f"/api/v1/jobs/{first.json()['job_id']}", headers=headers).json()
+    assert first_job["status"] == "succeeded"
+    plan_id = first_job["result"]["plan_id"]
+    merged = _generate(client, headers, brand_id)
+    assert merged.status_code == 202
+    merge_job = client.get(f"/api/v1/jobs/{merged.json()['job_id']}", headers=headers).json()
+    assert merge_job["status"] == "succeeded"
+    assert merge_job["result"]["plan_id"] == plan_id
     confirmed = _generate(client, headers, brand_id, {**PLAN_JAN, "confirm": True})
     assert confirmed.status_code == 202
     job = client.get(f"/api/v1/jobs/{confirmed.json()['job_id']}", headers=headers).json()
     assert job["status"] == "succeeded"
+    assert job["result"]["plan_id"] != plan_id
+    archived = client.get(f"/api/v1/plans/{plan_id}", headers=headers).json()
+    assert archived["status"] == "archived"
+
+
+def test_merge_adds_second_channel_keeps_first(client: TestClient) -> None:
+    owner = register_user(client).json()
+    headers = auth_header(owner["tokens"])
+    brand_id = create_brand(client, headers).json()["id"]
+    telegram_only = {
+        "year": 2026,
+        "month": 1,
+        "channels": ["telegram"],
+        "targets": {"social_post": 2, "article": 1},
+        "locale": "ru",
+    }
+    first = _generate(client, headers, brand_id, telegram_only)
+    assert first.status_code == 202
+    first_job = client.get(f"/api/v1/jobs/{first.json()['job_id']}", headers=headers).json()
+    assert first_job["status"] == "succeeded"
+    plan_id = first_job["result"]["plan_id"]
+    plan_before = client.get(f"/api/v1/plans/{plan_id}", headers=headers).json()
+    telegram_themes = sorted(
+        item["theme"] for item in plan_before["items"] if item["channel_type"] == "telegram"
+    )
+    assert len(telegram_themes) == 3
+    approved = client.patch(
+        f"/api/v1/plans/{plan_id}",
+        json={"status": "approved"},
+        headers=headers,
+    )
+    assert approved.status_code == 200
+
+    instagram_only = {
+        "year": 2026,
+        "month": 1,
+        "channels": ["instagram"],
+        "targets": {"social_post": 3},
+        "locale": "ru",
+    }
+    second = _generate(client, headers, brand_id, instagram_only)
+    assert second.status_code == 202
+    second_job = client.get(f"/api/v1/jobs/{second.json()['job_id']}", headers=headers).json()
+    assert second_job["status"] == "succeeded"
+    assert second_job["result"]["plan_id"] == plan_id
+    plan = client.get(f"/api/v1/plans/{plan_id}", headers=headers).json()
+    assert plan["status"] == "approved"
+    assert plan["id"] == plan_id
+    by_channel = {}
+    for item in plan["items"]:
+        by_channel.setdefault(item["channel_type"], []).append(item)
+    assert sorted(item["theme"] for item in by_channel["telegram"]) == telegram_themes
+    assert len(by_channel["instagram"]) == 3
+    assert set(plan["params"]["channels"]) == {"telegram", "instagram"}
+    assert second_job["result"]["item_count"] == 6
 
 
 def test_confirm_uses_shared_allocation_totals(client: TestClient) -> None:

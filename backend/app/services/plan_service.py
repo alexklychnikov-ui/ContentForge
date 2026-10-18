@@ -58,6 +58,8 @@ def enqueue_generate_plan(
     assert_can_generate_plan(brand)
     targets = _require_targets(payload)
     existing = _active_plan(db, brand.id, payload.year, payload.month)
+    full_replace = bool(payload.confirm or payload.create_revision)
+    merge_into_plan_id: str | None = None
     if existing is not None:
         if existing.status is PlanStatus.generating:
             stuck = inflight_generate_plan(db, brand, payload.year, payload.month)
@@ -71,26 +73,12 @@ def enqueue_generate_plan(
             # Зависший generating без queued/running job — разблокируем.
             existing.status = PlanStatus.archived
             db.flush()
-        if existing.status is PlanStatus.draft:
-            if not payload.confirm:
-                raise AppError(
-                    409,
-                    "plan_draft_exists",
-                    "Черновик плана на этот месяц уже есть — нажмите «Перегенерировать»",
-                    {"plan_id": str(existing.id)},
-                )
-            existing.status = PlanStatus.archived
-            db.flush()
-        elif existing.status is PlanStatus.approved:
-            if not payload.create_revision:
-                raise AppError(
-                    409,
-                    "plan_approved_exists",
-                    "Утверждённый план на этот месяц уже есть — нажмите «Перегенерировать»",
-                    {"plan_id": str(existing.id)},
-                )
-            existing.status = PlanStatus.archived
-            db.flush()
+        if existing.status in {PlanStatus.draft, PlanStatus.approved}:
+            if full_replace:
+                existing.status = PlanStatus.archived
+                db.flush()
+            else:
+                merge_into_plan_id = str(existing.id)
     inflight = inflight_generate_plan(db, brand, payload.year, payload.month)
     if inflight is not None:
         raise AppError(
@@ -99,21 +87,24 @@ def enqueue_generate_plan(
             "Генерация плана уже выполняется",
             {"job_id": str(inflight.id)},
         )
+    job_payload: dict = {
+        "brand_id": str(brand.id),
+        "year": payload.year,
+        "month": payload.month,
+        "channels": [item.value for item in payload.channels],
+        "targets": targets,
+        "locale": payload.locale.value,
+        "include_holidays": payload.include_holidays,
+        "include_trends": payload.include_trends,
+        "allocation_mode": "shared" if full_replace else "per_channel",
+    }
+    if merge_into_plan_id is not None:
+        job_payload["merge_into_plan_id"] = merge_into_plan_id
     job = create_job(
         db,
         user=user,
         job_type=JobType.generate_plan,
-        payload={
-            "brand_id": str(brand.id),
-            "year": payload.year,
-            "month": payload.month,
-            "channels": [item.value for item in payload.channels],
-            "targets": targets,
-            "locale": payload.locale.value,
-            "include_holidays": payload.include_holidays,
-            "include_trends": payload.include_trends,
-            "allocation_mode": "shared" if (payload.confirm or payload.create_revision) else "per_channel",
-        },
+        payload=job_payload,
         idempotency_key=payload.idempotency_key,
     )
     if job.status.value != "queued":

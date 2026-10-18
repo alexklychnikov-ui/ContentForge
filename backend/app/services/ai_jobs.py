@@ -6,7 +6,7 @@ from typing import Any
 from uuid import UUID
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import or_, select
+from sqlalchemy import delete, func, or_, select
 from sqlalchemy.orm import Session
 
 from app.config import get_settings
@@ -454,6 +454,105 @@ def execute_generate_plan(db: Session, job: Job, brand: BrandProfile) -> dict[st
     }
     if targets_per_channel is not None:
         plan_params["targets_per_channel"] = targets_per_channel
+
+    merge_raw = payload.get("merge_into_plan_id")
+    if merge_raw:
+        plan = db.get(ContentPlan, UUID(str(merge_raw)))
+        if plan is None or plan.brand_id != brand.id:
+            raise AIJobError("not_found", "План для merge не найден")
+        if plan.year != year or plan.month != month:
+            raise AIJobError("conflict", "План для merge не совпадает по месяцу")
+        if plan.status not in {PlanStatus.draft, PlanStatus.approved}:
+            raise AIJobError("conflict", "Merge возможен только в draft/approved план")
+
+        db.execute(
+            delete(PlanItem).where(
+                PlanItem.plan_id == plan.id,
+                PlanItem.channel_type.in_(channels),
+            )
+        )
+        db.flush()
+        next_order = int(
+            db.scalar(
+                select(func.coalesce(func.max(PlanItem.sort_order), -1)).where(
+                    PlanItem.plan_id == plan.id
+                )
+            )
+            or -1
+        ) + 1
+        for index, item in enumerate(result.items):
+            db.add(
+                PlanItem(
+                    plan_id=plan.id,
+                    date=item.date,
+                    channel_type=item.channel_type,
+                    content_type=item.content_type,
+                    theme=item.theme,
+                    goal=item.goal,
+                    hook=item.hook,
+                    audience_segment=item.audience_segment or "",
+                    audience_pain=item.audience_pain or "",
+                    takeaway=item.takeaway or "",
+                    scene_seed=item.scene_seed or "",
+                    image_concept=item.image_concept or "",
+                    sort_order=next_order + index,
+                )
+            )
+
+        old_params = dict(plan.params or {})
+        old_channels = [str(ch) for ch in (old_params.get("channels") or [])]
+        new_channels = [item.value for item in channels]
+        merged_channels = list(dict.fromkeys([*old_channels, *new_channels]))
+        merged_tpc: dict[str, dict[str, int]] = {
+            str(ch): {str(ct): int(n) for ct, n in per.items()}
+            for ch, per in dict(old_params.get("targets_per_channel") or {}).items()
+        }
+        for ch in new_channels:
+            merged_tpc.pop(ch, None)
+        if targets_per_channel is not None:
+            merged_tpc.update(targets_per_channel)
+        merged_targets: dict[str, int] = {}
+        if merged_tpc:
+            for per in merged_tpc.values():
+                for ct, count in per.items():
+                    merged_targets[ct] = merged_targets.get(ct, 0) + int(count)
+        else:
+            merged_targets = {
+                **dict(old_params.get("targets") or {}),
+                **targets_public,
+            }
+        plan.params = {
+            **old_params,
+            "channels": merged_channels,
+            "targets": merged_targets,
+            "allocation_mode": "per_channel",
+            "locale": payload.get("locale", brand.default_locale.value),
+            "include_holidays": include_holidays,
+            "include_trends": include_trends,
+            "holidays_considered": _holiday_public(holidays),
+            "trends_considered": _trend_public(trends),
+        }
+        if merged_tpc:
+            plan.params["targets_per_channel"] = merged_tpc
+        else:
+            plan.params.pop("targets_per_channel", None)
+        plan.model = settings.openai_model
+        db.flush()
+        total_count = int(
+            db.scalar(select(func.count()).select_from(PlanItem).where(PlanItem.plan_id == plan.id))
+            or 0
+        )
+        return {
+            "plan_id": str(plan.id),
+            "item_count": total_count,
+            "holidays_considered": _holiday_public(holidays),
+            "trends_considered": _trend_public(trends),
+            "prompt_version": meta.get("prompt_version", PROMPT_VERSION),
+            "usage": meta.get("usage") or {},
+            "repaired": bool(meta.get("repaired")),
+            "model": settings.openai_model,
+        }
+
     plan = ContentPlan(
         brand_id=brand.id,
         year=year,

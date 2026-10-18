@@ -1292,3 +1292,8 @@ checks: pytest 16 plan tests; deploy OK
 prompt: Убери email совсем он мне не нужен
 done: MVP_CHANNELS without gmail; Plan targets post/article only; Editor CONTENT_CREATE_TYPES; Channels recipients/Gmail form removed; plan_service rejects gmail + strips email targets
 checks: pytest 17 plan; npm build OK
+[2026-10-18 11:28] Merge plan generate into draft/approved
+prompt: «Сгенерировать» merge by selected channels; «Перегенерировать» full replace; no commit/deploy
+done: enqueue merge_into_plan_id + per_channel; execute_generate_plan channel-scoped replace; PlanPage hint; tests merge/approve/revision
+checks: pytest tests/test_ac_plans.py tests/test_plan_slot_window.py -q → 18 passed
+handoff: teamlead — merge OK; commit/push/deploy separately when ready
