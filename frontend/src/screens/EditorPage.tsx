@@ -312,7 +312,7 @@ export function EditorPage() {
       await trackJob(
         "Генерация обложки",
         () => cf.generateCover(piece!.id, current!.id),
-        { kind: "generate_cover", maxTicks: 120 },
+        { kind: "generate_cover", maxTicks: 180 },
       );
       await queryClient.invalidateQueries({ queryKey: ["piece", pieceId] });
     },

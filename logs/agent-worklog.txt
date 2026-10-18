@@ -1305,3 +1305,7 @@ checks: pytest cover 4; npm build OK
 prompt: модалка нужна всех действий в дашборде не только для генерации
 done: ActionFeedbackProvider in Layout; trackAction/trackJob wired Plan/Editor/Channels/Queue/Calendar/Settings/AB; cover fix from e90f403 included
 checks: npm build; vitest 9 related passed
+[2026-10-18 11:51] Fix cover adapter_error: switch to gpt-image-1
+prompt: empty + screenshot adapter_error on cover generate
+done: OPENAI_IMAGE_MODEL=gpt-image-1 (dall-e-2 missing on account); VPS .env updated; better error text in overlay
+checks: pytest cover 4; npm build; probe gpt-image-1 OK on VPS

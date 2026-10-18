@@ -45,6 +45,20 @@ function errorMessage(error: unknown): string {
   return "Ошибка";
 }
 
+function jobErrorText(job: {
+  error?: string | null;
+  result?: Record<string, unknown> | null;
+}): string | null {
+  const payload = job.result?.error;
+  if (payload && typeof payload === "object") {
+    const message = (payload as { message?: unknown }).message;
+    if (typeof message === "string" && message.trim()) {
+      return message;
+    }
+  }
+  return job.error ?? null;
+}
+
 export function ActionFeedbackProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<FeedbackState>(IDLE);
   const closeTimer = useRef<number | null>(null);
@@ -98,7 +112,7 @@ export function ActionFeedbackProvider({ children }: { children: ReactNode }) {
               open: true,
               label,
               status: job.status,
-              error: job.error,
+              error: jobErrorText(job),
             });
           },
         });
@@ -106,10 +120,10 @@ export function ActionFeedbackProvider({ children }: { children: ReactNode }) {
           open: true,
           label,
           status: done.status,
-          error: done.error,
+          error: jobErrorText(done),
         });
         if (done.status === "failed") {
-          throw new Error(done.error || `${label}: ошибка`);
+          throw new Error(jobErrorText(done) || done.error || `${label}: ошибка`);
         }
         return done;
       } catch (error) {

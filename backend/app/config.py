@@ -18,7 +18,7 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
-    openai_image_model: str = "dall-e-2"
+    openai_image_model: str = "gpt-image-1"
     token_encryption_key: str = ""
     media_root: str = "./data/media"
     jwt_secret: str = "dev-insecure-change-me-not-for-production"

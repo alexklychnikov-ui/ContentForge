@@ -51,30 +51,48 @@ def _generate_scene_bytes(prompt: str) -> bytes:
         return placeholder_scene_bytes()
     client = OpenAI(api_key=settings.openai_api_key)
     model = settings.openai_image_model
-    # gpt-image-* reject response_format; some API revisions also reject it for dall-e.
+    # gpt-image-* always returns b64 and rejects response_format.
+    # dall-e-* may still accept response_format=b64_json when available on the account.
     kwargs: dict[str, Any] = {
         "model": model,
         "prompt": prompt,
         "size": "1024x1024",
         "n": 1,
     }
-    if not str(model).startswith("gpt-image"):
+    if str(model).startswith("dall-e"):
         kwargs["response_format"] = "b64_json"
     try:
         result = client.images.generate(**kwargs)
     except Exception as exc:
-        message = str(exc).lower()
-        if "response_format" in message and "response_format" in kwargs:
+        message = str(exc)
+        lower = message.lower()
+        if "response_format" in lower and "response_format" in kwargs:
             logger.warning("openai_image_retry_without_response_format model=%s", model)
             kwargs.pop("response_format", None)
             try:
                 result = client.images.generate(**kwargs)
             except Exception as retry_exc:
-                logger.warning("openai_image_error type=%s", type(retry_exc).__name__)
-                raise AIJobError("adapter_error", "OpenAI Images недоступен") from retry_exc
+                logger.warning(
+                    "openai_image_error type=%s detail=%s",
+                    type(retry_exc).__name__,
+                    str(retry_exc)[:240],
+                )
+                raise AIJobError(
+                    "adapter_error",
+                    "OpenAI Images недоступен",
+                    {"detail": str(retry_exc)[:240]},
+                ) from retry_exc
         else:
-            logger.warning("openai_image_error type=%s", type(exc).__name__)
-            raise AIJobError("adapter_error", "OpenAI Images недоступен") from exc
+            logger.warning(
+                "openai_image_error type=%s detail=%s",
+                type(exc).__name__,
+                message[:240],
+            )
+            raise AIJobError(
+                "adapter_error",
+                "OpenAI Images недоступен",
+                {"detail": message[:240]},
+            ) from exc
     item = result.data[0] if result.data else None
     if item is None:
         raise AIJobError("adapter_error", "OpenAI Images не вернул данные")
