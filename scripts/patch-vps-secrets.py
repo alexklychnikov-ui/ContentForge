@@ -41,6 +41,10 @@ def main() -> None:
     model = local.get("OPENAI_MODEL_TEXT") or local.get("OPENAI_MODEL")
     if model:
         patch["OPENAI_MODEL"] = model
+    if local.get("PROXY_API_KEY"):
+        patch["PROXY_API_KEY"] = local["PROXY_API_KEY"]
+    if local.get("PROXY_BASE_URL"):
+        patch["PROXY_BASE_URL"] = local["PROXY_BASE_URL"]
     if local.get("META_APP_SECRET"):
         patch["META_APP_SECRET"] = local["META_APP_SECRET"]
     if local.get("META_APP_ID"):

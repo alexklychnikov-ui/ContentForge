@@ -17,8 +17,11 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg://contentforge:contentforge@localhost:5432/contentforge"
     redis_url: str = "redis://localhost:6379/0"
     openai_api_key: str = ""
-    openai_model: str = "gpt-4o-mini"
+    openai_model: str = "anthropic/claude-sonnet-5-5"
     openai_image_model: str = "gpt-image-1"
+    # ProxyAPI (OpenAI-compatible). When set, chat completions use these instead of openai_api_key.
+    proxy_api_key: str = ""
+    proxy_base_url: str = ""
     token_encryption_key: str = ""
     media_root: str = "./data/media"
     jwt_secret: str = "dev-insecure-change-me-not-for-production"

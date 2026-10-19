@@ -19,25 +19,49 @@ class AIJobError(Exception):
         self.details = details or {}
 
 
+def _llm_credentials() -> tuple[str, str | None, str]:
+    settings = get_settings()
+    proxy_key = (settings.proxy_api_key or "").strip()
+    proxy_base = (settings.proxy_base_url or "").strip() or None
+    openai_key = (settings.openai_api_key or "").strip()
+    api_key = proxy_key or openai_key
+    if not api_key:
+        raise AIJobError("upstream_unavailable", "LLM API key is not configured")
+    model = (settings.openai_model or "").strip() or "anthropic/claude-sonnet-5-5"
+    return api_key, proxy_base if proxy_key else None, model
+
+
 def _call_openai(
     messages: list[dict[str, str]],
     *,
     temperature: float = 0.4,
 ) -> tuple[str, dict[str, int]]:
-    settings = get_settings()
-    if not settings.openai_api_key:
-        raise AIJobError("upstream_unavailable", "OpenAI API key is not configured")
-    client = OpenAI(api_key=settings.openai_api_key)
+    api_key, base_url, model = _llm_credentials()
+    client_kwargs: dict[str, Any] = {"api_key": api_key}
+    if base_url:
+        client_kwargs["base_url"] = base_url
+    client = OpenAI(**client_kwargs)
+    create_kwargs: dict[str, Any] = {
+        "model": model,
+        "messages": messages,
+        "temperature": temperature,
+    }
+    # Claude via ProxyAPI accepts JSON mode through OpenAI-compatible translation.
+    create_kwargs["response_format"] = {"type": "json_object"}
     try:
-        response = client.chat.completions.create(
-            model=settings.openai_model,
-            messages=messages,
-            response_format={"type": "json_object"},
-            temperature=temperature,
-        )
+        response = client.chat.completions.create(**create_kwargs)
     except OpenAIError as exc:
-        logger.warning("openai_error type=%s", type(exc).__name__)
-        raise AIJobError("upstream_unavailable", "OpenAI request failed") from exc
+        message = str(exc).lower()
+        if "response_format" in message:
+            create_kwargs.pop("response_format", None)
+            try:
+                response = client.chat.completions.create(**create_kwargs)
+            except OpenAIError as retry_exc:
+                logger.warning("openai_error type=%s", type(retry_exc).__name__)
+                raise AIJobError("upstream_unavailable", "LLM request failed") from retry_exc
+        else:
+            logger.warning("openai_error type=%s", type(exc).__name__)
+            raise AIJobError("upstream_unavailable", "LLM request failed") from exc
     content = response.choices[0].message.content or ""
     usage = response.usage
     meta = {
@@ -46,8 +70,9 @@ def _call_openai(
         "total_tokens": int(getattr(usage, "total_tokens", 0) or 0),
     }
     logger.info(
-        "openai_ok model=%s prompt_tokens=%s completion_tokens=%s",
-        settings.openai_model,
+        "openai_ok model=%s base=%s prompt_tokens=%s completion_tokens=%s",
+        model,
+        base_url or "default",
         meta["prompt_tokens"],
         meta["completion_tokens"],
     )

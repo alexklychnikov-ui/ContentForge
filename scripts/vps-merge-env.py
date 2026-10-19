@@ -30,7 +30,16 @@ for key, value in updates.items():
         out.append(f"{key}={value}")
 path.write_text("\n".join(out) + "\n", encoding="utf-8")
 
-keys = ["OPENAI_API_KEY", "META_APP_SECRET", "META_APP_ID", "JWT_SECRET", "TOKEN_ENCRYPTION_KEY"]
+keys = [
+    "OPENAI_API_KEY",
+    "OPENAI_MODEL",
+    "PROXY_API_KEY",
+    "PROXY_BASE_URL",
+    "META_APP_SECRET",
+    "META_APP_ID",
+    "JWT_SECRET",
+    "TOKEN_ENCRYPTION_KEY",
+]
 data = {}
 for line in path.read_text(encoding="utf-8").splitlines():
     if "=" in line and not line.strip().startswith("#"):

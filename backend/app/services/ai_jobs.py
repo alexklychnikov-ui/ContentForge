@@ -40,6 +40,7 @@ from app.services.ai_schemas import (
 )
 from app.services.catalog_service import list_holidays
 from app.services.content_brief import build_content_brief, build_content_brief_v2
+from app.services.content_history import recent_posts_for_platform
 from app.services.platform_policy import get_effective_platform_policy
 from app.services.platform_prompts import article_system_prompt, social_post_system_prompt
 from app.services.variant_checksum import store_checksum_meta
@@ -671,6 +672,15 @@ def execute_generate_content(db: Session, job: Job, brand: BrandProfile) -> dict
         else:
             system_prompt = social_post_system_prompt(platform_key or None, policy_for_prompt)
 
+    recent_posts: list[dict[str, str]] = []
+    if platform_key and piece.type in (ContentType.social_post, ContentType.article):
+        recent_posts = recent_posts_for_platform(
+            db,
+            brand.id,
+            platform_key,
+            exclude_piece_id=piece.id,
+        )
+
     context: dict[str, Any] = {
         "type": piece.type.value,
         "locale": piece.locale.value,
@@ -683,6 +693,8 @@ def execute_generate_content(db: Session, job: Job, brand: BrandProfile) -> dict
         "content_brief_v2": brief_v2,
         "brand": brief["brand"],
     }
+    if recent_posts:
+        context["recent_posts_same_platform"] = recent_posts
     if profile is not None:
         if profile.structure_rules:
             context["structure_rules"] = profile.structure_rules
@@ -700,6 +712,12 @@ def execute_generate_content(db: Session, job: Job, brand: BrandProfile) -> dict
             user_parts.append(
                 _wrap_untrusted_knowledge(grounding.context, refs)
             )
+    if recent_posts:
+        user_parts.append(
+            "ANTI-REPEAT: recent_posts_same_platform lists prior posts on this channel. "
+            "Do not reuse the same hook, headline angle, scene, or takeaway. "
+            "Vary structure and examples while staying on brand and platform rules."
+        )
     if use_v2 and piece.type is ContentType.social_post:
         user_parts.append(
             "Return JSON for social_post with text, headline (≤56 chars, cover-ready), lead, scene, "
