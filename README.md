@@ -2,7 +2,7 @@
 
 
 <!-- MOCKUPS:START -->
-![Mockup](Docs/mockups/mockup-20260810-164203.png)
+![Mockup](Docs/mockups/ContentForge_%20AI-платформа%20контент-маркетинга.png)
 <!-- MOCKUPS:END -->
 
 **AI-платформа контент-маркетинга:** Brand Kit → план на месяц → черновики → очередь → автопост → аналитика — в одном рабочем месте.
